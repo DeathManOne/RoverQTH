@@ -90,6 +90,9 @@ Using the same components is recommended to ensure identical behavior and compat
 - MSP4021 4-inch 480×320 ST7796S touchscreen display
 - Amazon: [4" LCD TFT Touch Display Binghe](https://www.amazon.fr/dp/B0CZRV3Q8T)
 
+### SD Reader
+- SPI Memory card reader
+- Amazon: [Memory Card Module Shield](https://www.amazon.fr/dp/B077MB17JB)
 ---
 
 ## Dependencies
@@ -145,6 +148,11 @@ Example configuration:
 -D GPS_RX=2
 -D GPS_TX=3
 -D GPS_BAUD=38400
+
+-D SD_CS=4
+-D SD_MOSI=5
+-D SD_MISO=6
+-D SD_CLK=7
 
 -D TFT_TOUCH_CS=8
 -D TFT_SCREEN_CS=9
