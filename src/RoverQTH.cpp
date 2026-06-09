@@ -33,6 +33,7 @@
 #include "services/nvs.h"
 #include "services/settings.h"
 #include "services/touch.h"
+#include "services/update.h"
 
 namespace RoverQTH {
     namespace {
@@ -69,6 +70,7 @@ namespace RoverQTH {
         services::settings::begin();
 
         services::touch::begin();
+        services::update::begin();
         services::navigation::begin();
 
         core::state::begin();
