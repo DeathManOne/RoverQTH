@@ -78,22 +78,17 @@ Using the same components is recommended to ensure identical behavior and compat
 ### Controller
 
 - Arduino Nano ESP32
-- Amazon: <link>
+- Kubii: [Arduino Nano ESP32](https://www.kubii.com/fr/cartes-micro-controleurs/4174-arduino-nano-esp32-avec-header-3272496324718.html)
 
 ### GNSS Receiver
 
 - u-blox GNSS module
-- Amazon: <link>
+- Amazon: [GPS-GPSV3 NEO-M8N](https://www.amazon.fr/dp/B0F98669J9)
 
 ### Display
 
 - MSP4021 4-inch 480×320 ST7796S touchscreen display
-- Amazon: <link>
-
-### Storage
-
-- SDCard Reader
-- Amazon: <link>
+- Amazon: [4" LCD TFT Touch Display Binghe](https://www.amazon.fr/dp/B0CZRV3Q8T)
 
 ---
 
@@ -122,21 +117,6 @@ Version:
 Repository:
 
 * https://github.com/DeathManOne/Screen-4inch-320x480-ST7796---MSP4020-and-MSP4021
-
-### SDCard
-
-Version:
-
-* v1.5.1
-
-Repository:
-
-* https://github.com/DeathManOne/SDCard
-
-Status:
-
-* Integrated but currently disabled in version 1.0.0.
-* Planned for future releases.
 
 ---
 
@@ -218,7 +198,6 @@ Not enabled in version 1.0.0:
 
 * WiFi connectivity
 * OTA firmware updates
-* SD card features (integration present but currently disabled)
 * MARK navigation
 * SOTA navigation
 * GSM emergency features

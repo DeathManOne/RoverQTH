@@ -33,7 +33,6 @@
 #include "services/nvs.h"
 #include "services/settings.h"
 #include "services/touch.h"
-#include "services/update.h"
 
 namespace RoverQTH {
     namespace {
@@ -59,9 +58,6 @@ namespace RoverQTH {
     }
 
     void setup() {
-        // TEMPORARY: debug serial
-        Serial.begin(DEBUG_BAUD);
-
         display::begin(
             TFT_CLK,        TFT_MISO,       TFT_MOSI,
             TFT_TOUCH_CS,
@@ -73,7 +69,6 @@ namespace RoverQTH {
         services::settings::begin();
 
         services::touch::begin();
-        services::update::begin();
         services::navigation::begin();
 
         core::state::begin();
