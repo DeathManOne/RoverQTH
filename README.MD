@@ -49,6 +49,7 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * Screen rotation protection
 * Persistent configuration storage
 * ESP32-based architecture
+* SD card initialization
 
 ---
 
@@ -133,7 +134,7 @@ Example:
 
 ```ini
 lib_deps =
-    https://github.com/DeathManOne/RoverQTH#1.0.0
+    https://github.com/DeathManOne/RoverQTH#1.0.5
 ```
 
 ---
@@ -190,7 +191,7 @@ void loop() {
 
 ## Current Status
 
-### Version 1.0.0
+### Version 1.0.5
 
 Implemented:
 
@@ -201,14 +202,17 @@ Implemented:
 * Touch calibration
 * Boot status screen
 * NVS configuration storage
+* SD card initialization
+* MARK QTH column redraw optimization
 
-Not enabled in version 1.0.0:
+Not enabled in version 1.0.5:
 
 * WiFi connectivity
 * OTA firmware updates
-* MARK navigation
+* Full MARK navigation/storage workflow
 * SOTA navigation
 * GSM emergency features
+* SD card storage features
 
 ---
 
