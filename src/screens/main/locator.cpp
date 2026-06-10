@@ -91,13 +91,15 @@ namespace screens::main::locator {
         void updateMark(ST7796S::MSP4021 &tft, char* field, const char* value);
         void drawGrid(ST7796S::MSP4021 &tft, const Grid &grid, uint16_t color);
         void drawTargetSeparator(ST7796S::MSP4021 &tft, const TargetInfo &info, uint16_t color);
-        void drawTargetInfo(ST7796S::MSP4021 &tft, const TargetInfo &info);
         void drawSota(ST7796S::MSP4021 &tft);
         void drawMark(ST7796S::MSP4021 &tft);
         void drawLocator(ST7796S::MSP4021 &tft);
         void drawStatusTop(ST7796S::MSP4021 &tft);
         void drawStatusBottom(ST7796S::MSP4021 &tft);
         void computeTargetTitleArea(ST7796S::MSP4021 &tft, TargetInfo &info);
+        void clearMarkColumn(ST7796S::MSP4021 &tft, int col);
+        void drawMarkColumn(ST7796S::MSP4021 &tft, int col);
+        void updateMarkColumn(ST7796S::MSP4021 &tft, char* field, const char* value, int col);
         
 
         void clearArea(ST7796S::MSP4021 &tft, const Area &area) {
@@ -133,6 +135,11 @@ namespace screens::main::locator {
             setValue(grid.value, value);
             clearArea(tft, grid.area);
             drawFn(tft);
+
+            if (&grid == &locator) {
+                clearArea(tft, statusBottom.area);
+                drawStatusBottom(tft);
+            }
         }
 
         void updateSota(ST7796S::MSP4021 &tft, char* field, const char* value) {
@@ -203,39 +210,6 @@ namespace screens::main::locator {
             }
         }
 
-        void drawTargetInfo(ST7796S::MSP4021 &tft, const TargetInfo &info) {
-            constexpr int COL_COUNT = 2;
-            const int colW = info.area.innerW / COL_COUNT;
-
-            tft.setFont(ST7796S::RobotoMono_Regular_14);
-
-            tft.setTextColor(ui::settings::themes::defaults::GREY);
-            tft.textBottomCenter(
-                info.area.innerX,   info.area.innerY,
-                colW,               info.area.innerH / 2,
-                "BRG"
-            );
-            tft.textBottomCenter(
-                info.area.innerX + colW,    info.area.innerY,
-                colW,                       info.area.innerH / 2,
-                "DIST"
-            );
-
-            tft.setTextColor(ui::settings::themes::defaults::CYAN);
-            tft.textTopCenter(
-                info.area.innerX,   info.area.innerY + (info.area.innerH / 2),
-                colW,               info.area.innerH / 2,
-                info.bearing
-            );
-
-            tft.setTextColor(ui::settings::themes::defaults::WHITE);
-            tft.textTopCenter(
-                info.area.innerX + colW,    info.area.innerY + (info.area.innerH / 2),
-                colW,                       info.area.innerH / 2,
-                info.distance
-            );
-        }
-
         void drawSota(ST7796S::MSP4021 &tft) {
             constexpr int COL_COUNT = 4;
             const int colW = sota.info.area.innerW / COL_COUNT;
@@ -299,9 +273,10 @@ namespace screens::main::locator {
 
         void drawMark(ST7796S::MSP4021 &tft) {
             constexpr int COL_COUNT = 3;
-            const int colW = mark.info.area.innerW / COL_COUNT;
-            const int labelH = mark.info.area.innerH / 2;
-            const int valueH = mark.info.area.innerH - labelH;
+            const int colW          = mark.info.area.innerW / COL_COUNT;
+            const int labelH        = mark.info.area.innerH / 2;
+            const int valueH        = mark.info.area.innerH - labelH;
+
             constexpr const char* labels[] = {"BRG", "DIST", "T+"};
             const char* const values[] = {mark.info.bearing, mark.info.distance, mark.timer};
 
@@ -370,32 +345,93 @@ namespace screens::main::locator {
             info.titleArea.innerW = textW;
             info.titleArea.innerH = textH;
         }
+
+        void clearMarkColumn(ST7796S::MSP4021 &tft, int col) {
+            constexpr int COL_COUNT = 3;
+            constexpr int CORNER_PAD = 5;
+
+            const int colW = mark.info.area.innerW / COL_COUNT;
+            int colX       = mark.info.area.innerX + (colW * col);
+            int drawW      = colW;
+
+            if (col == (COL_COUNT - 1))
+                { drawW -= CORNER_PAD; }
+            else if (col == 0) {
+                colX += CORNER_PAD;
+                drawW -= CORNER_PAD;
+            }
+
+            tft.rectFill(
+                colX,   mark.info.area.innerY,
+                drawW,  mark.info.area.innerH + CORNER_PAD,
+                ui::settings::themes::defaults::BLACK
+            );
+        }
+
+        void drawMarkColumn(ST7796S::MSP4021 &tft, int col) {
+            constexpr int COL_COUNT = 3;
+            const int colW          = mark.info.area.innerW / COL_COUNT;
+            const int labelH        = mark.info.area.innerH / 2;
+            const int valueH        = mark.info.area.innerH - labelH;
+            const int colX          = mark.info.area.innerX + (colW * col);
+
+            constexpr const char* labels[] = {"BRG", "DIST", "T+"};
+            const char* const values[] = {mark.info.bearing, mark.info.distance, mark.timer};
+
+            tft.setFont(ST7796S::RobotoMono_Regular_14);
+
+            tft.setTextColor(ui::settings::themes::defaults::GREY);
+            tft.textBottomCenter(
+                colX, mark.info.area.innerY,
+                colW, labelH,
+                labels[col]
+            );
+
+            tft.setTextColor(col == 0 ? ui::settings::themes::defaults::CYAN : ui::settings::themes::defaults::WHITE);
+            tft.textTopCenter(
+                colX, mark.info.area.innerY + labelH,
+                colW, valueH,
+                values[col]
+            );
+        }
+
+        void updateMarkColumn(ST7796S::MSP4021 &tft, char* field, const char* value, int col) {
+            if (strcmp(field, value) == 0)
+                { return; }
+            setValue(field, value);
+            clearMarkColumn(tft, col);
+            drawMarkColumn(tft, col);
+        }
     }
 
     void setLocator     (const char* value) { setValue(locator.value,       value); }
     void setStatusTop   (const char* value) { setValue(statusTop.value,     value); }
     void setStatusBottom(const char* value) { setValue(statusBottom.value,  value); }
+
     void setSOTACode    (const char* value) { setValue(sota.info.title,     value); }
     void setSOTABearing (const char* value) { setValue(sota.info.bearing,   value); }
     void setSOTADistance(const char* value) { setValue(sota.info.distance,  value); }
     void setSOTAPoints  (const char* value) { setValue(sota.points,         value); }
     void setSOTAAltitude(const char* value) { setValue(sota.altitude,       value); }
+
     void setMarkLocator (const char* value) { setValue(mark.info.title,     value); }
     void setMarkBearing (const char* value) { setValue(mark.info.bearing,   value); }
     void setMarkDistance(const char* value) { setValue(mark.info.distance,  value); }
     void setMarkTimer   (const char* value) { setValue(mark.timer,          value); }
 
-    void updateLocator      (ST7796S::MSP4021 &tft, const char* value) { updateGrid(tft, locator,               value, drawLocator); }
-    void updateStatusTop    (ST7796S::MSP4021 &tft, const char* value) { updateGrid(tft, statusTop,             value, drawStatusTop); }
-    void updateSOTACode     (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.info.title,       value); }
-    void updateSOTABearing  (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.info.bearing,     value); }
-    void updateSOTADistance (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.info.distance,    value); }
-    void updateSOTAPoints   (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.points,           value); }
-    void updateSOTAAltitude (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.altitude,         value); }
-    void updateMarkLocator  (ST7796S::MSP4021 &tft, const char* value) { updateMark(tft, mark.info.title,       value); }
-    void updateMarkBearing  (ST7796S::MSP4021 &tft, const char* value) { updateMark(tft, mark.info.bearing,     value); }
-    void updateMarkDistance (ST7796S::MSP4021 &tft, const char* value) { updateMark(tft, mark.info.distance,    value); }
-    void updateMarkTimer    (ST7796S::MSP4021 &tft, const char* value) { updateMark(tft, mark.timer,            value); }
+    void updateLocator      (ST7796S::MSP4021 &tft, const char* value) { updateGrid(tft, locator,   value, drawLocator); }
+    void updateStatusTop    (ST7796S::MSP4021 &tft, const char* value) { updateGrid(tft, statusTop, value, drawStatusTop); }
+
+    void updateSOTACode     (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.info.title,    value); }
+    void updateSOTABearing  (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.info.bearing,  value); }
+    void updateSOTADistance (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.info.distance, value); }
+    void updateSOTAPoints   (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.points,        value); }
+    void updateSOTAAltitude (ST7796S::MSP4021 &tft, const char* value) { updateSota(tft, sota.altitude,      value); }
+
+    void updateMarkLocator  (ST7796S::MSP4021 &tft, const char* value) { updateMark(tft, mark.info.title,           value); }
+    void updateMarkBearing  (ST7796S::MSP4021 &tft, const char* value) { updateMarkColumn(tft, mark.info.bearing,   value, 0); }
+    void updateMarkDistance (ST7796S::MSP4021 &tft, const char* value) { updateMarkColumn(tft, mark.info.distance,  value, 1); }
+    void updateMarkTimer    (ST7796S::MSP4021 &tft, const char* value) { updateMarkColumn(tft, mark.timer,          value, 2); }
 
     void updateStatusBottom(ST7796S::MSP4021 &tft, const char* value) {
         if (strcmp(statusBottom.value, value) == 0)

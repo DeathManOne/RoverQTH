@@ -49,6 +49,7 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * Screen rotation protection
 * Persistent configuration storage
 * ESP32-based architecture
+* SD card initialization
 
 ---
 
@@ -90,6 +91,9 @@ Using the same components is recommended to ensure identical behavior and compat
 - MSP4021 4-inch 480×320 ST7796S touchscreen display
 - Amazon: [4" LCD TFT Touch Display Binghe](https://www.amazon.fr/dp/B0CZRV3Q8T)
 
+### SD Reader
+- SPI Memory card reader
+- Amazon: [Memory Card Module Shield](https://www.amazon.fr/dp/B077MB17JB)
 ---
 
 ## Dependencies
@@ -130,7 +134,7 @@ Example:
 
 ```ini
 lib_deps =
-    https://github.com/DeathManOne/RoverQTH#1.0.0
+    https://github.com/DeathManOne/RoverQTH#1.0.5
 ```
 
 ---
@@ -145,6 +149,11 @@ Example configuration:
 -D GPS_RX=2
 -D GPS_TX=3
 -D GPS_BAUD=38400
+
+-D SD_CS=4
+-D SD_MOSI=5
+-D SD_MISO=6
+-D SD_CLK=7
 
 -D TFT_TOUCH_CS=8
 -D TFT_SCREEN_CS=9
@@ -182,7 +191,7 @@ void loop() {
 
 ## Current Status
 
-### Version 1.0.0
+### Version 1.0.5
 
 Implemented:
 
@@ -193,14 +202,17 @@ Implemented:
 * Touch calibration
 * Boot status screen
 * NVS configuration storage
+* SD card initialization
+* MARK QTH column redraw optimization
 
-Not enabled in version 1.0.0:
+Not enabled in version 1.0.5:
 
 * WiFi connectivity
 * OTA firmware updates
-* MARK navigation
+* Full MARK navigation/storage workflow
 * SOTA navigation
 * GSM emergency features
+* SD card storage features
 
 ---
 
