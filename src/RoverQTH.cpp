@@ -28,6 +28,7 @@
 #include "core/screenManager.h"
 #include "core/state.h"
 #include "display/manager.h"
+#include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/nvs.h"
@@ -68,6 +69,7 @@ namespace RoverQTH {
 
         services::nvs::begin();
         services::settings::begin();
+        services::battery::begin(BATT_PIN);
 
         services::touch::begin();
         services::update::begin();

@@ -50,6 +50,14 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * Persistent configuration storage
 * ESP32-based architecture
 * SD card initialization
+* Battery level monitoring
+* Battery presence detection
+
+### Power Management
+
+* Battery voltage monitoring
+* Battery percentage estimation
+* Battery presence detection
 
 ---
 
@@ -67,6 +75,19 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 
 * ST7796S 480×320 touchscreen display (clone)
 * MSP4020 / MSP4021 compatible hardware
+
+### Supported SD Reader
+
+* SPI SD card reader
+
+### Supported Battery
+
+* 1S LiPo battery (3.7 V nominal, 4.2 V max)
+
+### Battery Monitoring
+
+* Analog battery monitoring input
+* External voltage divider required
 
 ---
 
@@ -94,6 +115,11 @@ Using the same components is recommended to ensure identical behavior and compat
 ### SD Reader
 - SPI Memory card reader
 - Amazon: [Memory Card Module Shield](https://www.amazon.fr/dp/B077MB17JB)
+
+### Battery
+
+- 1S LiPo 3.7V 3000mAh
+- Kubii: [Batterie 3000mAh Li-Po](https://www.kubii.com/fr/alimentations-protections/4913-batterie-3000mah-li-po-3272496324541.html)
 ---
 
 ## Dependencies
@@ -121,6 +147,18 @@ Version:
 Repository:
 
 * https://github.com/DeathManOne/Screen-4inch-320x480-ST7796---MSP4020-and-MSP4021
+
+### SD Card
+
+SDCard Library
+
+Version:
+
+* v1.5.1
+
+Repository:
+
+* https://github.com/DeathManOne/SDCard.git#1.5.1
 
 ---
 
@@ -167,6 +205,8 @@ Example configuration:
 -D TFT_WIDTH=480
 -D TFT_HEIGHT=320
 -D TFT_ROTATION=3
+
+-D BATTERY_PIN=17
 ```
 
 ---
@@ -204,6 +244,9 @@ Implemented:
 * NVS configuration storage
 * SD card initialization
 * MARK QTH column redraw optimization
+* Battery voltage monitoring
+* Battery percentage estimation
+* Battery presence detection
 
 Not enabled in version 1.0.5:
 
