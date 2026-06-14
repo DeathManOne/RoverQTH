@@ -135,8 +135,13 @@ namespace core::boot {
         display::boot::updateGSM(&gsmOk);
 
         initGPS(gpsUART);
-        if (gpsOk)
-            { waitGPSAcquisition(gpsUART); }
+        if (gpsOk) { waitGPSAcquisition(gpsUART); }
+
+        core::state::setButtonState(
+            core::state::Button::MENU,
+            core::state::ButtonState::READY
+        );
+
         return sdOk && gpsOk;
     }
 }

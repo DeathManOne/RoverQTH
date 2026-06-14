@@ -26,6 +26,7 @@
 #include "core/state.h"
 #include "display/main.h"
 #include "display/manager.h"
+#include "display/menu.h"
 #include "display/mockup.h"
 #include "services/navigation.h"
 #include "ui/widgets/buttons.h"
@@ -39,6 +40,8 @@ namespace core::screenManager {
         void drawMain();
         void toggleMARK();
         bool handleMainTouch(int x, int y);
+        void drawMenu();
+        bool handleMenuTouch(int x, int y);
 
         bool touchDebounced() {
             const uint32_t now = millis();
@@ -88,7 +91,30 @@ namespace core::screenManager {
                     return true;
                 }
             }
+            if (core::state::buttonState(core::state::Button::MENU) != core::state::ButtonState::UNAVAILABLE) {
+                if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MENU, x, y)) {
+                    core::state::setButtonState(core::state::Button::MENU, core::state::ButtonState::RUNNING);
+                    core::state::setScreen(core::state::Screen::MENU);
+                    draw();
+                    return true;
+                }
+            }
             return false;
+        }
+    
+        void drawMenu() {
+            display::menu::preload();
+            display::menu::draw();
+        }
+
+        bool handleMenuTouch(int x, int y) {
+            if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MENU, x, y)) {
+                core::state::setButtonState(core::state::Button::MENU, core::state::ButtonState::READY);
+                core::state::setScreen(core::state::Screen::MAIN);
+                draw();
+                return true;
+            }
+            return display::menu::handleTouch(x, y);
         }
     }
 
@@ -99,13 +125,11 @@ namespace core::screenManager {
                 drawMain();
                 break;
             case core::state::Screen::MENU:
-                // TODO: screens MENU
+                drawMenu();
                 break;
             case core::state::Screen::MAP:
-                // TODO: screens MAP
                 break;
             case core::state::Screen::SOTA:
-                // TODO: screens SOTA
                 break;
         }
     }
@@ -115,12 +139,11 @@ namespace core::screenManager {
             case core::state::Screen::MAIN:
                 display::main::update(nextRefreshIn);
                 break;
-            
-            // TODO: future screens
             case core::state::Screen::MENU:
-                [[fallthrough]];
+                display::menu::update(nextRefreshIn);
+                break;
             case core::state::Screen::MAP:
-                [[fallthrough]];
+                break;
             case core::state::Screen::SOTA:
                 nextRefreshIn = 1000;
                 break;
@@ -137,12 +160,12 @@ namespace core::screenManager {
                 if (handleMainTouch(x, y))
                     { return; }
                 break;
-
-            // TODO: future screens touch
             case core::state::Screen::MENU:
-                [[fallthrough]];
+                if (handleMenuTouch(x, y))
+                    { return; }
+                break;
             case core::state::Screen::MAP:
-                [[fallthrough]];
+                break;
             case core::state::Screen::SOTA:
                 break;
         }
