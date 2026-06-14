@@ -21,11 +21,11 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "screens/main/title.h"
 #include "screens/menu.h"
+#include "screens/menu/navigation.h"
 #include "screens/mockup/buttons.h"
 #include "screens/mockup/grid.h"
-#include "screens/mockup/header.h"
-#include "screens/mockup/right.h"
 
 namespace screens::menu {
     namespace {
@@ -44,9 +44,9 @@ namespace screens::menu {
     }
 
     void draw(ST7796S::MSP4021 &tft) {
-        screens::mockup::header::draw(tft);
+        screens::main::title::draw(tft);
         screens::mockup::grid::draw(tft);
-        screens::mockup::right::draw(tft);
+        screens::menu::navigation::draw(tft);
         screens::mockup::buttons::draw(tft);
     }
 

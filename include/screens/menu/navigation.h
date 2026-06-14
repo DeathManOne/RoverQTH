@@ -1,5 +1,5 @@
 /*
- * screens/menu.h
+ * screens/menu/navigation.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,22 +24,8 @@
 #pragma once
 #include <MSP4021.h>
 
-namespace screens::menu {
-    enum class Item {
-        FIRMWARE,
-        CALLSIGN,
-        SOTA,
-        STORAGE,
-        BATTERY,
-        TOUCH,
-        ABOUT
-    };
-    Item current();
-
-    void preload();
-
+namespace screens::menu::navigation {
     void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft);
 
-    void select(Item item);
+    bool handleTouch(int x, int y);
 }
