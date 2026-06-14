@@ -25,6 +25,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include "core/boot.h"
+#include "core/power.h"
 #include "core/screenManager.h"
 #include "core/state.h"
 #include "display/manager.h"
@@ -41,11 +42,14 @@ namespace RoverQTH {
         SPIClass sdSPI(HSPI);
         HardwareSerial gpsUART(1);
 
-        uint32_t nextScreenRefresh = 0;
-        TaskHandle_t gpsTaskHandle = nullptr;
+        uint32_t nextScreenRefresh  = 0;
+        uint32_t nextBatteryRefresh = 0;
+
+        TaskHandle_t gpsTaskHandle  = nullptr;
 
         constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = 900;
         constexpr uint32_t GPS_TASK_PERIOD_MS    = 1000;
+        constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
 
         void gpsTask(void*) {
             while (true) {
@@ -60,16 +64,18 @@ namespace RoverQTH {
     }
 
     void setup() {
+        services::nvs::begin();
+        services::settings::begin();
+        services::battery::begin(BATT_PIN);
+        if (core::power::shouldShutdown())
+            { core::power::shutdown(); }
+
         display::begin(
             TFT_CLK,        TFT_MISO,       TFT_MOSI,
             TFT_TOUCH_CS,
             TFT_SCREEN_CS,  TFT_SCREEN_DC,  TFT_SCREEN_RST,
             TFT_WIDTH,      TFT_HEIGHT,     TFT_ROTATION
         );
-
-        services::nvs::begin();
-        services::settings::begin();
-        services::battery::begin(BATT_PIN);
 
         services::touch::begin();
         services::update::begin();
@@ -79,13 +85,23 @@ namespace RoverQTH {
         core::boot::run(gpsUART, sdSPI);
         core::screenManager::begin();
 
-        nextScreenRefresh = millis() + GPS_TASK_PERIOD_MS;
+        nextScreenRefresh   = millis() + GPS_TASK_PERIOD_MS;
+        nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
         xTaskCreatePinnedToCore(gpsTask, "GNSS", 8192, nullptr, 1, &gpsTaskHandle, 0);
     }
 
     void loop() {
-        core::screenManager::handleTouch();
         const uint32_t now = millis();
+
+        if (now >= nextBatteryRefresh) {
+            services::battery::update();
+            if (core::power::shouldShutdown())
+                { core::power::shutdown(); }
+            nextBatteryRefresh = now + BATTERY_PERIOD_MS;
+        }
+
+        core::screenManager::handleTouch();
+
         if (now < nextScreenRefresh)
             { return; }
         uint32_t nextRefreshIn = GPS_TASK_PERIOD_MS;

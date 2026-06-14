@@ -63,13 +63,9 @@ namespace screens::main {
         }
     
         void getBatteryLevel(char* buffer, size_t size) {
-            services::battery::update();
             if (services::battery::isPresent())
                 { snprintf(buffer, size, "%u %%", services::battery::getPercent()); }
-            else {
-                strncpy(buffer, "N/A", size - 1);
-                buffer[size - 1] = '\0';
-            }
+            else { snprintf(buffer, size, "N/A"); }
         }
     }
 

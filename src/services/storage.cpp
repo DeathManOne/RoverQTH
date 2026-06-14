@@ -39,9 +39,7 @@ namespace services::storage {
         constexpr const char* FILE_DEBUG  = "/RoverQTH/logs/debug.log";
         constexpr const char* FILE_CONFIG = "/RoverQTH/config/settings.json";
 
-        bool available() {
-            return _SD && _READY;
-        }
+        bool available() { return _SD && _READY; }
     }
 
     bool begin(SPIClass &spi, uint32_t timeoutSec) {

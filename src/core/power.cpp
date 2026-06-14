@@ -1,5 +1,5 @@
 /*
- * core/battery.h
+ * core/power.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,17 +21,19 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
-#include <cstdint>
+#include <esp_sleep.h>
+#include "core/power.h"
+#include "services/battery.h"
 
-namespace services::battery {
-    bool begin(uint8_t pin);
-    bool update();
+namespace core::power {
+    bool shouldShutdown() { return services::battery::isCritical(); }
 
-    bool isPresent();
-    bool isLow();
-    bool isCritical();
+    void shutdown() {
+        // futur :
+        // storage save
+        // flush logs
+        // etc
 
-    float getVoltage();
-    uint8_t getPercent();
+        esp_deep_sleep_start();
+    }
 }

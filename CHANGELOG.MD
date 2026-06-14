@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog.
 Versioning follows Semantic Versioning.
 
+---
+
+## [1.0.6] - 2026-06-13
+
+### Added
+
+- Added battery monitoring service.
+- Added battery voltage measurement support.
+- Added battery percentage estimation.
+- Added battery presence detection.
+- Added battery display integration in the title bar.
+- Added power sense input support.
+- Added clean shutdown preparation before deep sleep.
+
+### Changed
+
+- Added battery configuration support through compile-time build flags.
+
+---
+
 ## [1.0.5] - 2026-06-10
 
 ### Added
@@ -21,6 +41,8 @@ Versioning follows Semantic Versioning.
 
 - SD card support is compiled and initialized.
 - SD card storage features are planned for a future release.
+
+---
 
 ## [1.0.0] - 2026-06-08
 

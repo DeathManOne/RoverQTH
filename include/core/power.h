@@ -1,5 +1,5 @@
 /*
- * core/battery.h
+ * core/power.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,16 +22,8 @@
  */
 
 #pragma once
-#include <cstdint>
 
-namespace services::battery {
-    bool begin(uint8_t pin);
-    bool update();
-
-    bool isPresent();
-    bool isLow();
-    bool isCritical();
-
-    float getVoltage();
-    uint8_t getPercent();
+namespace core::power {
+    bool shouldShutdown();
+    void shutdown();
 }
