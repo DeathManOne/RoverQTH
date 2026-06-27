@@ -7,6 +7,33 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.0.7] - 2026-06-27
+
+### Added
+- Settings menu categories:
+  - General
+  - Update
+  - Storage
+  - Battery
+  - About
+- About screen
+- Project information display:
+  - Name
+  - Version
+  - Author
+  - License
+  - GitHub repository
+- Automatic reset to `General` when leaving the settings menu
+
+### Changed
+- Simplified settings navigation structure
+- Navigation item count now uses `Item::COUNT`
+- Added compile-time validation for settings navigation rows
+- Improved menu touch handling and screen redraw behavior and logic
+- Refactored About screen layout using reusable `drawLine(...)` helpers
+
+---
+
 ## [1.0.6] - 2026-06-13
 
 ### Added

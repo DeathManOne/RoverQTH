@@ -28,6 +28,7 @@
 #include "display/manager.h"
 #include "display/menu.h"
 #include "display/mockup.h"
+#include "screens/menu.h"
 #include "services/navigation.h"
 #include "ui/widgets/buttons.h"
 
@@ -109,6 +110,7 @@ namespace core::screenManager {
 
         bool handleMenuTouch(int x, int y) {
             if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MENU, x, y)) {
+                screens::menu::reset();
                 core::state::setButtonState(core::state::Button::MENU, core::state::ButtonState::READY);
                 core::state::setScreen(core::state::Screen::MAIN);
                 draw();
@@ -143,6 +145,7 @@ namespace core::screenManager {
                 display::menu::update(nextRefreshIn);
                 break;
             case core::state::Screen::MAP:
+                nextRefreshIn = 1000;
                 break;
             case core::state::Screen::SOTA:
                 nextRefreshIn = 1000;

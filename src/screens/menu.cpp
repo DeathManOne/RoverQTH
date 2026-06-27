@@ -26,30 +26,50 @@
 #include "screens/menu/navigation.h"
 #include "screens/mockup/buttons.h"
 #include "screens/mockup/grid.h"
+#include "screens/menu/about.h"
 
 namespace screens::menu {
     namespace {
-        Item currentItem = Item::FIRMWARE;
+        Item currentItem = Item::GENERAL;
     }
 
-    Item current() {
-        return currentItem;
-    }
-
-    void select(Item item) {
-        currentItem = item;
-    }
-
-    void preload() {
-    }
+    Item current()          { return currentItem; }
+    void select(Item item)  { currentItem = item; }
+    void reset()            { currentItem = Item::GENERAL; }
+    void preload()          {}
 
     void draw(ST7796S::MSP4021 &tft) {
         screens::main::title::draw(tft);
-        screens::mockup::grid::draw(tft);
         screens::menu::navigation::draw(tft);
         screens::mockup::buttons::draw(tft);
+
+        switch (currentItem) {
+            case Item::GENERAL:
+                screens::mockup::grid::draw(tft);
+                break;
+            case Item::UPDATE:
+                screens::mockup::grid::draw(tft);
+                break;
+            case Item::STORAGE:
+                screens::mockup::grid::draw(tft);
+                break;
+            case Item::BATTERY:
+                screens::mockup::grid::draw(tft);
+                break;
+            case Item::ABOUT:
+                screens::menu::about::draw(tft);
+                break;
+        }
     }
 
     void update(ST7796S::MSP4021 &tft) {
+        (void)tft;
+        switch (currentItem) {
+            case Item::BATTERY:
+                screens::mockup::grid::draw(tft);
+                break;
+            default:
+                break;
+        }
     }
 }

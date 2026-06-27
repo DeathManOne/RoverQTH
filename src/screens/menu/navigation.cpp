@@ -49,16 +49,18 @@ namespace screens::menu::navigation {
         bool isPressed(const Row &row, int tx, int ty);
 
         Row rows[] = {
-            makeRow(screens::menu::Item::FIRMWARE, "Firmware"),
-            makeRow(screens::menu::Item::CALLSIGN, "Callsign"),
-            makeRow(screens::menu::Item::SOTA,     "SOTA"),
-            makeRow(screens::menu::Item::STORAGE,  "Storage"),
-            makeRow(screens::menu::Item::BATTERY,  "Battery"),
-            makeRow(screens::menu::Item::TOUCH,    "Touch"),
-            makeRow(screens::menu::Item::ABOUT,    "About")
+            makeRow(screens::menu::Item::GENERAL, "General"),
+            makeRow(screens::menu::Item::UPDATE,  "Update"),
+            makeRow(screens::menu::Item::STORAGE, "Storage"),
+            makeRow(screens::menu::Item::BATTERY, "Battery"),
+            makeRow(screens::menu::Item::ABOUT,   "About")
         };
 
-        constexpr size_t ROW_COUNT = sizeof(rows) / sizeof(rows[0]);
+        constexpr size_t ROW_COUNT = static_cast<size_t>(screens::menu::Item::COUNT);
+        static_assert(
+            ROW_COUNT == sizeof(rows) / sizeof(rows[0]),
+            "Menu navigation rows mismatch"
+        );
 
         Row makeRow(screens::menu::Item item, const char* label) {
             Row row;

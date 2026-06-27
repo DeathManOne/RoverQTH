@@ -26,20 +26,19 @@
 
 namespace screens::menu {
     enum class Item {
-        FIRMWARE,
-        CALLSIGN,
-        SOTA,
+        GENERAL,
+        UPDATE,
         STORAGE,
         BATTERY,
-        TOUCH,
-        ABOUT
+        ABOUT,
+        COUNT
     };
     Item current();
+    void select(Item item);
+    void reset();
 
     void preload();
 
     void draw(ST7796S::MSP4021 &tft);
     void update(ST7796S::MSP4021 &tft);
-
-    void select(Item item);
 }

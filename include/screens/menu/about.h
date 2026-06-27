@@ -1,5 +1,5 @@
 /*
- * display/menu.cpp
+ * screens/menu/about.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,33 +21,9 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "display/internal.h"
-#include "display/menu.h"
-#include "screens/menu.h"
-#include "screens/menu/navigation.h"
+#pragma once
+#include <MSP4021.h>
 
-namespace display::menu {
-    namespace {
-        ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-    }
-
-    void preload() {
-    }
-
-    void draw() {
-        screens::menu::preload();
-        screens::menu::draw(tft());
-    }
-
-    void update(uint32_t &nextRefreshIn) {
-        screens::menu::update(tft());
-        nextRefreshIn = 1000;
-    }
-
-    bool handleTouch(int x, int y) {
-        if (!screens::menu::navigation::handleTouch(x, y))
-            { return false; }
-        draw();
-        return true;
-    }
+namespace screens::menu::about {
+    void draw(ST7796S::MSP4021 &tft);
 }
