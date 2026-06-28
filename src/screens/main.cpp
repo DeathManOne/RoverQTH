@@ -122,9 +122,9 @@ namespace screens::main {
             gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
             satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
         );
-        
-        if (services::settings::getCallsign(callsign, sizeof(callsign))) {}
 
+        if (!services::settings::getCallsign(callsign, sizeof(callsign)))
+            { strcpy(callsign, "ERROR"); }
         screens::main::title::setCallsign   (callsign);
         screens::main::title::setDate       (date);
         screens::main::title::setTime       (uptime);

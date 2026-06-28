@@ -109,6 +109,8 @@ namespace core::screenManager {
         }
 
         bool handleMenuTouch(int x, int y) {
+            if (screens::menu::isEditing())
+                { return display::menu::handleTouch(x, y); }
             if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MENU, x, y)) {
                 screens::menu::reset();
                 core::state::setButtonState(core::state::Button::MENU, core::state::ButtonState::READY);

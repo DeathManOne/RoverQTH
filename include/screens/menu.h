@@ -34,6 +34,9 @@ namespace screens::menu {
         COUNT
     };
     Item current();
+
+    bool isEditing();
+
     void select(Item item);
     void reset();
 

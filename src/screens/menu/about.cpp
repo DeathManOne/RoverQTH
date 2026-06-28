@@ -21,6 +21,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <MSP4021.h>
 #include "screens/menu/about.h"
 #include "screens/mockup/grid.h"
 #include "ui/settings/mockup.h"
@@ -31,6 +32,9 @@
 
 namespace screens::menu::about {
     namespace {
+        enum class Mode {GRID, KEYBOARD};
+        Mode mode = Mode::GRID;
+
         void nextRow(int &rowY, int rowH) { rowY += rowH; }
         void drawLine(ST7796S::MSP4021 &tft, int x, int y, int w, int h, const char* label, const char* value) {
             const int gap = ui::settings::mockup::GAP;
@@ -43,6 +47,9 @@ namespace screens::menu::about {
             tft.textCenterRight(x + (w / 2), y, (w / 2) - gap, h, value);
         }
     }
+
+    bool isEditing()    { return mode == Mode::KEYBOARD; }
+    void reset()        { mode = Mode::GRID; }
 
     void draw(ST7796S::MSP4021 &tft) {
         screens::mockup::grid::draw(tft);
@@ -80,4 +87,6 @@ namespace screens::menu::about {
         nextRow(rowY, rowH);
         drawLine(tft, x, rowY, w, rowH, "", PROJECT_URL);
     }
+
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 }

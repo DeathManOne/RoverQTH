@@ -29,6 +29,14 @@
 #include "ui/fonts/RobotoMono_Bold_16.h"
 
 namespace screens::menu::battery {
+    namespace {
+        enum class Mode {GRID, KEYBOARD};
+        Mode mode = Mode::GRID;
+    }
+
+    bool isEditing()    { return mode == Mode::KEYBOARD; }
+    void reset()        { mode = Mode::GRID; }
+
     void draw(ST7796S::MSP4021 &tft) {
         screens::mockup::grid::draw(tft);
 
@@ -55,4 +63,6 @@ namespace screens::menu::battery {
             "COMING SOON"
         );
     }
+    
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 }

@@ -39,8 +39,24 @@ namespace screens::menu {
 
     Item current()          { return currentItem; }
     void select(Item item)  { currentItem = item; }
-    void reset()            { currentItem = Item::GENERAL; }
     void preload()          {}
+
+    bool isEditing() {
+        switch (currentItem) {
+            case Item::GENERAL:
+                return screens::menu::general::isEditing();
+            case Item::ABOUT:
+                return screens::menu::about::isEditing();
+            default:
+                return false;
+        }
+    }
+
+    void reset() {
+        currentItem = Item::GENERAL;
+        screens::menu::general::reset();
+        screens::menu::about::reset();
+    }
 
     void draw(ST7796S::MSP4021 &tft) {
         screens::main::title::draw(tft);

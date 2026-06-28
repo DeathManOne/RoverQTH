@@ -25,5 +25,8 @@
 #include <MSP4021.h>
 
 namespace screens::menu::updates {
+    bool isEditing();
+    void reset();
     void draw(ST7796S::MSP4021 &tft);
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
 }
