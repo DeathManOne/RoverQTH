@@ -52,6 +52,7 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * SD card initialization
 * Battery level monitoring
 * Battery presence detection
+* Settings menu
 
 ### Power Management
 
@@ -172,7 +173,7 @@ Example:
 
 ```ini
 lib_deps =
-    https://github.com/DeathManOne/RoverQTH#1.0.5
+    https://github.com/DeathManOne/RoverQTH
 ```
 
 ---
@@ -219,11 +220,11 @@ Initialize the RoverQTH library from your application and call the main processi
 #include <RoverQTH.h>
 
 void setup() {
-    RoverQTH.begin();
+    RoverQTH::setup();
 }
 
 void loop() {
-    RoverQTH.loop();
+    RoverQTH::loop();
 }
 ```
 
@@ -231,7 +232,7 @@ void loop() {
 
 ## Current Status
 
-### Version 1.0.5
+### Version 1.1.0
 
 Implemented:
 
@@ -247,15 +248,16 @@ Implemented:
 * Battery voltage monitoring
 * Battery percentage estimation
 * Battery presence detection
+* Settings menu
 
-Not enabled in version 1.0.5:
+Not enabled in version 1.1.0:
 
 * WiFi connectivity
 * OTA firmware updates
 * Full MARK navigation/storage workflow
 * SOTA navigation
 * GSM emergency features
-* SD card storage features
+* Storage actions (export, clear logs)
 
 ---
 
