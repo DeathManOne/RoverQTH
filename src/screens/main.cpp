@@ -29,6 +29,7 @@
 #include "screens/main/locator.h"
 #include "screens/main/title.h"
 #include "screens/mockup/buttons.h"
+#include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
@@ -60,9 +61,19 @@ namespace screens::main {
             }
             snprintf(buffer, size, "%lum %02lus", minutes, seconds);
         }
+    
+        void getBatteryLevel(char* buffer, size_t size) {
+            if (services::battery::isPresent())
+                { snprintf(buffer, size, "%u %%", services::battery::getPercent()); }
+            else { snprintf(buffer, size, "N/A"); }
+        }
     }
 
     void preload() {
+        char battery[8] = {};
+        getBatteryLevel(battery, sizeof(battery));
+        screens::main::title::setBattery(battery);
+
         preloadGPS();
         preloadSOTA();
         preloadMARK();
@@ -188,6 +199,10 @@ namespace screens::main {
 
     void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
         nextRefreshIn = 1000;
+
+        char battery[8] = {};
+        getBatteryLevel(battery, sizeof(battery));
+        screens::main::title::updateBattery(tft, battery);
 
         double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
         int satFix, satCount;

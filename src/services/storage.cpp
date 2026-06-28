@@ -21,6 +21,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstring>
 #include "services/storage.h"
 
 namespace services::storage {
@@ -38,9 +39,7 @@ namespace services::storage {
         constexpr const char* FILE_DEBUG  = "/RoverQTH/logs/debug.log";
         constexpr const char* FILE_CONFIG = "/RoverQTH/config/settings.json";
 
-        bool available() {
-            return _SD && _READY;
-        }
+        bool available() { return _SD && _READY; }
     }
 
     bool begin(SPIClass &spi, uint32_t timeoutSec) {
@@ -118,12 +117,30 @@ namespace services::storage {
     bool readFile(const char* path, char* buffer, size_t size) {
         if (!available() || !path || !buffer || size == 0)
             { return false; }
+        struct Context {
+            char* buffer;
+            size_t size;
+            size_t used;
+        };
+
+        Context ctx = {buffer, size, 0};
         buffer[0] = '\0';
-        std::string result;
-        if (!_SD->fileRead(path, result))
-            { return false; }
-        snprintf(buffer, size, "%s", result.c_str());
-        return true;
+
+        const bool ok = _SD->fileRead(
+            path, [](const uint8_t* chunk, size_t length, void* userData) -> bool {
+                Context* ctx = static_cast<Context*>(userData);
+                if (ctx->used >= ctx->size - 1)
+                    { return false; }
+                const size_t remaining = (ctx->size - 1) - ctx->used;
+                const size_t toCopy = length < remaining ? length : remaining;
+                memcpy(ctx->buffer + ctx->used, chunk, toCopy);
+                ctx->used += toCopy;
+                ctx->buffer[ctx->used] = '\0';
+                return toCopy == length;
+            },
+            &ctx
+        );
+        return ok && ctx.used > 0;
     }
 
     bool deleteFile(const char* path) {
@@ -152,15 +169,7 @@ namespace services::storage {
         return DIR_ROOT;
     }
 
-    bool appendQTHRecord(const char* data) {
-        return writeOrAppendFile(FILE_QTH, data);
-    }
-
-    bool appendQSORecord(const char* data) {
-        return writeOrAppendFile(FILE_QSO, data);
-    }
-
-    bool appendDebugRecord(const char* data) {
-        return writeOrAppendFile(FILE_DEBUG, data);
-    }
+    bool appendQTHRecord(const char* data)   { return writeOrAppendFile(FILE_QTH, data); }
+    bool appendQSORecord(const char* data)   { return writeOrAppendFile(FILE_QSO, data); }
+    bool appendDebugRecord(const char* data) { return writeOrAppendFile(FILE_DEBUG, data); }
 }
