@@ -7,6 +7,26 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.1.0] - 2026-06-28
+
+### Added
+- Placeholder pages for:
+  - General
+  - Update
+  - Storage
+  - Battery
+
+### Internal
+- Added settings page architecture:
+  - `screens/menu/general.*`
+  - `screens/menu/updates.*`
+  - `screens/menu/storage.*`
+  - `screens/menu/battery.*`
+- Renamed `update.*` page implementation to `updates.*` to avoid namespace conflicts
+- Improved menu extensibility for future settings implementation
+
+---
+
 ## [1.0.7] - 2026-06-27
 
 ### Added

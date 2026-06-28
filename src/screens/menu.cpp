@@ -27,6 +27,10 @@
 #include "screens/mockup/buttons.h"
 #include "screens/mockup/grid.h"
 #include "screens/menu/about.h"
+#include "screens/menu/battery.h"
+#include "screens/menu/general.h"
+#include "screens/menu/storage.h"
+#include "screens/menu/updates.h"
 
 namespace screens::menu {
     namespace {
@@ -45,16 +49,16 @@ namespace screens::menu {
 
         switch (currentItem) {
             case Item::GENERAL:
-                screens::mockup::grid::draw(tft);
+                screens::menu::general::draw(tft);
                 break;
             case Item::UPDATE:
-                screens::mockup::grid::draw(tft);
+                screens::menu::updates::draw(tft);
                 break;
             case Item::STORAGE:
-                screens::mockup::grid::draw(tft);
+                screens::menu::storage::draw(tft);
                 break;
             case Item::BATTERY:
-                screens::mockup::grid::draw(tft);
+                screens::menu::battery::draw(tft);
                 break;
             case Item::ABOUT:
                 screens::menu::about::draw(tft);
@@ -63,10 +67,9 @@ namespace screens::menu {
     }
 
     void update(ST7796S::MSP4021 &tft) {
-        (void)tft;
         switch (currentItem) {
             case Item::BATTERY:
-                screens::mockup::grid::draw(tft);
+                //screens::menu::battery::update(tft);
                 break;
             default:
                 break;
