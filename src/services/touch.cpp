@@ -22,8 +22,8 @@
  */
 
 #include <Arduino.h>
+#include "database/nvs.h"
 #include "display/manager.h"
-#include "services/nvs.h"
 #include "services/touch.h"
 
 namespace services::touch {
@@ -31,7 +31,7 @@ namespace services::touch {
         bool swapXY, invertX, invertY;
         float cxa, cxb, cxc, cya, cyb, cyc;
 
-        const bool ok = services::nvs::getTouchCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
+        const bool ok = database::nvs::getTouchCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
         if (!ok)
             { return false; }
         display::TCalibrate(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
@@ -39,7 +39,7 @@ namespace services::touch {
     }
 
     bool saveCalibration(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
-        return services::nvs::setTouchCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
+        return database::nvs::setTouchCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
     }
 
     bool calibrate() {

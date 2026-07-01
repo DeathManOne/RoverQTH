@@ -21,127 +21,126 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "database/nvs.h"
 #include "services/settings.h"
-#include "services/nvs.h"
 
 namespace services::settings {
     namespace {
         bool ready = false;
-
-        services::nvs::Theme toNvsTheme(Theme theme) {
-            switch (theme) {
-                case Theme::DEFAULTS:
-                    return services::nvs::Theme::DEFAULTS;
-                case Theme::NIGHT:
-                    return services::nvs::Theme::NIGHT;
-                case Theme::HIGHS:
-                    return services::nvs::Theme::HIGHS;
-            }
-            return services::nvs::Theme::DEFAULTS;
-        }
-
-        Theme fromNvsTheme(services::nvs::Theme theme) {
-            switch (theme) {
-                case services::nvs::Theme::DEFAULTS:
-                    return Theme::DEFAULTS;
-                case services::nvs::Theme::NIGHT:
-                    return Theme::NIGHT;
-                case services::nvs::Theme::HIGHS:
-                    return Theme::HIGHS;
-            }
-            return Theme::DEFAULTS;
-        }
-
-        services::nvs::Units toNvsUnits(Units units) {
-            switch (units) {
-                case Units::METRIC:
-                    return services::nvs::Units::METRIC;
-                case Units::IMPERIAL:
-                    return services::nvs::Units::IMPERIAL;
-            }
-            return services::nvs::Units::METRIC;
-        }
-
-        Units fromNvsUnits(services::nvs::Units units) {
-            switch (units) {
-                case services::nvs::Units::METRIC:
-                    return Units::METRIC;
-                case services::nvs::Units::IMPERIAL:
-                    return Units::IMPERIAL;
-            }
-
-            return Units::METRIC;
-        }
     }
 
     bool begin() {
         if (ready)
             { return true; }
-        ready = services::nvs::begin();
+        ready = database::nvs::begin();
         return ready;
     }
 
     bool getCallsign(char* buffer, unsigned int size) {
         if (!begin())
             { return false; }
-        return services::nvs::getCallsign(buffer, size);
+        return database::nvs::getCallsign(buffer, size);
     }
 
     bool setCallsign(const char* callsign) {
         if (!begin())
             { return false; }
-        return services::nvs::setCallsign(callsign);
+        return database::nvs::setCallsign(callsign);
     }
 
     bool resetCallsign() {
         if (!begin())
             { return false; }
-        return services::nvs::resetCallsign();
+        return database::nvs::resetCallsign();
     }
 
-    Theme theme() {
+    CallsignSuffix getCallsignSuffix() {
+        if (!begin())
+            { return CallsignSuffix::NONE; }
+        uint8_t value = database::nvs::getCallsignSuffix();
+        switch (static_cast<CallsignSuffix>(value)) {
+            case CallsignSuffix::NONE:
+            case CallsignSuffix::P:
+            case CallsignSuffix::M:
+            case CallsignSuffix::MM:
+            case CallsignSuffix::AM:
+                return static_cast<CallsignSuffix>(value);
+            default:
+                return CallsignSuffix::NONE;
+        }
+    }
+
+    bool setCallsignSuffix(CallsignSuffix callsignSuffix) {
+        if (!begin())
+            { return false; }
+        return database::nvs::setCallsignSuffix(static_cast<uint8_t>(callsignSuffix));
+    }
+
+    bool resetCallsignSuffix() {
+        if (!begin())
+            { return false; }
+        return database::nvs::resetCallsignSuffix();
+    }
+
+    Theme getTheme() {
         if (!begin())
             { return Theme::DEFAULTS; }
-        return fromNvsTheme(services::nvs::getTheme());
+        uint8_t value = database::nvs::getTheme();
+        switch (static_cast<Theme>(value)) {
+            case Theme::DEFAULTS:
+            case Theme::NIGHT:
+            case Theme::HIGHS:
+                return static_cast<Theme>(value);
+            default:
+                return Theme::DEFAULTS;
+        }
     }
 
     bool setTheme(Theme theme) {
         if (!begin())
             { return false; }
-        return services::nvs::setTheme(toNvsTheme(theme));
+        return database::nvs::setTheme(static_cast<uint8_t>(theme));
     }
 
     bool resetTheme() {
         if (!begin())
             { return false; }
-        return services::nvs::resetTheme();
+        return database::nvs::resetTheme();
     }
 
-    Units units() {
+    Units getUnits() {
         if (!begin())
             { return Units::METRIC; }
-        return fromNvsUnits(services::nvs::getUnits());
+        uint8_t value = database::nvs::getUnits();
+        switch (static_cast<Units>(value)) {
+            case Units::METRIC:
+            case Units::IMPERIAL:
+                return static_cast<Units>(value);
+            default:
+                return Units::METRIC;
+        }
     }
 
     bool setUnits(Units units) {
         if (!begin())
             { return false; }
-        return services::nvs::setUnits(toNvsUnits(units));
+        return database::nvs::setUnits(static_cast<uint8_t>(units));
     }
 
     bool resetUnits() {
         if (!begin())
             { return false; }
-        return services::nvs::resetUnits();
+        return database::nvs::resetUnits();
     }
 
     bool resetAll() {
         if (!begin())
             { return false; }
         bool ok = true;
-        ok = services::nvs::resetCallsign() && ok;
-        ok = services::nvs::resetTheme() && ok;
-        ok = services::nvs::resetUnits() && ok;
+        ok = database::nvs::resetCallsign() && ok;
+        ok = database::nvs::resetCallsignSuffix() && ok;
+        ok = database::nvs::resetTheme() && ok;
+        ok = database::nvs::resetUnits() && ok;
         return ok;
     }
 }

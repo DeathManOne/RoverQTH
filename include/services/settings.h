@@ -24,8 +24,10 @@
 #pragma once
 
 namespace services::settings {
-    enum class Theme {DEFAULTS, NIGHT, HIGHS};
     enum class Units {METRIC, IMPERIAL};
+    enum class Theme {DEFAULTS, NIGHT, HIGHS};
+    enum class ScreenRotation {NORMAL, REVERSED};
+    enum class CallsignSuffix {NONE, P, M, MM, AM};
 
     bool begin();
 
@@ -33,11 +35,15 @@ namespace services::settings {
     bool setCallsign(const char* callsign);
     bool resetCallsign();
 
-    Theme theme();
+    CallsignSuffix getCallsignSuffix();
+    bool setCallsignSuffix(CallsignSuffix callsignSuffix);
+    bool resetCallsignSuffix();
+
+    Theme getTheme();
     bool setTheme(Theme theme);
     bool resetTheme();
 
-    Units units();
+    Units getUnits();
     bool setUnits(Units units);
     bool resetUnits();
 

@@ -28,11 +28,11 @@
 #include "core/power.h"
 #include "core/screenManager.h"
 #include "core/state.h"
+#include "database/nvs.h"
 #include "display/manager.h"
 #include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
-#include "services/nvs.h"
 #include "services/settings.h"
 #include "services/touch.h"
 #include "services/update.h"
@@ -64,7 +64,7 @@ namespace RoverQTH {
     }
 
     void setup() {
-        services::nvs::begin();
+        database::nvs::begin();
         services::settings::begin();
         services::battery::begin(BATT_PIN);
         if (core::power::shouldShutdown())

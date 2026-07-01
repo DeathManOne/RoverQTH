@@ -38,8 +38,8 @@ namespace screens::menu::general {
 
         enum class Action {
             NONE,
-            COUNTRY,
             CALLSIGN,
+            SUFFIX,
             THEME,
             ROTATION,
             CALIBRATION
@@ -54,6 +54,15 @@ namespace screens::menu::general {
         };
         
         Field fields[5];
+
+        void nextRow(int &rowY, int rowH);
+        Field makeField(Action action, int x, int y, int w, int h);
+        bool isPressed(const Field &field, int tx, int ty);
+        void drawLine(ST7796S::MSP4021 &tft, int x, int y, int w, int h, const char* label, const char* value, uint16_t valueColor = ui::settings::themes::defaults::WHITE);
+        void updateSuffix(ST7796S::MSP4021 &tft);
+        const char* suffixToText(services::settings::CallsignSuffix suffix);
+        services::settings::CallsignSuffix nextSuffix(services::settings::CallsignSuffix suffix);
+
 
         void nextRow(int &rowY, int rowH) { rowY += rowH; }
 
@@ -73,7 +82,7 @@ namespace screens::menu::general {
                 ty >= field.y && ty < field.y + field.h;
         }
 
-        void drawLine(ST7796S::MSP4021 &tft, int x, int y, int w, int h, const char* label, const char* value, uint16_t valueColor = ui::settings::themes::defaults::WHITE) {
+        void drawLine(ST7796S::MSP4021 &tft, int x, int y, int w, int h, const char* label, const char* value, uint16_t valueColor) {
             const int gap = ui::settings::mockup::GAP;
 
             tft.setFont(ST7796S::RobotoMono_Regular_14);
@@ -82,6 +91,61 @@ namespace screens::menu::general {
 
             tft.setTextColor(valueColor);
             tft.textCenterRight(x + (w / 2), y, (w / 2) - gap, h, value);
+        }
+
+        void updateSuffix(ST7796S::MSP4021 &tft) {
+            const int gap       = ui::settings::mockup::GAP;
+            const auto suffix   = services::settings::getCallsignSuffix();
+            const Field &field  = fields[1];
+
+            tft.rectFill(
+                field.x + (field.w / 2),    field.y,
+                (field.w / 2) - gap,        field.h,
+                ui::settings::themes::defaults::BLACK
+            );
+
+            tft.setFont(ST7796S::RobotoMono_Regular_14);
+            tft.setTextColor(ui::settings::themes::defaults::GREEN);
+            tft.textCenterRight(
+                field.x + (field.w / 2),    field.y,
+                (field.w / 2) - gap,        field.h,
+                suffixToText(suffix)
+            );
+        }
+
+        const char* suffixToText(services::settings::CallsignSuffix suffix) {
+            switch (suffix) {
+                case services::settings::CallsignSuffix::NONE:
+                    return "None";
+                case services::settings::CallsignSuffix::P:
+                    return "/P";
+                case services::settings::CallsignSuffix::M:
+                    return "/M";
+                case services::settings::CallsignSuffix::MM:
+                    return "/MM";
+                case services::settings::CallsignSuffix::AM:
+                    return "/AM";
+                default:
+                    return "None";
+            }
+        }
+
+        services::settings::CallsignSuffix nextSuffix(services::settings::CallsignSuffix suffix) {
+            switch (suffix) {
+                case services::settings::CallsignSuffix::NONE:
+                    return services::settings::CallsignSuffix::P;
+                case services::settings::CallsignSuffix::P:
+                    return services::settings::CallsignSuffix::M;
+                case services::settings::CallsignSuffix::M:
+                    return services::settings::CallsignSuffix::MM;
+                case services::settings::CallsignSuffix::MM:
+                    return services::settings::CallsignSuffix::AM;
+                case services::settings::CallsignSuffix::AM:
+                    return services::settings::CallsignSuffix::NONE;
+                default:
+                    return services::settings::CallsignSuffix::NONE;
+            }
+
         }
     }
 
@@ -107,21 +171,23 @@ namespace screens::menu::general {
         );
 
         int rowY = y + rowH + (gap * 3);
-        
-        drawLine(tft, x, rowY, w, rowH, "Country", "France", ui::settings::themes::defaults::WHITE);
-        nextRow(rowY, rowH);
 
         char callsign[32];
         if (!services::settings::getCallsign(callsign, sizeof(callsign)))
             { strcpy(callsign, "ERROR"); }
-        fields[1] = makeField(Action::CALLSIGN, x, rowY, w, rowH);
+        fields[0] = makeField(Action::CALLSIGN, x, rowY, w, rowH);
         drawLine(tft, x, rowY, w, rowH, "Callsign", callsign, ui::settings::themes::defaults::GREEN);
+        nextRow(rowY, rowH);
+        
+        const auto suffix = services::settings::getCallsignSuffix();
+        fields[1] = makeField(Action::SUFFIX, x, rowY, w, rowH);
+        drawLine(tft, x, rowY, w, rowH, "Suffix", suffixToText(suffix), ui::settings::themes::defaults::GREEN);
         nextRow(rowY, rowH);
 
         drawLine(tft, x, rowY, w, rowH, "Theme", "Normal", ui::settings::themes::defaults::WHITE);
         nextRow(rowY, rowH);
 
-        drawLine(tft, x, rowY, w, rowH, "Rotation", "Landscape", ui::settings::themes::defaults::WHITE);
+        drawLine(tft, x, rowY, w, rowH, "Rotation", "Normal", ui::settings::themes::defaults::WHITE);
         nextRow(rowY, rowH);
 
         drawLine(tft, x, rowY, w, rowH, "Touch", "Recalibrate", ui::settings::themes::defaults::WHITE);
@@ -143,9 +209,12 @@ namespace screens::menu::general {
             if (!isPressed(field, x, y))
                 { continue; }
             switch (field.action) {
-                case Action::COUNTRY:
-                    // TODO: change country, still do not know how
+                case Action::SUFFIX: {
+                    const auto suffix = services::settings::getCallsignSuffix();
+                    services::settings::setCallsignSuffix(nextSuffix(suffix));
+                    updateSuffix(tft);
                     return true;
+                }
                 case Action::CALLSIGN: {
                     char callsign[32];
                     if (services::settings::getCallsign(callsign, sizeof(callsign)))
