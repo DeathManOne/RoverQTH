@@ -22,6 +22,7 @@
  */
 
 #include <cstring>
+#include "screens/main/title.h"
 #include "screens/menu/general.h"
 #include "screens/mockup/grid.h"
 #include "services/settings.h"
@@ -45,71 +46,108 @@ namespace screens::menu::general {
             CALIBRATION
         };
 
-        struct Field {
-            Action action = Action::NONE;
+        struct Area {
             int x = 0;
             int y = 0;
             int w = 0;
             int h = 0;
         };
-        
-        Field fields[5];
 
-        void nextRow(int &rowY, int rowH);
-        Field makeField(Action action, int x, int y, int w, int h);
+        struct Field {
+            Area area;
+            const char* label   = nullptr;
+            const char* value   = nullptr;
+            Action action       = Action::NONE;
+            uint16_t color      = ui::settings::themes::defaults::WHITE;
+        };
+
+        Field makeField(const char* label, Action action, uint16_t color);
+        void makeFieldArea(Field &field, int x, int y, int w, int h);
+        void updateField(ST7796S::MSP4021 &tft, const Field &field);
         bool isPressed(const Field &field, int tx, int ty);
-        void drawLine(ST7796S::MSP4021 &tft, int x, int y, int w, int h, const char* label, const char* value, uint16_t valueColor = ui::settings::themes::defaults::WHITE);
-        void updateSuffix(ST7796S::MSP4021 &tft);
+        void drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap);
+        void drawLine(ST7796S::MSP4021 &tft, const Field &field);
         const char* suffixToText(services::settings::CallsignSuffix suffix);
         services::settings::CallsignSuffix nextSuffix(services::settings::CallsignSuffix suffix);
+        
+        Field callsignField    = makeField("Callsign",    Action::CALLSIGN,       ui::settings::themes::defaults::GREEN);
+        Field suffixField      = makeField("Suffix",      Action::SUFFIX,         ui::settings::themes::defaults::GREEN);
+        Field themeField       = makeField("Theme",       Action::THEME,          ui::settings::themes::defaults::WHITE);
+        Field rotationField    = makeField("Rotation",    Action::ROTATION,       ui::settings::themes::defaults::WHITE);
+        Field calibrationField = makeField("Calibration", Action::CALIBRATION,    ui::settings::themes::defaults::WHITE);
 
+        Field* fields[] = {
+            &callsignField,
+            &suffixField,
+            &themeField,
+            &rotationField,
+            &calibrationField
+        };
 
-        void nextRow(int &rowY, int rowH) { rowY += rowH; }
-
-        Field makeField(Action action, int x, int y, int w, int h) {
+        Field makeField(const char* label, Action action, uint16_t color) {
             Field field;
-            field.action = action;
-            field.x      = x;
-            field.y      = y;
-            field.w      = w;
-            field.h      = h;
+            field.label     = label;
+            field.action    = action;
+            field.color     = color;
             return field;
         }
 
-        bool isPressed(const Field &field, int tx, int ty) {
-            return
-                tx >= field.x && tx < field.x + field.w &&
-                ty >= field.y && ty < field.y + field.h;
+        void makeFieldArea(Field &field, int x, int y, int w, int h) {
+            Area area;
+            area.x = x;
+            area.y = y;
+            area.w = w;
+            area.h = h;
+            field.area = area;
         }
 
-        void drawLine(ST7796S::MSP4021 &tft, int x, int y, int w, int h, const char* label, const char* value, uint16_t valueColor) {
+        void updateField(ST7796S::MSP4021 &tft, const Field &field) {
             const int gap = ui::settings::mockup::GAP;
 
-            tft.setFont(ST7796S::RobotoMono_Regular_14);
-            tft.setTextColor(ui::settings::themes::defaults::GREY);
-            tft.textCenterLeft(x, y, w / 2, h, label);
-
-            tft.setTextColor(valueColor);
-            tft.textCenterRight(x + (w / 2), y, (w / 2) - gap, h, value);
-        }
-
-        void updateSuffix(ST7796S::MSP4021 &tft) {
-            const int gap       = ui::settings::mockup::GAP;
-            const auto suffix   = services::settings::getCallsignSuffix();
-            const Field &field  = fields[1];
-
             tft.rectFill(
-                field.x + (field.w / 2),    field.y,
-                (field.w / 2) - gap,        field.h,
+                field.area.x + (field.area.w / 2),  field.area.y,
+                (field.area.w / 2) - gap,           field.area.h,
                 ui::settings::themes::defaults::BLACK
             );
 
             tft.setFont(ST7796S::RobotoMono_Regular_14);
-            tft.setTextColor(ui::settings::themes::defaults::GREEN);
+            tft.setTextColor(field.color);
             tft.textCenterRight(
-                field.x + (field.w / 2),    field.y,
-                (field.w / 2) - gap,        field.h,
-                suffixToText(suffix)
+                field.area.x + (field.area.w / 2),  field.area.y,
+                (field.area.w / 2) - gap,           field.area.h,
+                field.value
+            );
+        }
+
+        bool isPressed(const Field &field, int tx, int ty) {
+            return
+                tx >= field.area.x && tx < field.area.x + field.area.w &&
+                ty >= field.area.y && ty < field.area.y + field.area.h;
+        }
+
+        void drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap) {
+            tft.setFont(ST7796S::RobotoMono_Bold_16);
+            tft.setTextColor(ui::settings::themes::defaults::GREEN);
+            tft.textCenterLeft(x, y, w, h, "GENERAL");
+            tft.lineH(x, y + h + gap, w, ui::settings::themes::defaults::BORDER);
+        }
+
+        void drawLine(ST7796S::MSP4021 &tft, const Field &field) {
+            const int gap = ui::settings::mockup::GAP;
+
+            tft.setFont(ST7796S::RobotoMono_Regular_14);
+            tft.setTextColor(ui::settings::themes::defaults::GREY);
+            tft.textCenterLeft(
+                field.area.x,        field.area.y,
+                field.area.w / 2,    field.area.h,
+                field.label
+            );
+
+            tft.setTextColor(field.color);
+            tft.textCenterRight(
+                field.area.x + (field.area.w / 2),  field.area.y,
+                (field.area.w / 2) - gap,           field.area.h,
+                field.value
             );
         }
 
@@ -156,41 +194,38 @@ namespace screens::menu::general {
         screens::mockup::grid::draw(tft);
 
         const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX() + (gap * 2);
-        const int y     = screens::mockup::grid::innerY() + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth() - (gap * 4);
+        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
+        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
+        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
         const int rowH  = 28;
 
-        tft.setFont(ST7796S::RobotoMono_Bold_16);
-        tft.setTextColor(ui::settings::themes::defaults::GREEN);
-        tft.textCenterLeft(x, y, w, rowH, "GENERAL");
-
-        tft.lineH(
-            x, y + rowH + gap,
-            w, ui::settings::themes::defaults::BORDER
-        );
-
         int rowY = y + rowH + (gap * 3);
+        for (Field* field : fields) {
+            makeFieldArea(*field, x, rowY, w, rowH);
+            rowY += rowH;
+        }
 
         char callsign[32];
         if (!services::settings::getCallsign(callsign, sizeof(callsign)))
             { strcpy(callsign, "ERROR"); }
-        fields[0] = makeField(Action::CALLSIGN, x, rowY, w, rowH);
-        drawLine(tft, x, rowY, w, rowH, "Callsign", callsign, ui::settings::themes::defaults::GREEN);
-        nextRow(rowY, rowH);
-        
         const auto suffix = services::settings::getCallsignSuffix();
-        fields[1] = makeField(Action::SUFFIX, x, rowY, w, rowH);
-        drawLine(tft, x, rowY, w, rowH, "Suffix", suffixToText(suffix), ui::settings::themes::defaults::GREEN);
-        nextRow(rowY, rowH);
 
-        drawLine(tft, x, rowY, w, rowH, "Theme", "Normal", ui::settings::themes::defaults::WHITE);
-        nextRow(rowY, rowH);
+        callsignField.value     = callsign;
+        suffixField.value       = suffixToText(suffix);
+        themeField.value        = "Normal";
+        rotationField.value     = "Normal";
+        calibrationField.value  = "Recalibrate";
 
-        drawLine(tft, x, rowY, w, rowH, "Rotation", "Normal", ui::settings::themes::defaults::WHITE);
-        nextRow(rowY, rowH);
+        drawTitle(tft, x, y, w, rowH, gap);
+        for (Field* field : fields)
+            { drawLine(tft, *field); }
+    }
 
-        drawLine(tft, x, rowY, w, rowH, "Touch", "Recalibrate", ui::settings::themes::defaults::WHITE);
+    void update(ST7796S::MSP4021 &tft) {
+        char callsign[32];
+        if (!services::settings::getFullCallsign(callsign, sizeof(callsign)))
+            { strcpy(callsign, "ERROR"); }
+        screens::main::title::updateCallsign(tft, callsign);
     }
 
     bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
@@ -205,14 +240,16 @@ namespace screens::menu::general {
             return true;
         }
 
-        for (auto &field : fields) {
-            if (!isPressed(field, x, y))
+        for (Field* field : fields) {
+            if (!isPressed(*field, x, y))
                 { continue; }
-            switch (field.action) {
+            switch (field->action) {
                 case Action::SUFFIX: {
-                    const auto suffix = services::settings::getCallsignSuffix();
-                    services::settings::setCallsignSuffix(nextSuffix(suffix));
-                    updateSuffix(tft);
+                    auto suffix = services::settings::getCallsignSuffix();
+                    suffix = nextSuffix(suffix);
+                    services::settings::setCallsignSuffix(suffix);
+                    field->value = suffixToText(suffix);
+                    updateField(tft, *field);
                     return true;
                 }
                 case Action::CALLSIGN: {

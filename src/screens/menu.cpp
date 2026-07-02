@@ -31,6 +31,8 @@
 #include "screens/menu/general.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
+#include "services/battery.h"
+#include "services/gps.h"
 
 namespace screens::menu {
     namespace {
@@ -83,7 +85,24 @@ namespace screens::menu {
     }
 
     void update(ST7796S::MSP4021 &tft) {
+        if (isEditing())
+            { return; }
+        char date[16];
+        char uptime[16];
+        char battery[8];
+
+        services::gps::getDate(date, sizeof(date));
+        screens::main::title::getUptime(uptime, sizeof(uptime));
+        screens::main::title::getBatteryLevel(battery, sizeof(battery));
+
+        screens::main::title::updateDate(tft, date);
+        screens::main::title::updateTime(tft, uptime);
+        screens::main::title::updateBattery(tft, battery);
+
         switch (currentItem) {
+            case Item::GENERAL:
+                screens::menu::general::update(tft);
+                break;
             case Item::BATTERY:
                 //screens::menu::battery::update(tft);
                 break;

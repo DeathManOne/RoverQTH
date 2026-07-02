@@ -21,6 +21,8 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
+//#include <cstring>
 #include "database/nvs.h"
 #include "services/settings.h"
 
@@ -80,6 +82,36 @@ namespace services::settings {
         if (!begin())
             { return false; }
         return database::nvs::resetCallsignSuffix();
+    }
+
+    bool getFullCallsign(char* buffer, unsigned int size) {
+        if (buffer == nullptr || size == 0)
+            { return false; }
+        char callsign[32];
+        if (!services::settings::getCallsign(callsign, sizeof(callsign)))
+            { return false; }
+        const auto suffix = services::settings::getCallsignSuffix();
+        const char* suffixText = "";
+
+        switch (suffix) {
+            case services::settings::CallsignSuffix::NONE:
+                suffixText = "";
+                break;
+            case services::settings::CallsignSuffix::P:
+                suffixText = "/P";
+                break;
+            case services::settings::CallsignSuffix::M:
+                suffixText = "/M";
+                break;
+            case services::settings::CallsignSuffix::MM:
+                suffixText = "/MM";
+                break;
+            case services::settings::CallsignSuffix::AM:
+                suffixText = "/AM";
+                break;
+        }
+        snprintf(buffer, size, "%s%s", callsign, suffixText);
+        return true;
     }
 
     Theme getTheme() {

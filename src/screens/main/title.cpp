@@ -21,8 +21,12 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
+#include <cmath>
 #include <cstring>
 #include <cstddef>
+#include <esp_timer.h>
+#include "services/battery.h"
 #include "screens/main/title.h"
 #include "screens/mockup/header.h"
 #include "ui/settings/themes/defaults.h"
@@ -98,14 +102,32 @@ namespace screens::main::title {
         }
     }
 
+    uint64_t uptimeSeconds() { return esp_timer_get_time() / 1000000ULL; }
+
     void setCallsign(const char* value) { setField(callsign, value); }
     void setDate    (const char* value) { setField(date,     value); }
     void setTime    (const char* value) { setField(time,     value); }
     void setBattery (const char* value) { setField(battery,  value); }
 
-    void updateDate     (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, date,    value); }
-    void updateTime     (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, time,    value); }
-    void updateBattery  (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, battery, value); }
+    void updateCallsign (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, callsign, value); }
+    void updateDate     (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, date,     value); }
+    void updateTime     (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, time,     value); }
+    void updateBattery  (ST7796S::MSP4021 &tft, const char* value) { updateField(tft, battery,  value); }
+
+    void getUptime(char* buffer, size_t size) {
+        uint64_t sec = uptimeSeconds();
+        const uint64_t hours = sec / 3600;
+        sec %= 3600;
+        const uint64_t minutes = sec / 60;
+        sec %= 60;
+        snprintf(buffer, size, "%03llu : %02llu : %02llu", hours, minutes, sec);
+    }
+
+    void getBatteryLevel(char* buffer, size_t size) {
+        if (services::battery::isPresent())
+            { snprintf(buffer, size, "%u %%", services::battery::getPercent()); }
+        else { snprintf(buffer, size, "N/A"); }
+    }
 
     void draw(ST7796S::MSP4021 &tft) {
         screens::mockup::header::draw(tft);

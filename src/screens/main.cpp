@@ -21,9 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
-#include <cmath>
-#include <esp_timer.h>
 #include "screens/main.h"
 #include "screens/main/datas.h"
 #include "screens/main/locator.h"
@@ -37,19 +34,6 @@
 
 namespace screens::main {
     namespace {
-        uint64_t uptimeSeconds() {
-            return esp_timer_get_time() / 1000000ULL;
-        }
-
-        void getUptime(char* buffer, size_t size) {
-            uint64_t sec = uptimeSeconds();
-            const uint64_t hours = sec / 3600;
-            sec %= 3600;
-            const uint64_t minutes = sec / 60;
-            sec %= 60;
-            snprintf(buffer, size, "%03llu : %02llu : %02llu", hours, minutes, sec);
-        }
-
         void formatDuration(uint32_t seconds, char* buffer, size_t size) {
             const uint32_t hours = seconds / 3600;
             seconds %= 3600;
@@ -61,17 +45,11 @@ namespace screens::main {
             }
             snprintf(buffer, size, "%lum %02lus", minutes, seconds);
         }
-    
-        void getBatteryLevel(char* buffer, size_t size) {
-            if (services::battery::isPresent())
-                { snprintf(buffer, size, "%u %%", services::battery::getPercent()); }
-            else { snprintf(buffer, size, "N/A"); }
-        }
     }
 
     void preload() {
         char battery[8] = {};
-        getBatteryLevel(battery, sizeof(battery));
+        screens::main::title::getBatteryLevel(battery, sizeof(battery));
         screens::main::title::setBattery(battery);
 
         preloadGPS();
@@ -95,7 +73,7 @@ namespace screens::main {
         char gpsStatus[32];
 
         char callsign[32];
-        getUptime(uptime, sizeof(uptime));
+        screens::main::title::getUptime(uptime, sizeof(uptime));
 
         services::gps::getDate(date, sizeof(date));
         services::gps::getTime(time, sizeof(time));
@@ -123,7 +101,7 @@ namespace screens::main {
             satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
         );
 
-        if (!services::settings::getCallsign(callsign, sizeof(callsign)))
+        if (!services::settings::getFullCallsign(callsign, sizeof(callsign)))
             { strcpy(callsign, "ERROR"); }
         screens::main::title::setCallsign   (callsign);
         screens::main::title::setDate       (date);
@@ -201,7 +179,7 @@ namespace screens::main {
         nextRefreshIn = 1000;
 
         char battery[8] = {};
-        getBatteryLevel(battery, sizeof(battery));
+        screens::main::title::getBatteryLevel(battery, sizeof(battery));
         screens::main::title::updateBattery(tft, battery);
 
         double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
@@ -218,7 +196,7 @@ namespace screens::main {
         char uptime[16];
         char gpsStatus[32];
 
-        getUptime(uptime, sizeof(uptime));
+        screens::main::title::getUptime(uptime, sizeof(uptime));
 
         services::gps::getDate(date, sizeof(date));
         services::gps::getTime(time, sizeof(time));

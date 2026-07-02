@@ -39,6 +39,8 @@ namespace services::settings {
     bool setCallsignSuffix(CallsignSuffix callsignSuffix);
     bool resetCallsignSuffix();
 
+    bool getFullCallsign(char* buffer, unsigned int size);
+
     Theme getTheme();
     bool setTheme(Theme theme);
     bool resetTheme();
