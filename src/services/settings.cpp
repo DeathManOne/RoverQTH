@@ -140,6 +140,31 @@ namespace services::settings {
         return database::nvs::resetTheme();
     }
 
+    TFTRotation getTFTRotation() {
+        if (!begin())
+            { return TFTRotation::NORMAL; }
+        uint8_t value = database::nvs::getTFTRotation();
+        switch (static_cast<TFTRotation>(value)) {
+            case TFTRotation::NORMAL:
+            case TFTRotation::REVERSED:
+                return static_cast<TFTRotation>(value);
+            default:
+                return TFTRotation::NORMAL;
+        }
+    }
+
+    bool setTFTRotation(TFTRotation rotation) {
+        if (!begin())
+            { return false; }
+        return database::nvs::setTFTRotation(static_cast<uint8_t>(rotation));
+    }
+
+    bool resetTFTRotation() {
+        if (!begin())
+            { return false; }
+        return database::nvs::resetTFTRotation();
+    }
+
     Units getUnits() {
         if (!begin())
             { return Units::METRIC; }
@@ -169,10 +194,11 @@ namespace services::settings {
         if (!begin())
             { return false; }
         bool ok = true;
-        ok = database::nvs::resetCallsign() && ok;
-        ok = database::nvs::resetCallsignSuffix() && ok;
-        ok = database::nvs::resetTheme() && ok;
-        ok = database::nvs::resetUnits() && ok;
+        ok = database::nvs::resetCallsign()         && ok;
+        ok = database::nvs::resetCallsignSuffix()   && ok;
+        ok = database::nvs::resetTheme()            && ok;
+        ok = database::nvs::resetTFTRotation()      && ok;
+        ok = database::nvs::resetUnits()            && ok;
         return ok;
     }
 }

@@ -43,6 +43,10 @@ namespace database::nvs {
     bool setTheme(uint8_t theme);
     bool resetTheme();
 
+    uint8_t getTFTRotation();
+    bool setTFTRotation(uint8_t rotation);
+    bool resetTFTRotation();
+
     uint8_t getUnits();
     bool setUnits(uint8_t unit);
     bool resetUnits();

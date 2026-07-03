@@ -26,7 +26,7 @@
 namespace services::settings {
     enum class Units {METRIC, IMPERIAL};
     enum class Theme {DEFAULTS, NIGHT, HIGHS};
-    enum class ScreenRotation {NORMAL, REVERSED};
+    enum class TFTRotation {NORMAL = 3, REVERSED = 1};
     enum class CallsignSuffix {NONE, P, M, MM, AM};
 
     bool begin();
@@ -44,6 +44,10 @@ namespace services::settings {
     Theme getTheme();
     bool setTheme(Theme theme);
     bool resetTheme();
+
+    TFTRotation getTFTRotation();
+    bool setTFTRotation(TFTRotation rotation);
+    bool resetTFTRotation();
 
     Units getUnits();
     bool setUnits(Units units);

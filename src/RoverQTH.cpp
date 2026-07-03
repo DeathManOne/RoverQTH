@@ -64,7 +64,6 @@ namespace RoverQTH {
     }
 
     void setup() {
-        database::nvs::begin();
         services::settings::begin();
         services::battery::begin(BATT_PIN);
         if (core::power::shouldShutdown())
@@ -72,9 +71,9 @@ namespace RoverQTH {
 
         display::begin(
             TFT_CLK,        TFT_MISO,       TFT_MOSI,
-            TFT_TOUCH_CS,
-            TFT_SCREEN_CS,  TFT_SCREEN_DC,  TFT_SCREEN_RST,
-            TFT_WIDTH,      TFT_HEIGHT,     TFT_ROTATION
+            TFT_TOUCH_CS,   TFT_SCREEN_CS,  TFT_SCREEN_DC,
+            TFT_SCREEN_RST, TFT_WIDTH,      TFT_HEIGHT,
+            static_cast<uint8_t>(services::settings::getTFTRotation())
         );
 
         services::touch::begin();

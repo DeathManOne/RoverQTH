@@ -67,11 +67,13 @@ namespace database::nvs {
         constexpr const char* KEY_CALLSIGN          = "callsign";
         constexpr const char* KEY_CALLSIGN_SUFFIX   = "callsignSuffix";
         constexpr const char* KEY_THEME             = "theme";
+        constexpr const char* KEY_TFT_ROTATION      = "tft_rotation";
         constexpr const char* KEY_UNITS             = "units";
 
         constexpr const char* DEFAULT_CALLSIGN      = "SWL";
         constexpr uint8_t DEFAULT_CALLSIGN_SUFFIX   = 0;
         constexpr uint8_t DEFAULT_THEME             = 0;
+        constexpr uint8_t DEFAULT_TFT_ROTATION      = 3;
         constexpr uint8_t DEFAULT_UNITS             = 0;
     }
 
@@ -195,6 +197,25 @@ namespace database::nvs {
         if (!_READY && !begin())
             { return false; }
         _prefs.remove(KEY_THEME);
+        return true;
+    }
+
+    uint8_t getTFTRotation() {
+        if (!_READY && !begin())
+            { return DEFAULT_TFT_ROTATION; }
+        return _prefs.getUChar(KEY_TFT_ROTATION, DEFAULT_TFT_ROTATION);
+    }
+
+    bool setTFTRotation(uint8_t rotation) {
+        if (!_READY && !begin())
+            { return false; }
+        return _prefs.putUChar(KEY_TFT_ROTATION, rotation) > 0;
+    }
+
+    bool resetTFTRotation() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_TFT_ROTATION);
         return true;
     }
 

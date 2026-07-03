@@ -41,6 +41,7 @@ namespace screens::menu::general {
             NONE,
             CALLSIGN,
             SUFFIX,
+            UNITS,
             THEME,
             ROTATION,
             CALIBRATION
@@ -67,11 +68,24 @@ namespace screens::menu::general {
         bool isPressed(const Field &field, int tx, int ty);
         void drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap);
         void drawLine(ST7796S::MSP4021 &tft, const Field &field);
-        const char* suffixToText(services::settings::CallsignSuffix suffix);
+        void actionCallsign(ST7796S::MSP4021 &tft);
         services::settings::CallsignSuffix nextSuffix(services::settings::CallsignSuffix suffix);
+        const char* suffixToText(services::settings::CallsignSuffix suffix);
+        void actionSuffix(ST7796S::MSP4021 &tft, Field &field);
+        services::settings::Units nextUnits(services::settings::Units units);
+        const char* unitsToText(services::settings::Units units);
+        void actionUnits(ST7796S::MSP4021 &tft, Field &field);
+        services::settings::Theme nextTheme(services::settings::Theme theme);
+        const char* themeToText(services::settings::Theme theme);
+        void actionTheme(ST7796S::MSP4021 &tft, Field &field);
+        services::settings::TFTRotation nextRotation(services::settings::TFTRotation rotation);
+        const char* rotationToText(services::settings::TFTRotation rotation);
+        void actionRotation(ST7796S::MSP4021 &tft, Field &field);
+        void actionCalibration(ST7796S::MSP4021 &tft, Field &field);
         
         Field callsignField    = makeField("Callsign",    Action::CALLSIGN,       ui::settings::themes::defaults::GREEN);
         Field suffixField      = makeField("Suffix",      Action::SUFFIX,         ui::settings::themes::defaults::GREEN);
+        Field unitsField       = makeField("Units",       Action::UNITS,          ui::settings::themes::defaults::WHITE);
         Field themeField       = makeField("Theme",       Action::THEME,          ui::settings::themes::defaults::WHITE);
         Field rotationField    = makeField("Rotation",    Action::ROTATION,       ui::settings::themes::defaults::WHITE);
         Field calibrationField = makeField("Calibration", Action::CALIBRATION,    ui::settings::themes::defaults::WHITE);
@@ -79,6 +93,7 @@ namespace screens::menu::general {
         Field* fields[] = {
             &callsignField,
             &suffixField,
+            &unitsField,
             &themeField,
             &rotationField,
             &calibrationField
@@ -151,21 +166,12 @@ namespace screens::menu::general {
             );
         }
 
-        const char* suffixToText(services::settings::CallsignSuffix suffix) {
-            switch (suffix) {
-                case services::settings::CallsignSuffix::NONE:
-                    return "None";
-                case services::settings::CallsignSuffix::P:
-                    return "/P";
-                case services::settings::CallsignSuffix::M:
-                    return "/M";
-                case services::settings::CallsignSuffix::MM:
-                    return "/MM";
-                case services::settings::CallsignSuffix::AM:
-                    return "/AM";
-                default:
-                    return "None";
-            }
+        void actionCallsign(ST7796S::MSP4021 &tft) {
+            char callsign[32];
+            if (services::settings::getCallsign(callsign, sizeof(callsign)))
+                { tft.KSetText(callsign); }
+            tft.KDraw("Callsign");
+            mode = Mode::KEYBOARD;
         }
 
         services::settings::CallsignSuffix nextSuffix(services::settings::CallsignSuffix suffix) {
@@ -179,11 +185,124 @@ namespace screens::menu::general {
                 case services::settings::CallsignSuffix::MM:
                     return services::settings::CallsignSuffix::AM;
                 case services::settings::CallsignSuffix::AM:
-                    return services::settings::CallsignSuffix::NONE;
                 default:
                     return services::settings::CallsignSuffix::NONE;
             }
+        }
 
+        const char* suffixToText(services::settings::CallsignSuffix suffix) {
+            switch (suffix) {
+                case services::settings::CallsignSuffix::P:
+                    return "/P";
+                case services::settings::CallsignSuffix::M:
+                    return "/M";
+                case services::settings::CallsignSuffix::MM:
+                    return "/MM";
+                case services::settings::CallsignSuffix::AM:
+                    return "/AM";
+                case services::settings::CallsignSuffix::NONE:
+                default:
+                    return "None";
+            }
+        }
+
+        void actionSuffix(ST7796S::MSP4021 &tft, Field &field) {
+            services::settings::CallsignSuffix suffix = nextSuffix(services::settings::getCallsignSuffix());
+            services::settings::setCallsignSuffix(suffix);
+            field.value = suffixToText(suffix);
+            updateField(tft, field);
+        }
+
+        services::settings::Units nextUnits(services::settings::Units units) {
+            switch (units) {
+                case services::settings::Units::METRIC:
+                    return services::settings::Units::IMPERIAL;
+                case services::settings::Units::IMPERIAL:
+                default:
+                    return services::settings::Units::METRIC;
+            }
+        }
+
+        const char* unitsToText(services::settings::Units units) {
+            switch (units) {
+                case services::settings::Units::IMPERIAL:
+                    return "Imperial";
+                case services::settings::Units::METRIC:
+                default:
+                    return "Metric";
+            }
+        }
+
+        void actionUnits(ST7796S::MSP4021 &tft, Field &field) {
+            return; // TODO: Feature temporarily disabled
+            services::settings::Units units = nextUnits(services::settings::getUnits());
+            services::settings::setUnits(units);
+            field.value = unitsToText(units);
+            updateField(tft, field);
+        }
+
+        services::settings::Theme nextTheme(services::settings::Theme theme) {
+            switch (theme) {
+                case services::settings::Theme::DEFAULTS:
+                    return services::settings::Theme::NIGHT;
+                case services::settings::Theme::NIGHT:
+                    return services::settings::Theme::HIGHS;
+                case services::settings::Theme::HIGHS:
+                default:
+                    return services::settings::Theme::DEFAULTS;
+            }
+        }
+
+        const char* themeToText(services::settings::Theme theme) {
+            switch (theme) {
+                case services::settings::Theme::NIGHT:
+                    return "Night";
+                case services::settings::Theme::HIGHS:
+                    return "High";
+                case services::settings::Theme::DEFAULTS:
+                default:
+                    return "Default";
+            }
+        }
+
+        void actionTheme(ST7796S::MSP4021 &tft, Field &field) {
+            return; // TODO: Feature temporarily disabled
+            services::settings::Theme theme = nextTheme(services::settings::getTheme());
+            services::settings::setTheme(theme);
+            field.value = themeToText(theme);
+            updateField(tft, field);
+        }
+
+        services::settings::TFTRotation nextRotation(services::settings::TFTRotation rotation) {
+            switch (rotation) {
+                case services::settings::TFTRotation::NORMAL:
+                    return services::settings::TFTRotation::REVERSED;
+                case services::settings::TFTRotation::REVERSED:
+                default:
+                    return services::settings::TFTRotation::NORMAL;
+            }
+        }
+
+        const char* rotationToText(services::settings::TFTRotation rotation) {
+            switch (rotation) {
+                case services::settings::TFTRotation::REVERSED:
+                    return "Reversed";
+                case services::settings::TFTRotation::NORMAL:
+                default:
+                    return "Normal";
+            }
+        }
+
+        void actionRotation(ST7796S::MSP4021 &tft, Field &field) {
+            return; // TODO: Feature temporarily disabled
+            services::settings::TFTRotation rotation = nextRotation(services::settings::getTFTRotation());
+            services::settings::setTFTRotation(rotation);
+            field.value = rotationToText(rotation);
+            updateField(tft, field);
+        }
+
+        void actionCalibration(ST7796S::MSP4021 &tft, Field &field) {
+            return; // TODO: Feature temporarily disabled
         }
     }
 
@@ -208,12 +327,16 @@ namespace screens::menu::general {
         char callsign[32];
         if (!services::settings::getCallsign(callsign, sizeof(callsign)))
             { strcpy(callsign, "ERROR"); }
-        const auto suffix = services::settings::getCallsignSuffix();
+        const auto suffix   = services::settings::getCallsignSuffix();
+        const auto units    = services::settings::getUnits();
+        const auto theme    = services::settings::getTheme();
+        const auto rotation = services::settings::getTFTRotation();
 
         callsignField.value     = callsign;
         suffixField.value       = suffixToText(suffix);
-        themeField.value        = "Normal";
-        rotationField.value     = "Normal";
+        unitsField.value        = unitsToText(units);
+        themeField.value        = themeToText(theme);
+        rotationField.value     = rotationToText(rotation);
         calibrationField.value  = "Recalibrate";
 
         drawTitle(tft, x, y, w, rowH, gap);
@@ -244,30 +367,23 @@ namespace screens::menu::general {
             if (!isPressed(*field, x, y))
                 { continue; }
             switch (field->action) {
-                case Action::SUFFIX: {
-                    auto suffix = services::settings::getCallsignSuffix();
-                    suffix = nextSuffix(suffix);
-                    services::settings::setCallsignSuffix(suffix);
-                    field->value = suffixToText(suffix);
-                    updateField(tft, *field);
+                case Action::CALLSIGN:
+                    actionCallsign(tft);
                     return true;
-                }
-                case Action::CALLSIGN: {
-                    char callsign[32];
-                    if (services::settings::getCallsign(callsign, sizeof(callsign)))
-                        { tft.KSetText(callsign); }
-                    tft.KDraw("Callsign");
-                    mode = Mode::KEYBOARD;
+                case Action::SUFFIX:
+                    actionSuffix(tft, *field);
                     return true;
-                }
+                case Action::UNITS:
+                    actionUnits(tft, *field);
+                    return true;
                 case Action::THEME:
-                    // TODO: cycle theme
+                    actionTheme(tft, *field);
                     return true;
                 case Action::ROTATION:
-                    // TODO: toggle rotation
+                    actionRotation(tft, *field);
                     return true;
                 case Action::CALIBRATION:
-                    // TODO: recalibrate touch
+                    actionCalibration(tft, *field);
                     return true;
                 default:
                     return false;
