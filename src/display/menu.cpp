@@ -30,6 +30,7 @@
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
 #include "screens/menu/navigation.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace display::menu {
     namespace {
@@ -69,8 +70,10 @@ namespace display::menu {
     bool handleTouch(int x, int y) {
         if (screens::menu::isEditing()) {
             bool handled = getHandled(x, y);
-            if (handled && !screens::menu::isEditing())
-                { draw(); }
+            if (handled && !screens::menu::isEditing()) {
+                tft().fillScreen(ui::settings::themes::defaults::BLACK);
+                draw();
+            }
             return true;
         }
         if (screens::menu::navigation::handleTouch(x, y)) {

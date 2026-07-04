@@ -28,18 +28,6 @@ namespace database::nvs {
     namespace {
         Preferences _prefs;
         bool _READY = false;
-
-        constexpr const char* KEY_TOUCH_OK  = "touch_ok";
-        constexpr const char* KEY_SWAP_XY   = "swap_xy";
-        constexpr const char* KEY_INVERT_X  = "invert_x";
-        constexpr const char* KEY_INVERT_Y  = "invert_y";
-        constexpr const char* KEY_CXA       = "cxa";
-        constexpr const char* KEY_CXB       = "cxb";
-        constexpr const char* KEY_CXC       = "cxc";
-        constexpr const char* KEY_CYA       = "cya";
-        constexpr const char* KEY_CYB       = "cyb";
-        constexpr const char* KEY_CYC       = "cyc";
-
         constexpr const char* NAMESPACE             = "roverqth";
 
         constexpr const char* KEY_TN_TOUCH_OK       = "tn_ok";
@@ -84,56 +72,102 @@ namespace database::nvs {
         return _READY;
     }
 
-    bool getTouchCalibration(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc) {
+    bool getTouchCalibrationNormal(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc) {
         if (!_READY && !begin())
             { return false; }
-        if (!_prefs.getBool(KEY_TOUCH_OK, false))
+        if (!_prefs.getBool(KEY_TN_TOUCH_OK, false))
             { return false; }
-        swapXY  = _prefs.getBool(KEY_SWAP_XY, false);
-        invertX = _prefs.getBool(KEY_INVERT_X, false);
-        invertY = _prefs.getBool(KEY_INVERT_Y, false);
-
-        cxa = _prefs.getFloat(KEY_CXA, 0.0f);
-        cxb = _prefs.getFloat(KEY_CXB, 0.0f);
-        cxc = _prefs.getFloat(KEY_CXC, 0.0f);
-        cya = _prefs.getFloat(KEY_CYA, 0.0f);
-        cyb = _prefs.getFloat(KEY_CYB, 0.0f);
-        cyc = _prefs.getFloat(KEY_CYC, 0.0f);
+        swapXY  = _prefs.getBool(KEY_TN_SWAP_XY,    false);
+        invertX = _prefs.getBool(KEY_TN_INVERT_X,   false);
+        invertY = _prefs.getBool(KEY_TN_INVERT_Y,   false);
+        cxa     = _prefs.getFloat(KEY_TN_CXA,       0.0f);
+        cxb     = _prefs.getFloat(KEY_TN_CXB,       0.0f);
+        cxc     = _prefs.getFloat(KEY_TN_CXC,       0.0f);
+        cya     = _prefs.getFloat(KEY_TN_CYA,       0.0f);
+        cyb     = _prefs.getFloat(KEY_TN_CYB,       0.0f);
+        cyc     = _prefs.getFloat(KEY_TN_CYC,       0.0f);
 
         return true;
     }
 
-    bool setTouchCalibration(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
+    bool setTouchCalibrationNormal(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
         if (!_READY && !begin())
             { return false; }
-        _prefs.putBool(KEY_SWAP_XY, swapXY);
-        _prefs.putBool(KEY_INVERT_X, invertX);
-        _prefs.putBool(KEY_INVERT_Y, invertY);
-
-        _prefs.putFloat(KEY_CXA, cxa);
-        _prefs.putFloat(KEY_CXB, cxb);
-        _prefs.putFloat(KEY_CXC, cxc);
-        _prefs.putFloat(KEY_CYA, cya);
-        _prefs.putFloat(KEY_CYB, cyb);
-        _prefs.putFloat(KEY_CYC, cyc);
-
-        _prefs.putBool(KEY_TOUCH_OK, true);
+        _prefs.putBool(KEY_TN_SWAP_XY,  swapXY);
+        _prefs.putBool(KEY_TN_INVERT_X, invertX);
+        _prefs.putBool(KEY_TN_INVERT_Y, invertY);
+        _prefs.putFloat(KEY_TN_CXA,     cxa);
+        _prefs.putFloat(KEY_TN_CXB,     cxb);
+        _prefs.putFloat(KEY_TN_CXC,     cxc);
+        _prefs.putFloat(KEY_TN_CYA,     cya);
+        _prefs.putFloat(KEY_TN_CYB,     cyb);
+        _prefs.putFloat(KEY_TN_CYC,     cyc);
+        _prefs.putBool(KEY_TN_TOUCH_OK, true);
         return true;
     }
 
-    bool resetTouchCalibration() {
+    bool resetTouchCalibrationNormal() {
         if (!_READY && !begin())
             { return false; }
-        _prefs.remove(KEY_TOUCH_OK);
-        _prefs.remove(KEY_SWAP_XY);
-        _prefs.remove(KEY_INVERT_X);
-        _prefs.remove(KEY_INVERT_Y);
-        _prefs.remove(KEY_CXA);
-        _prefs.remove(KEY_CXB);
-        _prefs.remove(KEY_CXC);
-        _prefs.remove(KEY_CYA);
-        _prefs.remove(KEY_CYB);
-        _prefs.remove(KEY_CYC);
+        _prefs.remove(KEY_TN_TOUCH_OK);
+        _prefs.remove(KEY_TN_SWAP_XY);
+        _prefs.remove(KEY_TN_INVERT_X);
+        _prefs.remove(KEY_TN_INVERT_Y);
+        _prefs.remove(KEY_TN_CXA);
+        _prefs.remove(KEY_TN_CXB);
+        _prefs.remove(KEY_TN_CXC);
+        _prefs.remove(KEY_TN_CYA);
+        _prefs.remove(KEY_TN_CYB);
+        _prefs.remove(KEY_TN_CYC);
+        return true;
+    }
+
+    bool getTouchCalibrationReversed(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc) {
+        if (!_READY && !begin())
+            { return false; }
+        if (!_prefs.getBool(KEY_TR_TOUCH_OK, false))
+            { return false; }
+        swapXY  = _prefs.getBool(KEY_TR_SWAP_XY,    false);
+        invertX = _prefs.getBool(KEY_TR_INVERT_X,   false);
+        invertY = _prefs.getBool(KEY_TR_INVERT_Y,   false);
+        cxa     = _prefs.getFloat(KEY_TR_CXA,       0.0f);
+        cxb     = _prefs.getFloat(KEY_TR_CXB,       0.0f);
+        cxc     = _prefs.getFloat(KEY_TR_CXC,       0.0f);
+        cya     = _prefs.getFloat(KEY_TR_CYA,       0.0f);
+        cyb     = _prefs.getFloat(KEY_TR_CYB,       0.0f);
+        cyc     = _prefs.getFloat(KEY_TR_CYC,       0.0f);
+        return true;
+    }
+
+    bool setTouchCalibrationReversed(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.putBool(KEY_TR_SWAP_XY,  swapXY);
+        _prefs.putBool(KEY_TR_INVERT_X, invertX);
+        _prefs.putBool(KEY_TR_INVERT_Y, invertY);
+        _prefs.putFloat(KEY_TR_CXA,     cxa);
+        _prefs.putFloat(KEY_TR_CXB,     cxb);
+        _prefs.putFloat(KEY_TR_CXC,     cxc);
+        _prefs.putFloat(KEY_TR_CYA,     cya);
+        _prefs.putFloat(KEY_TR_CYB,     cyb);
+        _prefs.putFloat(KEY_TR_CYC,     cyc);
+        _prefs.putBool(KEY_TR_TOUCH_OK, true);
+        return true;
+    }
+
+    bool resetTouchCalibrationReversed() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_TR_TOUCH_OK);
+        _prefs.remove(KEY_TR_SWAP_XY);
+        _prefs.remove(KEY_TR_INVERT_X);
+        _prefs.remove(KEY_TR_INVERT_Y);
+        _prefs.remove(KEY_TR_CXA);
+        _prefs.remove(KEY_TR_CXB);
+        _prefs.remove(KEY_TR_CXC);
+        _prefs.remove(KEY_TR_CYA);
+        _prefs.remove(KEY_TR_CYB);
+        _prefs.remove(KEY_TR_CYC);
         return true;
     }
 

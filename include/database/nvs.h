@@ -27,9 +27,13 @@
 namespace database::nvs {
     bool begin();
 
-    bool getTouchCalibration(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc);
-    bool setTouchCalibration(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc);
-    bool resetTouchCalibration();
+    bool getTouchCalibrationNormal(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc);
+    bool setTouchCalibrationNormal(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc);
+    bool resetTouchCalibrationNormal();
+    
+    bool getTouchCalibrationReversed(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc);
+    bool setTouchCalibrationReversed(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc);
+    bool resetTouchCalibrationReversed();
 
     bool getCallsign(char* buffer, unsigned int size);
     bool setCallsign(const char* callsign);

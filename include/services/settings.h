@@ -29,7 +29,23 @@ namespace services::settings {
     enum class TFTRotation {NORMAL = 3, REVERSED = 1};
     enum class CallsignSuffix {NONE, P, M, MM, AM};
 
+    struct Calibration {
+        bool swapXY     = false;
+        bool invertX    = false;
+        bool invertY    = false;
+        float coeffXA   = 0.0;
+        float coeffXB   = 0.0;
+        float coeffXC   = 0.0;
+        float coeffYA   = 0.0;
+        float coeffYB   = 0.0;
+        float coeffYC   = 0.0;
+    };
+
     bool begin();
+
+    bool getTouchCalibration(Calibration &calibration);
+    bool setTouchCalibration(const Calibration &normal, const Calibration &reversed);
+    bool resetTouchCalibration();
 
     bool getCallsign(char* buffer, unsigned int size);
     bool setCallsign(const char* callsign);

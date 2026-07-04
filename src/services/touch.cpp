@@ -22,41 +22,24 @@
  */
 
 #include <Arduino.h>
-#include "database/nvs.h"
 #include "display/manager.h"
+#include "services/settings.h"
 #include "services/touch.h"
 
 namespace services::touch {
     bool loadCalibration() {
-        bool swapXY, invertX, invertY;
-        float cxa, cxb, cxc, cya, cyb, cyc;
-
-        const bool ok = database::nvs::getTouchCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
-        if (!ok)
+        services::settings::Calibration calibration;
+        if (!services::settings::getTouchCalibration(calibration))
             { return false; }
-        display::TCalibrate(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
+        display::TCalibrate(calibration);
         return true;
-    }
-
-    bool saveCalibration(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
-        return database::nvs::setTouchCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
-    }
-
-    bool calibrate() {
-        if (!display::TCalibrate())
-            { return false; }
-        bool swapXY, invertX, invertY;
-        float cxa, cxb, cxc, cya, cyb, cyc;
-
-        display::TCalibrateInfo(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
-        return saveCalibration(swapXY, invertX, invertY, cxa, cxb, cxc, cya, cyb, cyc);
     }
 
     bool begin() {
         if (loadCalibration())
             { return true; }
-        while (!calibrate())
+        while (!display::TCalibrate())
             { delay(10); }
-        return true;
+        return loadCalibration();
     }
 }

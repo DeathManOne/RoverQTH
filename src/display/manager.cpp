@@ -33,41 +33,52 @@ namespace display::internal {
 namespace display {
     namespace {
         ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-
-        uint8_t sanitizeRotation(uint8_t rotation) {
-            rotation %= 4;
-            if (rotation == 0) { rotation = 1; }
-            else if (rotation == 2) { rotation = 3; }
-            return rotation;
-        }
     }
 
-    void begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height, uint8_t rotation) {
+    void begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height) {
         display::internal::TFT_SPI.begin(clk, miso, mosi);
 
         if (!display::internal::TFT) {
             display::internal::TFT = new ST7796S::MSP4021(
                 display::internal::TFT_SPI,
-                touchCS,
-                screenCS,   screenDC,
-                width,      height,
-                screenRST
+                touchCS,    screenCS,   screenDC,
+                width,      height,     screenRST
             );
         }
-
-        rotation = sanitizeRotation(rotation);
-        tft().setRotation(rotation);
+        tft().setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
     }
 
-    bool TCalibrate() { return tft().TCalibrate(); }
-    void TCalibrate(bool swapXY, bool invertX, bool invertY, float CXA, float CXB, float CXC, float CYA, float CYB, float CYC) {
-        tft().TCalibrate(swapXY, invertX, invertY, CXA, CXB, CXC, CYA, CYB, CYC);
+    bool TCalibrate() {
+        services::settings::Calibration normal;
+        tft().setRotation(static_cast<uint8_t>(services::settings::TFTRotation::NORMAL));
+        if (tft().TCalibrate()) { TCalibrateInfo(normal); }
+        else { return false; }
+
+        services::settings::Calibration reversed;
+        tft().setRotation(static_cast<uint8_t>(services::settings::TFTRotation::REVERSED));
+        if (tft().TCalibrate()) { TCalibrateInfo(reversed); }
+        else { return false; }
+
+        tft().setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
+        return services::settings::setTouchCalibration(normal, reversed);
     }
 
-    void TCalibrateInfo(bool &swapXY, bool &invertX, bool &invertY, float &CXA, float &CXB, float &CXC, float &CYA, float &CYB, float &CYC) {
-        tft().TCalibrateInfo(swapXY, invertX, invertY, CXA, CXB, CXC, CYA, CYB, CYC);
+    void TCalibrate(services::settings::Calibration &calibration) {
+        tft().TCalibrate(
+            calibration.swapXY,     calibration.invertX, calibration.invertY,
+            calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
+            calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+        );
     }
 
-    bool TRead(int &x, int &y) { return tft().TRead(x, y); }
-    void clearScreen() { tft().fillScreen(ui::settings::themes::defaults::BLACK); }
+    void TCalibrateInfo(services::settings::Calibration &calibration) {
+        tft().TCalibrateInfo(
+            calibration.swapXY,     calibration.invertX, calibration.invertY,
+            calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
+            calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+        );
+    }
+
+    bool TRead(int &x, int &y)  { return tft().TRead(x, y); }
+    void clearScreen()          { tft().fillScreen(ui::settings::themes::defaults::BLACK); }
 }

@@ -22,6 +22,7 @@
  */
 
 #include <cstring>
+#include "display/manager.h"
 #include "screens/main/title.h"
 #include "screens/menu/general.h"
 #include "screens/mockup/grid.h"
@@ -298,11 +299,14 @@ namespace screens::menu::general {
             services::settings::TFTRotation rotation = nextRotation(services::settings::getTFTRotation());
             services::settings::setTFTRotation(rotation);
             field.value = rotationToText(rotation);
-            updateField(tft, field);
+            tft.setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
+            // redraw all screen
         }
 
         void actionCalibration(ST7796S::MSP4021 &tft, Field &field) {
             return; // TODO: Feature temporarily disabled
+            services::settings::resetTouchCalibration();
+            display::TCalibrate();
         }
     }
 

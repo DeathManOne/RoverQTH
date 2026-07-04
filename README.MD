@@ -38,8 +38,10 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 ### Touchscreen Interface
 
 * 4-inch ST7796S display support (clone)
-* Touchscreen calibration
-* Persistent calibration storage using NVS
+* Persistent touchscreen calibration
+* Independent NORMAL and REVERSED calibration profiles
+* Runtime screen rotation support
+* On-device recalibration from the Settings menu
 * Optimized landscape interface
 * Embedded fonts and graphical resources
 
@@ -48,11 +50,14 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * Boot status screen
 * Screen rotation protection
 * Persistent configuration storage
+* Callsign customization
+* Callsign suffix support (/P, /M, /MM, /AM)
+* Metric / Imperial units support
+* Settings menu
 * ESP32-based architecture
 * SD card initialization
 * Battery level monitoring
 * Battery presence detection
-* Settings menu
 
 ### Power Management
 
@@ -205,7 +210,6 @@ Example configuration:
 
 -D TFT_WIDTH=480
 -D TFT_HEIGHT=320
--D TFT_ROTATION=3
 
 -D BATTERY_PIN=17
 ```
@@ -230,9 +234,7 @@ void loop() {
 
 ---
 
-## Current Status
-
-### Version 1.1.0
+## Current Development Status
 
 Implemented:
 
@@ -240,17 +242,21 @@ Implemented:
 * Maidenhead locator display
 * GPS information display
 * Touchscreen interface
-* Touch calibration
+* Persistent touchscreen calibration
+* Dual calibration profiles (NORMAL / REVERSED)
+* Runtime screen rotation support
+* Callsign customization
+* Callsign suffix support
+* Metric / Imperial units support
 * Boot status screen
 * NVS configuration storage
 * SD card initialization
-* MARK QTH column redraw optimization
 * Battery voltage monitoring
 * Battery percentage estimation
 * Battery presence detection
 * Settings menu
 
-Not enabled in version 1.1.0:
+Not yet implemented:
 
 * WiFi connectivity
 * OTA firmware updates

@@ -25,7 +25,5 @@
 
 namespace services::touch {
     bool begin();
-    bool calibrate();
     bool loadCalibration();
-    bool saveCalibration(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc);
 }

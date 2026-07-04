@@ -23,14 +23,15 @@
 
 #pragma once
 #include <cstdint>
+#include "services/settings.h"
 
 namespace display {
-    void begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height, uint8_t rotation);
+    void begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height);
 
     bool TCalibrate();
-    void TCalibrate(bool swapXY, bool invertX, bool invertY, float CXA, float CXB, float CXC, float CYA, float CYB, float CYC);
-    void TCalibrateInfo(bool &swapXY, bool &invertX, bool &invertY, float &CXA, float &CXB, float &CXC, float &CYA, float &CYB, float &CYC);
-    bool TRead(int &x, int &y);
+    void TCalibrate(services::settings::Calibration &calibration);
+    void TCalibrateInfo(services::settings::Calibration &calibration);
 
+    bool TRead(int &x, int &y);
     void clearScreen();
 }
