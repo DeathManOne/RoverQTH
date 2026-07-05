@@ -160,11 +160,11 @@ SDCard Library
 
 Version:
 
-* v1.5.1
+* v2.0.0
 
 Repository:
 
-* https://github.com/DeathManOne/SDCard.git#1.5.1
+* https://github.com/DeathManOne/SDCard.git#2.0.0
 
 ---
 
@@ -211,7 +211,7 @@ Example configuration:
 -D TFT_WIDTH=480
 -D TFT_HEIGHT=320
 
--D BATTERY_PIN=17
+-D BATT_PIN=17
 ```
 
 ---

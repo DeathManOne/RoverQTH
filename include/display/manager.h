@@ -28,6 +28,7 @@
 namespace display {
     void begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height);
 
+    bool TLoad();
     bool TCalibrate();
     void TCalibrate(services::settings::Calibration &calibration);
     void TCalibrateInfo(services::settings::Calibration &calibration);

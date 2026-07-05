@@ -46,6 +46,17 @@ namespace display {
             );
         }
         tft().setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
+
+        if (TLoad())            { return; }
+        while (!TCalibrate())   { delay(10); }
+    }
+
+    bool TLoad() {
+        services::settings::Calibration calibration;
+        if (!services::settings::getTouchCalibration(calibration))
+            { return false; }
+        TCalibrate(calibration);
+        return true;
     }
 
     bool TCalibrate() {
@@ -60,7 +71,10 @@ namespace display {
         else { return false; }
 
         tft().setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
-        return services::settings::setTouchCalibration(normal, reversed);
+
+        if(!services::settings::setTouchCalibration(normal, reversed))
+            { return false; }
+        return TLoad();
     }
 
     void TCalibrate(services::settings::Calibration &calibration) {

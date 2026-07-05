@@ -24,6 +24,7 @@
 #include <cstring>
 #include "display/manager.h"
 #include "screens/main/title.h"
+#include "screens/menu.h"
 #include "screens/menu/general.h"
 #include "screens/mockup/grid.h"
 #include "services/settings.h"
@@ -81,15 +82,16 @@ namespace screens::menu::general {
         void actionTheme(ST7796S::MSP4021 &tft, Field &field);
         services::settings::TFTRotation nextRotation(services::settings::TFTRotation rotation);
         const char* rotationToText(services::settings::TFTRotation rotation);
-        void actionRotation(ST7796S::MSP4021 &tft, Field &field);
-        void actionCalibration(ST7796S::MSP4021 &tft, Field &field);
+        void actionRotation(ST7796S::MSP4021 &tft);
+        void actionCalibration(ST7796S::MSP4021 &tft);
         
+        char callsignValue[32] = "";
         Field callsignField    = makeField("Callsign",    Action::CALLSIGN,       ui::settings::themes::defaults::GREEN);
         Field suffixField      = makeField("Suffix",      Action::SUFFIX,         ui::settings::themes::defaults::GREEN);
-        Field unitsField       = makeField("Units",       Action::UNITS,          ui::settings::themes::defaults::WHITE);
+        Field unitsField       = makeField("Units",       Action::UNITS,          ui::settings::themes::defaults::GREEN);
         Field themeField       = makeField("Theme",       Action::THEME,          ui::settings::themes::defaults::WHITE);
-        Field rotationField    = makeField("Rotation",    Action::ROTATION,       ui::settings::themes::defaults::WHITE);
-        Field calibrationField = makeField("Calibration", Action::CALIBRATION,    ui::settings::themes::defaults::WHITE);
+        Field rotationField    = makeField("Rotation",    Action::ROTATION,       ui::settings::themes::defaults::GREEN);
+        Field calibrationField = makeField("Calibration", Action::CALIBRATION,    ui::settings::themes::defaults::GREEN);
 
         Field* fields[] = {
             &callsignField,
@@ -235,7 +237,6 @@ namespace screens::menu::general {
         }
 
         void actionUnits(ST7796S::MSP4021 &tft, Field &field) {
-            return; // TODO: Feature temporarily disabled
             services::settings::Units units = nextUnits(services::settings::getUnits());
             services::settings::setUnits(units);
             field.value = unitsToText(units);
@@ -294,19 +295,21 @@ namespace screens::menu::general {
             }
         }
 
-        void actionRotation(ST7796S::MSP4021 &tft, Field &field) {
-            return; // TODO: Feature temporarily disabled
+        void actionRotation(ST7796S::MSP4021 &tft) {
             services::settings::TFTRotation rotation = nextRotation(services::settings::getTFTRotation());
             services::settings::setTFTRotation(rotation);
-            field.value = rotationToText(rotation);
-            tft.setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
-            // redraw all screen
+            tft.setRotation(static_cast<uint8_t>(rotation));
+            display::TLoad();
+            display::clearScreen();
+            screens::menu::draw(tft);
         }
 
-        void actionCalibration(ST7796S::MSP4021 &tft, Field &field) {
-            return; // TODO: Feature temporarily disabled
+        void actionCalibration(ST7796S::MSP4021 &tft) {
             services::settings::resetTouchCalibration();
-            display::TCalibrate();
+            while (!display::TCalibrate())
+                { delay(10); }
+            display::clearScreen();
+            screens::menu::draw(tft);
         }
     }
 
@@ -328,15 +331,14 @@ namespace screens::menu::general {
             rowY += rowH;
         }
 
-        char callsign[32];
-        if (!services::settings::getCallsign(callsign, sizeof(callsign)))
-            { strcpy(callsign, "ERROR"); }
+        if (!services::settings::getCallsign(callsignValue, sizeof(callsignValue)))
+            { strcpy(callsignValue, "ERROR"); }
         const auto suffix   = services::settings::getCallsignSuffix();
         const auto units    = services::settings::getUnits();
         const auto theme    = services::settings::getTheme();
         const auto rotation = services::settings::getTFTRotation();
 
-        callsignField.value     = callsign;
+        callsignField.value     = callsignValue;
         suffixField.value       = suffixToText(suffix);
         unitsField.value        = unitsToText(units);
         themeField.value        = themeToText(theme);
@@ -384,10 +386,10 @@ namespace screens::menu::general {
                     actionTheme(tft, *field);
                     return true;
                 case Action::ROTATION:
-                    actionRotation(tft, *field);
+                    actionRotation(tft);
                     return true;
                 case Action::CALIBRATION:
-                    actionCalibration(tft, *field);
+                    actionCalibration(tft);
                     return true;
                 default:
                     return false;

@@ -27,6 +27,7 @@
 #include <cstring>
 #include "services/gps.h"
 #include "services/navigation.h"
+#include "services/settings.h"
 
 namespace services::navigation {
     namespace {
@@ -252,21 +253,21 @@ namespace services::navigation {
     }
 
     void formatDistance(double km, char* buffer, size_t size) {
-        if (!buffer || size == 0)
-            { return; }
+        if (!buffer || size == 0) { return; }
         if (km < 0.0) {
             std::snprintf(buffer, size, "--");
             return;
         }
-        if (km < 1.0) {
-            std::snprintf(buffer, size, "%.0f m", km * 1000.0);
-            return;
+
+        if (services::settings::getUnits() == services::settings::Units::IMPERIAL) {
+            const double miles = km * 0.621371;
+            if (miles < 0.1) { std::snprintf(buffer, size, "%.0f ft", miles * 5280.0); }
+            else { std::snprintf(buffer, size, "%.1f mi", miles); }
+        } else {
+            if (km < 1.0) { std::snprintf(buffer, size, "%.0f m", km * 1000.0); }
+            else if (km < 10.0) { std::snprintf(buffer, size, "%.2f km", km); }
+            else { std::snprintf(buffer, size, "%.1f km", km); }
         }
-        if (km < 10.0) {
-            std::snprintf(buffer, size, "%.2f km", km);
-            return;
-        }
-        std::snprintf(buffer, size, "%.1f km", km);
     }
 
     void formatBearing(double deg, char* buffer, size_t size) {

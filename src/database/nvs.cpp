@@ -61,7 +61,7 @@ namespace database::nvs {
         constexpr const char* DEFAULT_CALLSIGN      = "SWL";
         constexpr uint8_t DEFAULT_CALLSIGN_SUFFIX   = 0;
         constexpr uint8_t DEFAULT_THEME             = 0;
-        constexpr uint8_t DEFAULT_TFT_ROTATION      = 3;
+        constexpr uint8_t DEFAULT_TFT_ROTATION      = 1;
         constexpr uint8_t DEFAULT_UNITS             = 0;
     }
 

@@ -26,7 +26,7 @@
 namespace services::settings {
     enum class Units {METRIC, IMPERIAL};
     enum class Theme {DEFAULTS, NIGHT, HIGHS};
-    enum class TFTRotation {NORMAL = 3, REVERSED = 1};
+    enum class TFTRotation {NORMAL = 1, REVERSED = 3};
     enum class CallsignSuffix {NONE, P, M, MM, AM};
 
     struct Calibration {

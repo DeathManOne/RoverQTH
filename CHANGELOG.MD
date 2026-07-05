@@ -7,6 +7,33 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.2.0] - 2026-07-05
+
+### Added
+- Metric/Imperial unit system support
+- Independent touch calibration profiles for NORMAL and REVERSED rotations
+- Screen rotation management from General settings
+- Touch recalibration from General settings
+
+### Changed
+- Moved touch calibration loading from services::touch to display::TLoad()
+- Refactored display initialization and touch calibration workflow
+- Automatic touch calibration reload after screen rotation
+- Automatic touch calibration reload after recalibration
+- Distance, altitude and speed formatting now respect selected units
+- General settings menu fully updated
+
+### Removed
+- Removed services::touch layer
+
+### Fixed
+- Fixed touch calibration persistence across screen rotations
+- Fixed field redraw after rotation and recalibration
+- Fixed imperial distance formatting for short distances
+- Fixed CWE-562 warning caused by callsignField.value referencing a local buffer
+
+---
+
 ## [1.1.0] - 2026-06-28
 
 ### Added

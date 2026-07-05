@@ -34,7 +34,6 @@
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
-#include "services/touch.h"
 #include "services/update.h"
 
 namespace RoverQTH {
@@ -75,7 +74,6 @@ namespace RoverQTH {
             TFT_SCREEN_RST, TFT_WIDTH,      TFT_HEIGHT
         );
 
-        services::touch::begin();
         services::update::begin();
         services::navigation::begin();
 

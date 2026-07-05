@@ -45,6 +45,22 @@ namespace screens::main {
             }
             snprintf(buffer, size, "%lum %02lus", minutes, seconds);
         }
+
+        void formatSpeed(double kmh, char* buffer, size_t size) {
+            if (services::settings::getUnits() == services::settings::Units::IMPERIAL) {
+                std::snprintf(buffer, size, "%.1f mph", kmh * 0.621371);
+                return;
+            }
+            std::snprintf(buffer, size, "%.1f km/h", kmh);
+        }
+
+        void formatAltitude(double meters, char* buffer, size_t size) {
+            if (services::settings::getUnits() == services::settings::Units::IMPERIAL) {
+                std::snprintf(buffer, size, "%.0f ft", meters * 3.28084);
+                return;
+            }
+            std::snprintf(buffer, size, "%.0f m", meters);
+        }
     }
 
     void preload() {
@@ -88,14 +104,8 @@ namespace screens::main {
         if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
         else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, services::gps::headingToCardinal(hdg)); }
 
-        snprintf(
-            speedBuffer, sizeof(speedBuffer), "%.1f km/h",
-            speed
-        );
-        snprintf(
-            aslBuffer, sizeof(aslBuffer), "%.0f m",
-            masl
-        );
+        formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
+        formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
         snprintf(
             gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
             satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
@@ -141,7 +151,7 @@ namespace screens::main {
         services::navigation::getSOTACode(code, sizeof(code));
 
         snprintf(points, sizeof(points), "%d (+1)", services::navigation::getSOTAPoints());
-        snprintf(altitude, sizeof(altitude), "%d m", services::navigation::getSOTAAltitude());
+        formatAltitude(services::navigation::getSOTAAltitude(), altitude, sizeof(altitude));
 
         screens::main::locator::setSOTABearing(bearing);
         screens::main::locator::setSOTADistance(distance);
@@ -210,14 +220,8 @@ namespace screens::main {
         if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
         else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, services::gps::headingToCardinal(hdg)); }
 
-        snprintf(
-            speedBuffer, sizeof(speedBuffer), "%.1f km/h",
-            speed
-        );
-        snprintf(
-            aslBuffer, sizeof(aslBuffer), "%.0f m",
-            masl
-        );
+        formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
+        formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
         snprintf(
             gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
             satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
