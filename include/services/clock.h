@@ -1,5 +1,5 @@
 /*
- * screens/menu/about.h
+ * services/clock.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,12 +22,11 @@
  */
 
 #pragma once
-#include <MSP4021.h>
+#include <cstdint>
 
-namespace screens::menu::about {
-    bool isEditing();
+namespace services::clock {
+    void sync(uint32_t utcEpoch);
+    bool isSynced();
+    uint32_t now();
     void reset();
-    void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
 }

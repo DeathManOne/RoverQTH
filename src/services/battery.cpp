@@ -23,6 +23,7 @@
 
 #include <Arduino.h>
 #include "services/battery.h"
+#include "services/settings.h"
 
 namespace services::battery {
     namespace {
@@ -34,15 +35,12 @@ namespace services::battery {
         bool low            = false;
         bool critical       = false;
 
-        constexpr float ADC_VREF            = 3.3f;
-        constexpr int ADC_MAX               = 4095;
-        constexpr float DIVIDER_RATIO       = 2.0f;
+        constexpr float BATTERY_PRESENT             = 2.50f;
+        constexpr float BATTERY_LOW_PERCENT         = 20.0f;
+        constexpr float BATTERY_CRITICAL_PERCENT    = 10.0f;
 
-        constexpr float BATTERY_MIN         = 3.30f;
-        constexpr float BATTERY_MAX         = 4.20f;
-        constexpr float BATTERY_PRESENT     = 2.50f;
-        constexpr float BATTERY_LOW         = 3.50f;
-        constexpr float BATTERY_CRITICAL    = 3.30f;
+        constexpr float ADC_VREF    = 3.3f;
+        constexpr int ADC_MAX       = 4095;
     }
 
     float   getVoltage()    { return voltage; }
@@ -63,18 +61,42 @@ namespace services::battery {
     }
 
     bool update() {
-        const int raw = analogRead(batteryPin);
+        const float min     = services::settings::getBatteryMinimal();
+        const float max     = services::settings::getBatteryMaximal();
 
-        voltage = ((static_cast<float>(raw) / ADC_MAX) * ADC_VREF * DIVIDER_RATIO);
+        const float range   = max - min;
+        if (range <= 0.0f) {
+            voltage     = 0.0f;
+            percent     = 0;
+            present     = false;
+            low         = false;
+            critical    = false;
+            return true;
+        }
 
+        const float ratioHigh   = services::settings::getBatteryRatioHigh() / 100.0f;
+        const float ratioLow    = 1.0f - ratioHigh;
+        if (ratioLow <= 0.0f || ratioHigh <= 0.0f) {
+            voltage     = 0.0f;
+            percent     = 0;
+            present     = false;
+            low         = false;
+            critical    = false;
+            return true;
+        }
+
+        const float lowVoltage      = min + (range * BATTERY_LOW_PERCENT / 100.0f);
+        const float criticalVoltage = min + (range * BATTERY_CRITICAL_PERCENT / 100.0f);
+
+        voltage     = (static_cast<float>(analogRead(batteryPin)) / ADC_MAX) * ADC_VREF / ratioLow;
         present     = voltage > BATTERY_PRESENT;
-        low         = present && voltage <= BATTERY_LOW;
-        critical    = present && voltage <= BATTERY_CRITICAL;
+        low         = present && voltage <= lowVoltage;
+        critical    = present && voltage <= criticalVoltage;
 
-        if (!present) { percent = 0; }
-        else if (voltage <= BATTERY_MIN) { percent = 0; }
-        else if (voltage >= BATTERY_MAX) { percent = 100; }
-        else { percent = static_cast<uint8_t>(((voltage - BATTERY_MIN) * 100.0f) / (BATTERY_MAX - BATTERY_MIN)); }
+        if      (!present)          { percent = 0; }
+        else if (voltage <= min)    { percent = 0; }
+        else if (voltage >= max)    { percent = 100; }
+        else { percent = static_cast<uint8_t>(((voltage - min) * 100.0f) / range); }
         return true;
     }
 }

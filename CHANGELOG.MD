@@ -7,6 +7,30 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.3.0] - 2026-07-09
+
+### Added
+- Added configurable battery settings
+- Added battery capacity, minimal, nominal and maximal voltage settings
+- Added Ratio High / Ratio Low battery voltage divider configuration
+- Added GNSS-based clock service preparation
+
+### Changed
+- Battery percentage and warning thresholds now use configurable voltage values
+- Battery voltage calculation now uses configurable ratio settings
+- Battery settings page is now functional
+
+---
+
+## [1.2.1] - 2026-07-05
+
+### Fixed
+- Updated library.json version to 1.2.1
+- Updated PROJECT_VERSION build flag to 1.2.1
+- Synchronized project versioning across all files
+
+---
+
 ## [1.2.0] - 2026-07-05
 
 ### Added

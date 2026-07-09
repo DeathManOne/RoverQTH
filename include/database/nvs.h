@@ -35,6 +35,26 @@ namespace database::nvs {
     bool setTouchCalibrationReversed(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc);
     bool resetTouchCalibrationReversed();
 
+    uint32_t getBatteryCapacity();
+    bool setBatteryCapacity(uint32_t capacity);
+    bool resetBatteryCapacity();
+
+    float getBatteryMinimal();
+    bool setBatteryMinimal(float voltage);
+    bool resetBatteryMinimal();
+
+    float getBatteryNominal();
+    bool setBatteryNominal(float voltage);
+    bool resetBatteryNominal();
+
+    float getBatteryMaximal();
+    bool setBatteryMaximal(float voltage);
+    bool resetBatteryMaximal();
+
+    uint8_t getBatteryRatioHigh();
+    bool setBatteryRatioHigh(uint8_t ratio);
+    bool resetBatteryRatioHigh();
+
     bool getCallsign(char* buffer, unsigned int size);
     bool setCallsign(const char* callsign);
     bool resetCallsign();

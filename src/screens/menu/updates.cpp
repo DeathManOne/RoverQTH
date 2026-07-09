@@ -63,6 +63,7 @@ namespace screens::menu::updates {
             "COMING SOON"
         );
     }
-    
+
+    void update(ST7796S::MSP4021 &tft) {}
     bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 }

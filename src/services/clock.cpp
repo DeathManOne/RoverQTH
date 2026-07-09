@@ -1,5 +1,5 @@
 /*
- * screens/menu/about.h
+ * services/clock.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,13 +21,35 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
-#include <MSP4021.h>
+#include <Arduino.h>
+#include "services/clock.h"
 
-namespace screens::menu::about {
-    bool isEditing();
-    void reset();
-    void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+namespace services::clock {
+    namespace {
+        bool synced         = false;
+        uint32_t syncMillis = 0;
+        uint32_t syncEpoch  = 0;
+    }
+
+    void sync(uint32_t utcEpoch) {
+        syncEpoch   = utcEpoch;
+        syncMillis  = millis();
+        synced      = true;
+    }
+
+    bool isSynced() {
+        return synced;
+    }
+
+    uint32_t now() {
+        if (!synced)
+            { return 0; }
+        return syncEpoch + ((millis() - syncMillis) / 1000);
+    }
+
+    void reset() {
+        synced      = false;
+        syncMillis  = 0;
+        syncEpoch   = 0;
+    }
 }

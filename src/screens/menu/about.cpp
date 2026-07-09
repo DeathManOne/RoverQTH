@@ -88,5 +88,6 @@ namespace screens::menu::about {
         drawLine(tft, x, rowY, w, rowH, "", PROJECT_URL);
     }
 
+    void update(ST7796S::MSP4021 &tft) {}
     bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 }

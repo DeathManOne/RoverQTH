@@ -58,12 +58,18 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * SD card initialization
 * Battery level monitoring
 * Battery presence detection
+* Configurable battery profile
+* GNSS-based clock service preparation
 
 ### Power Management
 
 * Battery voltage monitoring
 * Battery percentage estimation
 * Battery presence detection
+* Configurable battery capacity
+* Configurable minimal, nominal and maximal battery voltage
+* Configurable voltage divider ratio (High / Low)
+* Dynamic low and critical battery thresholds
 
 ---
 
@@ -126,6 +132,7 @@ Using the same components is recommended to ensure identical behavior and compat
 
 - 1S LiPo 3.7V 3000mAh
 - Kubii: [Batterie 3000mAh Li-Po](https://www.kubii.com/fr/alimentations-protections/4913-batterie-3000mah-li-po-3272496324541.html)
+
 ---
 
 ## Dependencies
@@ -255,6 +262,10 @@ Implemented:
 * Battery percentage estimation
 * Battery presence detection
 * Settings menu
+* Configurable battery profile
+* Battery voltage divider configuration
+* Dynamic battery low/critical thresholds
+* GNSS-based clock service preparation
 
 Not yet implemented:
 
@@ -264,6 +275,7 @@ Not yet implemented:
 * SOTA navigation
 * GSM emergency features
 * Storage actions (export, clear logs)
+* GNSS UTC time display
 
 ---
 

@@ -4,4 +4,4 @@
 *.bin
 src/main.ino
 lib
-RoverQTH.zip
+*.zip

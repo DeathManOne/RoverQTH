@@ -26,6 +26,5 @@
 
 namespace screens::menu::navigation {
     void draw(ST7796S::MSP4021 &tft);
-
     bool handleTouch(int x, int y);
 }

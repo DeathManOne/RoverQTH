@@ -70,19 +70,25 @@ namespace screens::menu::general {
         bool isPressed(const Field &field, int tx, int ty);
         void drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap);
         void drawLine(ST7796S::MSP4021 &tft, const Field &field);
+
         void actionCallsign(ST7796S::MSP4021 &tft);
+
         services::settings::CallsignSuffix nextSuffix(services::settings::CallsignSuffix suffix);
         const char* suffixToText(services::settings::CallsignSuffix suffix);
         void actionSuffix(ST7796S::MSP4021 &tft, Field &field);
+    
         services::settings::Units nextUnits(services::settings::Units units);
         const char* unitsToText(services::settings::Units units);
         void actionUnits(ST7796S::MSP4021 &tft, Field &field);
+
         services::settings::Theme nextTheme(services::settings::Theme theme);
         const char* themeToText(services::settings::Theme theme);
         void actionTheme(ST7796S::MSP4021 &tft, Field &field);
+
         services::settings::TFTRotation nextRotation(services::settings::TFTRotation rotation);
         const char* rotationToText(services::settings::TFTRotation rotation);
         void actionRotation(ST7796S::MSP4021 &tft);
+
         void actionCalibration(ST7796S::MSP4021 &tft);
         
         char callsignValue[32] = "";

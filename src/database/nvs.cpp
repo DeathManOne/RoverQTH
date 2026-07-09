@@ -28,32 +28,35 @@ namespace database::nvs {
     namespace {
         Preferences _prefs;
         bool _READY = false;
-        constexpr const char* NAMESPACE             = "roverqth";
+        constexpr const char* NAMESPACE = "roverqth";
 
-        constexpr const char* KEY_TN_TOUCH_OK       = "tn_ok";
-        constexpr const char* KEY_TN_SWAP_XY        = "tn_sxy";
-        constexpr const char* KEY_TN_INVERT_X       = "tn_ix";
-        constexpr const char* KEY_TN_INVERT_Y       = "tn_iy";
-        constexpr const char* KEY_TN_CXA            = "tn_cxa";
-        constexpr const char* KEY_TN_CXB            = "tn_cxb";
-        constexpr const char* KEY_TN_CXC            = "tn_cxc";
-        constexpr const char* KEY_TN_CYA            = "tn_cya";
-        constexpr const char* KEY_TN_CYB            = "tn_cyb";
-        constexpr const char* KEY_TN_CYC            = "tn_cyc";
+        // TOUCHSCREEN NORMAL
+        constexpr const char* KEY_TN_TOUCH_OK   = "tn_ok";
+        constexpr const char* KEY_TN_SWAP_XY    = "tn_sxy";
+        constexpr const char* KEY_TN_INVERT_X   = "tn_ix";
+        constexpr const char* KEY_TN_INVERT_Y   = "tn_iy";
+        constexpr const char* KEY_TN_CXA        = "tn_cxa";
+        constexpr const char* KEY_TN_CXB        = "tn_cxb";
+        constexpr const char* KEY_TN_CXC        = "tn_cxc";
+        constexpr const char* KEY_TN_CYA        = "tn_cya";
+        constexpr const char* KEY_TN_CYB        = "tn_cyb";
+        constexpr const char* KEY_TN_CYC        = "tn_cyc";
 
-        constexpr const char* KEY_TR_TOUCH_OK       = "tr_ok";
-        constexpr const char* KEY_TR_SWAP_XY        = "tr_sxy";
-        constexpr const char* KEY_TR_INVERT_X       = "tr_ix";
-        constexpr const char* KEY_TR_INVERT_Y       = "tr_iy";
-        constexpr const char* KEY_TR_CXA            = "tr_cxa";
-        constexpr const char* KEY_TR_CXB            = "tr_cxb";
-        constexpr const char* KEY_TR_CXC            = "tr_cxc";
-        constexpr const char* KEY_TR_CYA            = "tr_cya";
-        constexpr const char* KEY_TR_CYB            = "tr_cyb";
-        constexpr const char* KEY_TR_CYC            = "tr_cyc";
+        // TOUCHSCREEN REVERSED
+        constexpr const char* KEY_TR_TOUCH_OK   = "tr_ok";
+        constexpr const char* KEY_TR_SWAP_XY    = "tr_sxy";
+        constexpr const char* KEY_TR_INVERT_X   = "tr_ix";
+        constexpr const char* KEY_TR_INVERT_Y   = "tr_iy";
+        constexpr const char* KEY_TR_CXA        = "tr_cxa";
+        constexpr const char* KEY_TR_CXB        = "tr_cxb";
+        constexpr const char* KEY_TR_CXC        = "tr_cxc";
+        constexpr const char* KEY_TR_CYA        = "tr_cya";
+        constexpr const char* KEY_TR_CYB        = "tr_cyb";
+        constexpr const char* KEY_TR_CYC        = "tr_cyc";
 
+        // GENERAL
         constexpr const char* KEY_CALLSIGN          = "callsign";
-        constexpr const char* KEY_CALLSIGN_SUFFIX   = "callsignSuffix";
+        constexpr const char* KEY_CALLSIGN_SUFFIX   = "callsign_suffix";
         constexpr const char* KEY_THEME             = "theme";
         constexpr const char* KEY_TFT_ROTATION      = "tft_rotation";
         constexpr const char* KEY_UNITS             = "units";
@@ -63,6 +66,19 @@ namespace database::nvs {
         constexpr uint8_t DEFAULT_THEME             = 0;
         constexpr uint8_t DEFAULT_TFT_ROTATION      = 1;
         constexpr uint8_t DEFAULT_UNITS             = 0;
+
+        // BATTERY
+        constexpr const char* KEY_BATT_CAPACITY     = "batt_cap";
+        constexpr const char* KEY_BATT_MINIMAL      = "batt_min";
+        constexpr const char* KEY_BATT_NOMINAL      = "batt_nom";
+        constexpr const char* KEY_BATT_MAXIMAL      = "batt_max";
+        constexpr const char* KEY_BATT_RATIO_HIGH   = "batt_ratio_high";
+
+        constexpr uint32_t DEFAULT_BATT_CAPACITY    = 3000;
+        constexpr float DEFAULT_BATT_MINIMAL        = 3.30f;
+        constexpr float DEFAULT_BATT_NOMINAL        = 3.70f;
+        constexpr float DEFAULT_BATT_MAXIMAL        = 4.20f;
+        constexpr uint8_t DEFAULT_BATT_RATIO_HIGH   = 50;
     }
 
     bool begin() {
@@ -168,6 +184,101 @@ namespace database::nvs {
         _prefs.remove(KEY_TR_CYA);
         _prefs.remove(KEY_TR_CYB);
         _prefs.remove(KEY_TR_CYC);
+        return true;
+    }
+
+    uint32_t getBatteryCapacity() {
+        if (!_READY && !begin())
+            { return DEFAULT_BATT_CAPACITY; }
+        return _prefs.getUInt(KEY_BATT_CAPACITY, DEFAULT_BATT_CAPACITY);
+    }
+
+    bool setBatteryCapacity(uint32_t capacity) {
+        if (!_READY && !begin())
+            { return false; }
+        return _prefs.putUInt(KEY_BATT_CAPACITY, capacity) > 0;
+    }
+
+    bool resetBatteryCapacity() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_BATT_CAPACITY);
+        return true;
+    }
+
+    float getBatteryMinimal() {
+        if (!_READY && !begin())
+            { return DEFAULT_BATT_MINIMAL; }
+        return _prefs.getFloat(KEY_BATT_MINIMAL,  DEFAULT_BATT_MINIMAL);
+    }
+
+    bool setBatteryMinimal(float voltage) {
+        if (!_READY && !begin())
+            { return false; }
+        return _prefs.putFloat(KEY_BATT_MINIMAL, voltage) > 0;
+    }
+
+    bool resetBatteryMinimal() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_BATT_MINIMAL);
+        return true;
+    }
+
+    float getBatteryNominal() {
+        if (!_READY && !begin())
+            { return DEFAULT_BATT_NOMINAL; }
+        return _prefs.getFloat(KEY_BATT_NOMINAL,  DEFAULT_BATT_NOMINAL);
+    }
+
+    bool setBatteryNominal(float voltage) {
+        if (!_READY && !begin())
+            { return false; }
+        return _prefs.putFloat(KEY_BATT_NOMINAL, voltage) > 0;
+    }
+
+    bool resetBatteryNominal() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_BATT_NOMINAL);
+        return true;
+    }
+
+    float getBatteryMaximal() {
+        if (!_READY && !begin())
+            { return DEFAULT_BATT_MAXIMAL; }
+        return _prefs.getFloat(KEY_BATT_MAXIMAL,  DEFAULT_BATT_MAXIMAL);
+    }
+
+    bool setBatteryMaximal(float voltage) {
+        if (!_READY && !begin())
+            { return false; }
+        return _prefs.putFloat(KEY_BATT_MAXIMAL, voltage) > 0;
+    }
+
+    bool resetBatteryMaximal() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_BATT_MAXIMAL);
+        return true;
+    }
+
+    uint8_t getBatteryRatioHigh() {
+        if (!_READY && !begin())
+            { return DEFAULT_BATT_RATIO_HIGH; }
+        return _prefs.getUChar(KEY_BATT_RATIO_HIGH, DEFAULT_BATT_RATIO_HIGH);
+    }
+
+    bool setBatteryRatioHigh(uint8_t ratio) {
+        if (!_READY && !begin())
+            { return false; }
+        return _prefs.putUChar(KEY_BATT_RATIO_HIGH, ratio) > 0;
+    }
+
+    bool resetBatteryRatioHigh() {
+        if (!_READY && !begin())
+            { return false; }
+        _prefs.remove(KEY_BATT_RATIO_HIGH);
         return true;
     }
 

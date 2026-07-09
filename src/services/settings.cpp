@@ -22,7 +22,6 @@
  */
 
 #include <cstdio>
-//#include <cstring>
 #include "database/nvs.h"
 #include "services/settings.h"
 
@@ -70,6 +69,66 @@ namespace services::settings {
         ok = database::nvs::resetTouchCalibrationNormal()   && ok;
         ok = database::nvs::resetTouchCalibrationReversed() && ok;
         return ok;
+    }
+
+    uint32_t getBatteryCapacity() {
+        return database::nvs::getBatteryCapacity();
+    }
+
+    bool setBatteryCapacity(uint32_t capacity) {
+        return database::nvs::setBatteryCapacity(capacity);
+    }
+
+    bool resetBatteryCapacity() {
+        return database::nvs::resetBatteryCapacity();
+    }
+
+    float getBatteryMinimal() {
+        return database::nvs::getBatteryMinimal();
+    }
+
+    bool setBatteryMinimal(float voltage) {
+        return database::nvs::setBatteryMinimal(voltage);
+    }
+
+    bool resetBatteryMinimal() {
+        return database::nvs::resetBatteryMinimal();
+    }
+
+    float getBatteryNominal() {
+        return database::nvs::getBatteryNominal();
+    }
+
+    bool setBatteryNominal(float voltage) {
+        return database::nvs::setBatteryNominal(voltage);
+    }
+
+    bool resetBatteryNominal() {
+        return database::nvs::resetBatteryNominal();
+    }
+
+    float getBatteryMaximal() {
+        return database::nvs::getBatteryMaximal();
+    }
+
+    bool setBatteryMaximal(float voltage) {
+        return database::nvs::setBatteryMaximal(voltage);
+    }
+
+    bool resetBatteryMaximal() {
+        return database::nvs::resetBatteryMaximal();
+    }
+
+    uint8_t getBatteryRatioHigh() {
+        return database::nvs::getBatteryRatioHigh();
+    }
+
+    bool setBatteryRatioHigh(uint8_t ratio) {
+        return database::nvs::setBatteryRatioHigh(ratio);
+    }
+
+    bool resetBatteryRatioHigh() {
+        return database::nvs::resetBatteryRatioHigh();
     }
 
     bool getCallsign(char* buffer, unsigned int size) {
@@ -197,6 +256,11 @@ namespace services::settings {
     bool resetAll() {
         bool ok = true;
         ok = resetTouchCalibration()    && ok;
+        ok = resetBatteryCapacity()     && ok;
+        ok = resetBatteryMinimal()      && ok;
+        ok = resetBatteryNominal()      && ok;
+        ok = resetBatteryMaximal()      && ok;
+        ok = resetBatteryRatioHigh()    && ok;
         ok = resetCallsign()            && ok;
         ok = resetCallsignSuffix()      && ok;
         ok = resetTheme()               && ok;
