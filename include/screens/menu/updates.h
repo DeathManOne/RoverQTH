@@ -21,13 +21,32 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
-#include <MSP4021.h>
 
-namespace screens::menu::updates {
-    bool isEditing();
-    void reset();
-    void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+#pragma once
+#include "screens/menu/page.h"
+
+namespace screens::menu {
+    class Updates final : public Page {
+        public:
+            void draw(ST7796S::MSP4021 &tft) override;
+        private:
+            enum class Action {NONE};
+
+            char sotaVersionValue[16] = "";
+            char sotaUpdateValue[16]  = "";
+            char potaVersionValue[16] = "";
+            char potaUpdateValue[16]  = "";
+
+            Field<Action> sotaVersionField = makeField("SOTA version", Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> sotaUpdateField  = makeField("SOTA update",  Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> potaVersionField = makeField("POTA version", Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> potaUpdateField  = makeField("POTA update",  Action::NONE, ui::settings::themes::defaults::WHITE);
+
+            Field<Action>* fields[4] = {
+                &sotaVersionField,
+                &sotaUpdateField,
+                &potaVersionField,
+                &potaUpdateField
+            };
+    };
 }

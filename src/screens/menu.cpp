@@ -25,68 +25,70 @@
 #include "screens/menu.h"
 #include "screens/menu/navigation.h"
 #include "screens/mockup/buttons.h"
-#include "screens/mockup/grid.h"
 #include "screens/menu/about.h"
 #include "screens/menu/battery.h"
+#include "screens/menu/displayer.h"
 #include "screens/menu/general.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
-#include "services/battery.h"
 #include "services/gps.h"
 
 namespace screens::menu {
     namespace {
         Item currentItem = Item::GENERAL;
+
+        General generalPage;
+        Displayer displayerPage;
+        Updates updatesPage;
+        Storage storagePage;
+        Battery batteryPage;
+        About aboutPage;
+
+        Page& pageFromItem(Item item) {
+            switch (item) {
+                case Item::GENERAL:     return generalPage;
+                case Item::DISPLAYER:   return displayerPage;
+                case Item::UPDATE:      return updatesPage;
+                case Item::STORAGE:     return storagePage;
+                case Item::BATTERY:     return batteryPage;
+                case Item::ABOUT:       return aboutPage;
+                case Item::COUNT:
+                default:                return generalPage;
+            }
+        }
+        Page& currentPage() { return pageFromItem(currentItem); }
     }
 
-    Item current()          { return currentItem; }
-    void select(Item item)  { currentItem = item; }
-    void preload()          {}
+    bool isEditing() { return currentPage().isEditing(); }
+    Item current() { return currentItem; }
 
-    bool isEditing() {
-        switch (currentItem) {
-            case Item::GENERAL:
-                return screens::menu::general::isEditing();
-            case Item::ABOUT:
-                return screens::menu::about::isEditing();
-            default:
-                return false;
-        }
+    void select(Item item) {
+        if (item == Item::COUNT)
+            { return; }
+        currentItem = item;
     }
 
     void reset() {
         currentItem = Item::GENERAL;
-        screens::menu::general::reset();
-        screens::menu::about::reset();
+
+        generalPage.reset();
+        displayerPage.reset();
+        updatesPage.reset();
+        storagePage.reset();
+        batteryPage.reset();
+        aboutPage.reset();
     }
 
     void draw(ST7796S::MSP4021 &tft) {
         screens::main::title::draw(tft);
         screens::menu::navigation::draw(tft);
         screens::mockup::buttons::draw(tft);
-
-        switch (currentItem) {
-            case Item::GENERAL:
-                screens::menu::general::draw(tft);
-                break;
-            case Item::UPDATE:
-                screens::menu::updates::draw(tft);
-                break;
-            case Item::STORAGE:
-                screens::menu::storage::draw(tft);
-                break;
-            case Item::BATTERY:
-                screens::menu::battery::draw(tft);
-                break;
-            case Item::ABOUT:
-                screens::menu::about::draw(tft);
-                break;
-        }
+        currentPage().draw(tft);
     }
 
     void update(ST7796S::MSP4021 &tft) {
-        if (isEditing())
-            { return; }
+        if (isEditing()) { return; }
+
         char date[16];
         char uptime[16];
         char battery[8];
@@ -94,20 +96,12 @@ namespace screens::menu {
         services::gps::getDate(date, sizeof(date));
         screens::main::title::getUptime(uptime, sizeof(uptime));
         screens::main::title::getBatteryLevel(battery, sizeof(battery));
-
         screens::main::title::updateDate(tft, date);
         screens::main::title::updateTime(tft, uptime);
         screens::main::title::updateBattery(tft, battery);
 
-        switch (currentItem) {
-            case Item::GENERAL:
-                screens::menu::general::update(tft);
-                break;
-            case Item::BATTERY:
-                //screens::menu::battery::update(tft);
-                break;
-            default:
-                break;
-        }
+        currentPage().update(tft);
     }
+
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return currentPage().handleTouch(tft, x, y); }
 }

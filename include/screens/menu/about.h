@@ -22,12 +22,26 @@
  */
 
 #pragma once
-#include <MSP4021.h>
+#include "screens/menu/page.h"
 
-namespace screens::menu::about {
-    bool isEditing();
-    void reset();
-    void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+namespace screens::menu {
+    class About final : public Page {
+        public:
+            void draw(ST7796S::MSP4021 &tft) override;
+        private:
+            enum class Action {NONE};
+            Field<Action> nameField     = makeField("Name",     Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> versionField  = makeField("Version",  Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> authorField   = makeField("Author",   Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> licenseField  = makeField("License",  Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<Action> linkField     = makeField("Link",     Action::NONE, ui::settings::themes::defaults::WHITE);
+
+            Field<Action>* fields[5] = {
+                &nameField,
+                &versionField,
+                &authorField,
+                &licenseField,
+                &linkField
+            };
+    };
 }

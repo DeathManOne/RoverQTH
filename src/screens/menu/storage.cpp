@@ -21,49 +21,67 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
 #include "screens/menu/storage.h"
 #include "screens/mockup/grid.h"
-#include "ui/settings/mockup.h"
-#include "ui/settings/themes/defaults.h"
+#include "services/storage.h"
 
-#include "ui/fonts/RobotoMono_Bold_16.h"
-
-namespace screens::menu::storage {
-    namespace {
-        enum class Mode {GRID, KEYBOARD};
-        Mode mode = Mode::GRID;
+namespace screens::menu {
+    const char* Storage::typeToText(uint8_t type) {
+        switch (type) {
+            case CARD_MMC:  return "MMC";
+            case CARD_SD:   return "SDSC";
+            case CARD_SDHC: return "SDHC/SDXC";
+            default:        return "Unknown";
+        }
     }
 
-    bool isEditing()    { return mode == Mode::KEYBOARD; }
-    void reset()        { mode = Mode::GRID; }
+    void Storage::formatCapacity(uint64_t bytes, char* buffer, size_t size) {
+        constexpr double GB = 1024.0 * 1024.0 * 1024.0;
+        std::snprintf(buffer, size, "%.1f GB", static_cast<double>(bytes) / GB);
+    }
 
-    void draw(ST7796S::MSP4021 &tft) {
+    void Storage::formatUsage(uint64_t total, uint64_t used, char* buffer, size_t size) {
+        const uint64_t percent = total > 0 ? (used * 100ULL) / total : 0;
+        std::snprintf(buffer, size, "%llu %%", static_cast<unsigned long long>(percent));
+    }
+
+    void Storage::draw(ST7796S::MSP4021 &tft) {
         screens::mockup::grid::draw(tft);
 
         const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX() + (gap * 2);
-        const int y     = screens::mockup::grid::innerY() + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth() - (gap * 4);
+        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
+        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
+        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
         const int rowH  = 28;
 
-        tft.setFont(ST7796S::RobotoMono_Bold_16);
-        tft.setTextColor(ui::settings::themes::defaults::GREEN);
-        tft.textCenterLeft(x, y, w, rowH, "STORAGE");
+        int rowY = y + rowH + (gap * 3);
+        for (Field<Action>* field : fields) {
+            makeFieldArea(*field, x, rowY, w, rowH);
+            rowY += rowH;
+        }
 
-        tft.lineH(
-            x, y + rowH + gap,
-            w, ui::settings::themes::defaults::BORDER
-        );
+        uint8_t type   = 0;
+        uint64_t size  = 0;
+        uint64_t total = 0;
+        uint64_t used  = 0;
 
-        tft.textCenter(
-            screens::mockup::grid::innerX(),
-            screens::mockup::grid::innerY(),
-            screens::mockup::grid::innerWidth(),
-            screens::mockup::grid::innerHeight(),
-            "COMING SOON"
-        );
+        if (services::storage::readCardInfos(type, size, total, used)) {
+            std::snprintf(typeValue, sizeof(typeValue), "%s", typeToText(type));
+            formatCapacity(total, capacityValue, sizeof(capacityValue));
+            formatUsage(total, used, usageValue, sizeof(usageValue));
+        } else {
+            std::snprintf(typeValue,        sizeof(typeValue),      "Missing");
+            std::snprintf(capacityValue,    sizeof(capacityValue),  "--");
+            std::snprintf(usageValue,       sizeof(usageValue),     "--");
+        }
+
+        typeField.value     = typeValue;
+        capacityField.value = capacityValue;
+        usageField.value    = usageValue;
+        
+        drawTitle(tft, x, y, w, rowH, gap, "storage");
+        for (Field<Action>* field : fields)
+            { drawLine(tft, *field); }
     }
-
-    void update(ST7796S::MSP4021 &tft) {}
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 }

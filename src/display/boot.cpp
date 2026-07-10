@@ -38,7 +38,6 @@ namespace display::boot {
 
     void updateWifi (bool* value) { screens::boot::updateWifi(tft(), value); }
     void updateSD   (bool* value) { screens::boot::updateSD(tft(),   value); }
-    void updateGSM  (bool* value) { screens::boot::updateGSM(tft(),  value); }
     void updateGPS  (bool* value) { screens::boot::updateGPS(tft(),  value); }
 
     void updateGPSProgress(uint8_t progress) { screens::boot::updateGPSProgress(tft(), progress); }

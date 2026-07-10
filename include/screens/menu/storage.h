@@ -22,12 +22,31 @@
  */
 
 #pragma once
-#include <MSP4021.h>
+#include "screens/menu/page.h"
 
-namespace screens::menu::storage {
-    bool isEditing();
-    void reset();
-    void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+namespace screens::menu {
+    class Storage final : public Page {
+        public:
+            void draw(ST7796S::MSP4021 &tft) override;
+        private:
+            enum class Action {NONE};
+
+            char typeValue[16]      = "";
+            char capacityValue[16]  = "";
+            char usageValue[16]     = "";
+
+            Field<Action> typeField     = makeField("Type",     Action::NONE,   ui::settings::themes::defaults::WHITE);
+            Field<Action> capacityField = makeField("Capacity", Action::NONE,   ui::settings::themes::defaults::WHITE);
+            Field<Action> usageField    = makeField("Usage",    Action::NONE,   ui::settings::themes::defaults::WHITE);
+            
+            Field<Action>* fields[3] = {
+                &typeField,
+                &capacityField,
+                &usageField
+            };
+
+            static const char* typeToText(uint8_t type);
+            static void formatCapacity(uint64_t bytes, char* buffer, size_t size);
+            static void formatUsage(uint64_t total, uint64_t used, char* buffer, size_t size);
+    };
 }

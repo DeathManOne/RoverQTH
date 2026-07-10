@@ -52,8 +52,7 @@ namespace screens::boot {
 
         Field wifi  (0, "WiFi");
         Field sd    (1, "SD");
-        Field gsm   (2, "Emergency");
-        Field gps   (3, "GPS");
+        Field gps   (2, "GPS");
 
         void clearModule(ST7796S::MSP4021 &tft, const Field &field);
         void drawModuleStatus(ST7796S::MSP4021 &tft, Field &field);
@@ -182,7 +181,7 @@ namespace screens::boot {
         const int btnY      = tft.height() - btnH - (gap * 2);
         ui::widgets::buttons::BOOT_SEARCH_GPS = ui::widgets::buttons::makeArea(outerX, btnY, outerW, btnH);
 
-        Field* fields[] = {&wifi, &sd, &gsm, &gps};
+        Field* fields[] = {&wifi, &sd, &gps};
         constexpr int FIELD_COUNT = sizeof(fields) / sizeof(fields[0]);
 
         const int screenY   = 0;
@@ -207,7 +206,6 @@ namespace screens::boot {
 
     void updateWifi (ST7796S::MSP4021 &tft, bool* value) { updateField(tft, wifi, value); }
     void updateSD   (ST7796S::MSP4021 &tft, bool* value) { updateField(tft, sd,   value); }
-    void updateGSM  (ST7796S::MSP4021 &tft, bool* value) { updateField(tft, gsm,  value); }
 
     void updateGPS  (ST7796S::MSP4021 &tft, bool* value) {
         updateField(tft, gps, value);

@@ -33,7 +33,6 @@ namespace core::boot {
     namespace {
         bool wifiOk = false;
         bool sdOk   = false;
-        bool gsmOk  = false;
         bool gpsOk  = false;
 
         void initSdCard(SPIClass &sdSPI, uint32_t timeout);
@@ -114,7 +113,6 @@ namespace core::boot {
     bool run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
         wifiOk = false;
         sdOk   = false;
-        gsmOk  = false;
         gpsOk  = false;
 
         display::boot::clear();
@@ -131,8 +129,6 @@ namespace core::boot {
             );
         }
         display::boot::updateSD(&sdOk);
-
-        display::boot::updateGSM(&gsmOk);
 
         initGPS(gpsUART);
         if (gpsOk) { waitGPSAcquisition(gpsUART); }

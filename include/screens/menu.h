@@ -27,6 +27,7 @@
 namespace screens::menu {
     enum class Item {
         GENERAL,
+        DISPLAYER,
         UPDATE,
         STORAGE,
         BATTERY,
@@ -40,8 +41,7 @@ namespace screens::menu {
     void select(Item item);
     void reset();
 
-    void preload();
-
     void draw(ST7796S::MSP4021 &tft);
     void update(ST7796S::MSP4021 &tft);
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
 }

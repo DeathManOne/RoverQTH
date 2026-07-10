@@ -23,47 +23,30 @@
 
 #include "screens/menu/updates.h"
 #include "screens/mockup/grid.h"
-#include "ui/settings/mockup.h"
-#include "ui/settings/themes/defaults.h"
 
-#include "ui/fonts/RobotoMono_Bold_16.h"
-
-namespace screens::menu::updates {
-    namespace {
-        enum class Mode {GRID, KEYBOARD};
-        Mode mode = Mode::GRID;
-    }
-
-    bool isEditing()    { return mode == Mode::KEYBOARD; }
-    void reset()        { mode = Mode::GRID; }
-
-    void draw(ST7796S::MSP4021 &tft) {
+namespace screens::menu {
+    void Updates::draw(ST7796S::MSP4021 &tft) {
         screens::mockup::grid::draw(tft);
 
         const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX() + (gap * 2);
-        const int y     = screens::mockup::grid::innerY() + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth() - (gap * 4);
+        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
+        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
+        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
         const int rowH  = 28;
 
-        tft.setFont(ST7796S::RobotoMono_Bold_16);
-        tft.setTextColor(ui::settings::themes::defaults::GREEN);
-        tft.textCenterLeft(x, y, w, rowH, "UPDATE");
+        int rowY = y + rowH + (gap * 3);
+        for (Field<Action>* field : fields) {
+            makeFieldArea(*field, x, rowY, w, rowH);
+            rowY += rowH;
+        }
 
-        tft.lineH(
-            x, y + rowH + gap,
-            w, ui::settings::themes::defaults::BORDER
-        );
+        sotaVersionField.value = sotaVersionValue;
+        sotaUpdateField.value  = sotaUpdateValue;
+        potaVersionField.value = potaVersionValue;
+        potaUpdateField.value  = potaUpdateValue;
 
-        tft.textCenter(
-            screens::mockup::grid::innerX(),
-            screens::mockup::grid::innerY(),
-            screens::mockup::grid::innerWidth(),
-            screens::mockup::grid::innerHeight(),
-            "COMING SOON"
-        );
+        drawTitle(tft, x, y, w, rowH, gap, "updates");
+        for (Field<Action>* field : fields)
+            { drawLine(tft, *field); }
     }
-
-    void update(ST7796S::MSP4021 &tft) {}
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 }

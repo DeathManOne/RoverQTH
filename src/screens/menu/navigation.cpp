@@ -49,11 +49,12 @@ namespace screens::menu::navigation {
         bool isPressed(const Row &row, int tx, int ty);
 
         Row rows[] = {
-            makeRow(screens::menu::Item::GENERAL, "General"),
-            makeRow(screens::menu::Item::UPDATE,  "Update"),
-            makeRow(screens::menu::Item::STORAGE, "Storage"),
-            makeRow(screens::menu::Item::BATTERY, "Battery"),
-            makeRow(screens::menu::Item::ABOUT,   "About")
+            makeRow(screens::menu::Item::GENERAL,   "General"),
+            makeRow(screens::menu::Item::DISPLAYER, "Display"),
+            makeRow(screens::menu::Item::UPDATE,    "Updates"),
+            makeRow(screens::menu::Item::STORAGE,   "Storage"),
+            makeRow(screens::menu::Item::BATTERY,   "Battery"),
+            makeRow(screens::menu::Item::ABOUT,     "About")
         };
 
         constexpr size_t ROW_COUNT = static_cast<size_t>(screens::menu::Item::COUNT);
