@@ -29,6 +29,7 @@
 #include "screens/menu/battery.h"
 #include "screens/menu/displayer.h"
 #include "screens/menu/general.h"
+#include "screens/menu/network.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
 #include "services/gps.h"
@@ -39,6 +40,7 @@ namespace screens::menu {
 
         General generalPage;
         Displayer displayerPage;
+        Network networkPage;
         Updates updatesPage;
         Storage storagePage;
         Battery batteryPage;
@@ -48,7 +50,8 @@ namespace screens::menu {
             switch (item) {
                 case Item::GENERAL:     return generalPage;
                 case Item::DISPLAYER:   return displayerPage;
-                case Item::UPDATE:      return updatesPage;
+                case Item::NETWORK:     return networkPage;
+                case Item::UPDATES:     return updatesPage;
                 case Item::STORAGE:     return storagePage;
                 case Item::BATTERY:     return batteryPage;
                 case Item::ABOUT:       return aboutPage;
@@ -73,6 +76,7 @@ namespace screens::menu {
 
         generalPage.reset();
         displayerPage.reset();
+        networkPage.reset();
         updatesPage.reset();
         storagePage.reset();
         batteryPage.reset();

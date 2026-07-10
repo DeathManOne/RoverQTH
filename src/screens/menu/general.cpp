@@ -21,7 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include <cstring>
 
 #include "screens/main/title.h"

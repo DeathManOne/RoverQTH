@@ -51,7 +51,8 @@ namespace screens::menu::navigation {
         Row rows[] = {
             makeRow(screens::menu::Item::GENERAL,   "General"),
             makeRow(screens::menu::Item::DISPLAYER, "Display"),
-            makeRow(screens::menu::Item::UPDATE,    "Updates"),
+            makeRow(screens::menu::Item::NETWORK,   "Network"),
+            makeRow(screens::menu::Item::UPDATES,   "Updates"),
             makeRow(screens::menu::Item::STORAGE,   "Storage"),
             makeRow(screens::menu::Item::BATTERY,   "Battery"),
             makeRow(screens::menu::Item::ABOUT,     "About")

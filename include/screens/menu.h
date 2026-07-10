@@ -28,7 +28,8 @@ namespace screens::menu {
     enum class Item {
         GENERAL,
         DISPLAYER,
-        UPDATE,
+        NETWORK,
+        UPDATES,
         STORAGE,
         BATTERY,
         ABOUT,
