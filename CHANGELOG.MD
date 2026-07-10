@@ -7,6 +7,38 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.4.0] - 2026-07-10
+
+### Added
+- Added Network settings page
+- Added shared menu page helpers:
+  - Field management
+  - Layout helpers
+  - Drawing helpers
+  - Touch helpers
+
+### Changed
+- Refactored all settings pages to use the common `Page` architecture:
+  - General
+  - Display
+  - Updates
+  - Storage
+  - Battery
+  - Network
+  - About
+- Simplified menu routing using polymorphism
+- Centralized common menu rendering and touch handling
+- Reduced duplicated code across all settings pages
+- Improved maintainability and extensibility of the settings system
+
+### Internal
+- Added common `Page` base class for all settings screens
+- Reworked settings menu architecture
+- Centralized page state management
+- Simplified menu page integration
+
+---
+
 ## [1.3.0] - 2026-07-09
 
 ### Added

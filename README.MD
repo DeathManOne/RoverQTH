@@ -44,21 +44,18 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * On-device recalibration from the Settings menu
 * Optimized landscape interface
 * Embedded fonts and graphical resources
+* On-device display configuration
 
 ### System Features
 
 * Boot status screen
-* Screen rotation protection
-* Persistent configuration storage
-* Callsign customization
-* Callsign suffix support (/P, /M, /MM, /AM)
-* Metric / Imperial units support
 * Settings menu
-* ESP32-based architecture
+* Modular settings page framework
+* Network configuration page (WiFi / Bluetooth preparation)
+* Persistent configuration storage
 * SD card initialization
-* Battery level monitoring
-* Battery presence detection
-* Configurable battery profile
+* Battery monitoring
+* Battery profile configuration
 * GNSS-based clock service preparation
 
 ### Power Management
@@ -266,10 +263,11 @@ Implemented:
 * Battery voltage divider configuration
 * Dynamic battery low/critical thresholds
 * GNSS-based clock service preparation
+* Network settings page
 
 Not yet implemented:
 
-* WiFi connectivity
+* WiFi communication
 * OTA firmware updates
 * Full MARK navigation/storage workflow
 * SOTA navigation

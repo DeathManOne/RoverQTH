@@ -1,6 +1,6 @@
 {
   "name": "RoverQTH",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Autonomous GNSS assistant for amateur radio rover operations with Maidenhead locator display, GPS information, and touch user interface.",
   "keywords": ["esp32", "arduino", "gnss", "gps", "ublox", "maidenhead", "locator", "qth", "ham-radio", "amateur-radio", "touchscreen"],
   "repository": {
