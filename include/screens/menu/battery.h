@@ -1,5 +1,5 @@
 /*
- * screens/menu/battery.h
+ * include/screens/menu/battery.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -23,53 +23,53 @@
 
 #pragma once
 
+#include <MSP4021.h>
 #include "screens/menu/page.h"
 
 namespace screens::menu {
     class Battery final : public Page {
         public:
-            void draw(ST7796S::MSP4021 &tft) override;
+            void draw       (ST7796S::MSP4021 &tft) override;
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
-
         private:
-            enum class Action {NONE, CAPACITY, MINIMAL, NOMINAL, MAXIMAL, RATIO_HIGH, RATIO_LOW};
+            enum class _Action {NONE, CAPACITY, MINIMAL, NOMINAL, MAXIMAL, RATIO_HIGH, RATIO_LOW};
 
-            char capacityValue[16]  = "";
-            char minimalValue[16]   = "";
-            char nominalValue[16]   = "";
-            char maximalValue[16]   = "";
-            char ratioHighValue[16] = "";
-            char ratioLowValue[16]  = "";
+            char _capacityValue[16]  = "";
+            char _minimalValue[16]   = "";
+            char _nominalValue[16]   = "";
+            char _maximalValue[16]   = "";
+            char _ratioHighValue[16] = "";
+            char _ratioLowValue[16]  = "";
 
-            Field<Action> capacityField  = makeField("Capacity",   Action::CAPACITY,   ui::settings::themes::defaults::GREEN);
-            Field<Action> minimalField   = makeField("Minimal",    Action::MINIMAL,    ui::settings::themes::defaults::GREEN);
-            Field<Action> nominalField   = makeField("Nominal",    Action::NOMINAL,    ui::settings::themes::defaults::GREEN);
-            Field<Action> maximalField   = makeField("Maximal",    Action::MAXIMAL,    ui::settings::themes::defaults::GREEN);
-            Field<Action> ratioHighField = makeField("Ratio high", Action::RATIO_HIGH, ui::settings::themes::defaults::GREEN);
-            Field<Action> ratioLowField  = makeField("Ratio low",  Action::RATIO_LOW,  ui::settings::themes::defaults::GREEN);
+            Field<_Action> _capacityField  = _makeField("Capacity",   _Action::CAPACITY,   ui::settings::themes::defaults::GREEN);
+            Field<_Action> _minimalField   = _makeField("Minimal",    _Action::MINIMAL,    ui::settings::themes::defaults::GREEN);
+            Field<_Action> _nominalField   = _makeField("Nominal",    _Action::NOMINAL,    ui::settings::themes::defaults::GREEN);
+            Field<_Action> _maximalField   = _makeField("Maximal",    _Action::MAXIMAL,    ui::settings::themes::defaults::GREEN);
+            Field<_Action> _ratioHighField = _makeField("Ratio high", _Action::RATIO_HIGH, ui::settings::themes::defaults::GREEN);
+            Field<_Action> _ratioLowField  = _makeField("Ratio low",  _Action::RATIO_LOW,  ui::settings::themes::defaults::GREEN);
 
-            Field<Action>* fields[6] = {
-                &capacityField,
-                &minimalField,
-                &nominalField,
-                &maximalField,
-                &ratioHighField,
-                &ratioLowField
+            Field<_Action>* _fields[6] = {
+                &_capacityField,
+                &_minimalField,
+                &_nominalField,
+                &_maximalField,
+                &_ratioHighField,
+                &_ratioLowField
             };
 
-            static uint32_t nextCapacity(uint32_t value);
-            const char* capacityToText(uint32_t value);
-            void actionCapacity(ST7796S::MSP4021 &tft, Field<Action> &field);
+            static uint32_t _nextCapacity(uint32_t value);
+            const char* _capacityToText(uint32_t value);
+            void _actionCapacity(ST7796S::MSP4021 &tft, Field<_Action> &field);
 
-            static float nextVoltage(float voltage);
-            static const char* voltageToText(float voltage, char* buffer, size_t size);
-            void actionMinimal(ST7796S::MSP4021 &tft, Field<Action> &field);
-            void actionNominal(ST7796S::MSP4021 &tft, Field<Action> &field);
-            void actionMaximal(ST7796S::MSP4021 &tft, Field<Action> &field);
+            static float _nextVoltage(float voltage);
+            static const char* _voltageToText(float voltage, char* buffer, size_t size);
+            void _actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field);
+            void _actionNominal(ST7796S::MSP4021 &tft, Field<_Action> &field);
+            void _actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field);
 
-            static uint8_t nextRatioHigh(uint8_t value);
-            static uint8_t previousRatioHigh(uint8_t value);
-            static const char* ratioToText(uint8_t value, char* buffer, size_t size);
-            void actionRatio(ST7796S::MSP4021 &tft, Field<Action> &field);
+            static uint8_t _nextRatioHigh(uint8_t value);
+            static uint8_t _previousRatioHigh(uint8_t value);
+            static const char* _ratioToText(uint8_t value, char* buffer, size_t size);
+            void _actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field);
     };
 }

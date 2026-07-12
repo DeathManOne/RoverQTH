@@ -1,5 +1,5 @@
 /*
- * screens/menu/about.cpp
+ * src/screens/menu/about.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,32 +22,35 @@
  */
 
 #include "screens/menu/about.h"
-#include "screens/mockup/grid.h"
+#include "ui/mockup/grid.h"
+#include "ui/settings/mockup.h"
 
-namespace screens::menu {
-    void About::draw(ST7796S::MSP4021 &tft) {
-        screens::mockup::grid::draw(tft);
+using screens::menu::About;
+namespace grid     = ui::mockup::grid;
+namespace uiMockup = ui::settings::mockup;
 
-        const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
-        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
-        const int rowH  = 28;
+void About::draw(ST7796S::MSP4021 &tft) {
+    grid::draw(tft);
 
-        int rowY = y + rowH + (gap * 3);
-        for (Field<Action>* field : fields) {
-            makeFieldArea(*field, x, rowY, w, rowH);
-            rowY += rowH;
-        }
+    const int gap   = uiMockup::GAP;
+    const int x     = grid::innerX()     + (gap * 2);
+    const int y     = grid::innerY()     + (gap * 2);
+    const int w     = grid::innerWidth() - (gap * 4);
+    const int rowH  = 28;
 
-        nameField.value     = PROJECT_NAME;
-        versionField.value  = PROJECT_VERSION;
-        authorField.value   = PROJECT_AUTHOR;
-        licenseField.value  = PROJECT_LICENSE;
-        linkField.value     = PROJECT_URL;
-
-        drawTitle(tft, x, y, w, rowH, gap, "about");
-        for (Field<Action>* field : fields)
-            { drawLine(tft, *field); }
+    int rowY = y + rowH + (gap * 3);
+    for (Field<_Action>* field : _fields) {
+        _makeFieldArea(*field, x, rowY, w, rowH);
+        rowY += rowH;
     }
+
+    _nameField.value     = PROJECT_NAME;
+    _versionField.value  = PROJECT_VERSION;
+    _authorField.value   = PROJECT_AUTHOR;
+    _licenseField.value  = PROJECT_LICENSE;
+    _linkField.value     = PROJECT_URL;
+
+    _drawTitle(tft, x, y, w, rowH, gap, "about");
+    for (Field<_Action>* field : _fields)
+        { _drawLine(tft, *field); }
 }

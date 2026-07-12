@@ -1,5 +1,5 @@
 /*
- * display/manager.h
+ * include/display/manager.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #include <cstdint>
 #include "services/settings.h"
 

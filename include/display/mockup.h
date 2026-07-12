@@ -1,5 +1,5 @@
 /*
- * display/mockup.h
+ * include/display/mockup.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

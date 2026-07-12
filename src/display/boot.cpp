@@ -1,5 +1,5 @@
 /*
- * display/boot.cpp
+ * src/display/boot.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,24 +21,28 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <MSP4021.h>
 #include "display/boot.h"
 #include "display/internal.h"
 #include "display/manager.h"
 #include "screens/boot.h"
 #include "ui/images/logo.h"
 
-namespace display::boot {
-    namespace {
-        ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-    }
+namespace boot     = display::boot;
+namespace internal = display::internal;
+namespace sBoot    = screens::boot;
 
-    void clear() { screens::boot::clear(tft()); }
-    void draw() { screens::boot::draw(tft()); }
-    void drawLogo() { tft().image(0, 10, ST7796S::logo); }
-
-    void updateWifi (bool* value) { screens::boot::updateWifi(tft(), value); }
-    void updateSD   (bool* value) { screens::boot::updateSD(tft(),   value); }
-    void updateGPS  (bool* value) { screens::boot::updateGPS(tft(),  value); }
-
-    void updateGPSProgress(uint8_t progress) { screens::boot::updateGPSProgress(tft(), progress); }
+namespace {
+    ST7796S::MSP4021& _tft() { return *internal::TFT; }
 }
+
+void boot::clear() { sBoot::clear(_tft()); }
+void boot::draw () { sBoot::draw(_tft()); }
+
+void boot::drawLogo() { _tft().image(0, 10, ST7796S::logo); }
+
+void boot::updateWifi(bool* value) { sBoot::updateWifi(_tft(), value); }
+void boot::updateSD  (bool* value) { sBoot::updateSD(_tft(),   value); }
+void boot::updateGPS (bool* value) { sBoot::updateGPS(_tft(),  value); }
+
+void boot::updateGPSProgress(uint8_t progress) { sBoot::updateGPSProgress(_tft(), progress); }

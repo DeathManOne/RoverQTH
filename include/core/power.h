@@ -1,5 +1,5 @@
 /*
- * core/power.h
+ * include/core/power.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

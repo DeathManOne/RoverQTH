@@ -1,5 +1,5 @@
 /*
- * screens/main/locator.h
+ * include/screens/main/locator.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

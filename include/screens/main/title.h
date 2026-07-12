@@ -1,5 +1,5 @@
 /*
- * screens/main/title.h
+ * include/screens/main/title.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -26,7 +26,8 @@
 
 namespace screens::main::title {
     uint64_t uptimeSeconds();
-    void getUptime(char* buffer, size_t size);
+
+    void getUptime      (char* buffer, size_t size);
     void getBatteryLevel(char* buffer, size_t size);
 
     void setCallsign(const char* value);
@@ -34,10 +35,10 @@ namespace screens::main::title {
     void setTime    (const char* value);
     void setBattery (const char* value);
 
-    void updateCallsign (ST7796S::MSP4021 &tft, const char* value);
-    void updateDate     (ST7796S::MSP4021 &tft, const char* value);
-    void updateTime     (ST7796S::MSP4021 &tft, const char* value);
-    void updateBattery  (ST7796S::MSP4021 &tft, const char* value);
+    void updateCallsign(ST7796S::MSP4021 &tft, const char* value);
+    void updateDate    (ST7796S::MSP4021 &tft, const char* value);
+    void updateTime    (ST7796S::MSP4021 &tft, const char* value);
+    void updateBattery (ST7796S::MSP4021 &tft, const char* value);
 
     void draw(ST7796S::MSP4021 &tft);
 }

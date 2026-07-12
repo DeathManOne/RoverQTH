@@ -1,5 +1,5 @@
 /*
- * screens/menu/network.h
+ * include/screens/menu/network.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <MSP4021.h>
 #include "screens/menu/page.h"
 
 namespace screens::menu {
@@ -30,23 +31,17 @@ namespace screens::menu {
         public:
             void draw(ST7796S::MSP4021 &tft) override;
         private:
-            enum class Action {NONE, WIFI_SSID, WIFI_PASS, BT_NAME, BT_PASS};
+            enum class _Action {NONE, WIFI_SSID, WIFI_PASS, BT_NAME, BT_PASS};
 
-            char wifiSsidValue[32]  = "";
-            char wifiPassValue[32]  = "";
-            char btNameValue[32]    = "";
-            char btPassValue[32]    = "";
+            char _wifiSsidValue[32]  = "";
+            char _wifiPassValue[32]  = "";
 
-            Field<Action> wifiSsidField = makeField("WiFi SSID",      Action::WIFI_SSID, ui::settings::themes::defaults::WHITE);
-            Field<Action> wifiPassField = makeField("WiFi password",  Action::WIFI_PASS, ui::settings::themes::defaults::WHITE);
-            Field<Action> btNameField   = makeField("Bluetooth name", Action::BT_NAME,   ui::settings::themes::defaults::WHITE);
-            Field<Action> btPassField   = makeField("Bluetooth pin",  Action::BT_PASS,   ui::settings::themes::defaults::WHITE);
+            Field<_Action> _wifiSsidField = _makeField("WiFi SSID",      _Action::WIFI_SSID, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _wifiPassField = _makeField("WiFi password",  _Action::WIFI_PASS, ui::settings::themes::defaults::WHITE);
 
-            Field<Action>* fields[4] = {
-                &wifiSsidField,
-                &wifiPassField,
-                &btNameField,
-                &btPassField
+            Field<_Action>* _fields[2] = {
+                &_wifiSsidField,
+                &_wifiPassField
             };
     };
 }

@@ -1,5 +1,5 @@
 /*
- * ui/settings/mockup.h
+ * include/ui/settings/mockup.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,16 +24,14 @@
 #pragma once
 #include <cstdint>
 
-namespace ui::settings {
-    namespace mockup {
-        constexpr int GAP                       = 4;
-        constexpr int RADIUS                    = 10;
-        constexpr int HEADER_HEIGHT             = 36;
-        constexpr int GRID_WIDTH                = 320;
-        constexpr int RIGHT_ROW_COUNT           = 6;
-        constexpr int GRID_REF_ROW_COUNT        = 7;
-        constexpr int BUTTON_COUNT              = 3;
-        constexpr int BUTTON_HEIGHT             = 34;
-        constexpr int STATUS_TOP_BOTTOM_HEIGHT  = 20;
-    }
+namespace ui::settings::mockup {
+    constexpr int GAP                       = 4;
+    constexpr int RADIUS                    = 10;
+    constexpr int HEADER_HEIGHT             = 36;
+    constexpr int GRID_WIDTH                = 320;
+    constexpr int RIGHT_ROW_COUNT           = 6;
+    constexpr int GRID_REF_ROW_COUNT        = 7;
+    constexpr int BUTTON_COUNT              = 3;
+    constexpr int BUTTON_HEIGHT             = 34;
+    constexpr int STATUS_TOP_BOTTOM_HEIGHT  = 20;
 }

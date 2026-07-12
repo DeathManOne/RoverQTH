@@ -1,5 +1,5 @@
 /*
- * screens/menu/storage.h
+ * include/screens/menu/storage.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,6 +22,8 @@
  */
 
 #pragma once
+
+#include <MSP4021.h>
 #include "screens/menu/page.h"
 
 namespace screens::menu {
@@ -29,24 +31,24 @@ namespace screens::menu {
         public:
             void draw(ST7796S::MSP4021 &tft) override;
         private:
-            enum class Action {NONE};
+            enum class _Action {NONE};
 
-            char typeValue[16]      = "";
-            char capacityValue[16]  = "";
-            char usageValue[16]     = "";
+            char _typeValue[16]      = "";
+            char _capacityValue[16]  = "";
+            char _usageValue[16]     = "";
 
-            Field<Action> typeField     = makeField("Type",     Action::NONE,   ui::settings::themes::defaults::WHITE);
-            Field<Action> capacityField = makeField("Capacity", Action::NONE,   ui::settings::themes::defaults::WHITE);
-            Field<Action> usageField    = makeField("Usage",    Action::NONE,   ui::settings::themes::defaults::WHITE);
+            Field<_Action> _typeField     = _makeField("Type",     _Action::NONE,   ui::settings::themes::defaults::WHITE);
+            Field<_Action> _capacityField = _makeField("Capacity", _Action::NONE,   ui::settings::themes::defaults::WHITE);
+            Field<_Action> _usageField    = _makeField("Usage",    _Action::NONE,   ui::settings::themes::defaults::WHITE);
             
-            Field<Action>* fields[3] = {
-                &typeField,
-                &capacityField,
-                &usageField
+            Field<_Action>* _fields[3] = {
+                &_typeField,
+                &_capacityField,
+                &_usageField
             };
 
-            static const char* typeToText(uint8_t type);
-            static void formatCapacity(uint64_t bytes, char* buffer, size_t size);
-            static void formatUsage(uint64_t total, uint64_t used, char* buffer, size_t size);
+            static const char* _typeToText(uint8_t type);
+            static void _formatCapacity(uint64_t bytes, char* buffer, size_t size);
+            static void _formatUsage(uint64_t total, uint64_t used, char* buffer, size_t size);
     };
 }

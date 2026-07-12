@@ -1,5 +1,5 @@
 /*
- * ui/settings/themes/defaults.h
+ * include/ui/settings/themes/defaults.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,17 +24,15 @@
 #pragma once
 #include <cstdint>
 
-namespace ui::settings::themes {
-    namespace defaults {
-        constexpr uint16_t BORDER = 0x3AEB;
-        constexpr uint16_t NAV    = 0x33FF;
-        constexpr uint16_t WHITE  = 0xFFFF;
-        constexpr uint16_t CYAN   = 0x05BF;
-        constexpr uint16_t GREEN  = 0x07E0;
-        constexpr uint16_t ORANGE = 0xFD20;
-        constexpr uint16_t YELLOW = 0xFFE0;
-        constexpr uint16_t RED    = 0xF800;
-        constexpr uint16_t GREY   = 0xBDF7;
-        constexpr uint16_t BLACK  = 0x0000;
-    }
+namespace ui::settings::themes::defaults {
+    constexpr uint16_t BORDER = 0x3AEB;
+    constexpr uint16_t NAV    = 0x33FF;
+    constexpr uint16_t WHITE  = 0xFFFF;
+    constexpr uint16_t CYAN   = 0x05BF;
+    constexpr uint16_t GREEN  = 0x07E0;
+    constexpr uint16_t ORANGE = 0xFD20;
+    constexpr uint16_t YELLOW = 0xFFE0;
+    constexpr uint16_t RED    = 0xF800;
+    constexpr uint16_t GREY   = 0xBDF7;
+    constexpr uint16_t BLACK  = 0x0000;
 }

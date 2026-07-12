@@ -1,5 +1,5 @@
 /*
- * screens/menu/page.h
+ * include/screens/menu/page.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -28,11 +28,10 @@
 #include <cstdint>
 #include <MSP4021.h>
 
+#include "ui/fonts/RobotoMono_Bold_16.h"
+#include "ui/fonts/RobotoMono_Regular_14.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
-
-#include "ui/fonts/RobotoMono_Regular_14.h"
-#include "ui/fonts/RobotoMono_Bold_16.h"
 
 namespace screens::menu {
     class Page {
@@ -45,24 +44,25 @@ namespace screens::menu {
                 int h = 0;
             };
 
-            template<typename Action>
+            template<typename _Action>
             struct Field {
                 Area area;
                 const char* label = nullptr;
                 const char* value = nullptr;
-                Action action {};
+                _Action action {};
                 uint16_t color = ui::settings::themes::defaults::WHITE;
             };
 
             virtual ~Page() = default;
-            virtual void draw(ST7796S::MSP4021 &tft) = 0;
-            virtual void update(ST7796S::MSP4021 &tft) {}
+            virtual void draw       (ST7796S::MSP4021 &tft) = 0;
+            virtual void update     (ST7796S::MSP4021 &tft) {}
             virtual bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
-            virtual bool isEditing() const { return mode == Mode::KEYBOARD; }
-            virtual void reset() { mode = Mode::GRID; }
+
+            virtual bool isEditing() const { return _mode == Mode::KEYBOARD; }
+            virtual void reset()           { _mode = Mode::GRID; }
         protected:
-            Mode mode = Mode::GRID;
-            static void drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap, const char* title) {
+            Mode _mode = Mode::GRID;
+            static void _drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap, const char* title) {
                 char upper[32];
                 size_t i = 0;
                 while (title[i] != '\0' && i < sizeof(upper) - 1) {
@@ -77,25 +77,25 @@ namespace screens::menu {
                 tft.lineH(x, y + h + gap, w, ui::settings::themes::defaults::BORDER);
             }
 
-            template<typename Action>
-            static Field<Action> makeField(const char* label, Action action, uint16_t color) {
-                Field<Action> field;
+            template<typename _Action>
+            static Field<_Action> _makeField(const char* label, _Action action, uint16_t color) {
+                Field<_Action> field;
                 field.label  = label;
                 field.action = action;
                 field.color  = color;
                 return field;
             }
 
-            template<typename Action>
-            static void makeFieldArea(Field<Action> &field, int x, int y, int w, int h) {
+            template<typename _Action>
+            static void _makeFieldArea(Field<_Action> &field, int x, int y, int w, int h) {
                 field.area.x = x;
                 field.area.y = y;
                 field.area.w = w;
                 field.area.h = h;
             }
 
-            template<typename Action>
-            static void drawLine(ST7796S::MSP4021 &tft, const Field<Action> &field) {
+            template<typename _Action>
+            static void _drawLine(ST7796S::MSP4021 &tft, const Field<_Action> &field) {
                 const int gap = ui::settings::mockup::GAP;
 
                 tft.setFont(ST7796S::RobotoMono_Regular_14);
@@ -113,8 +113,8 @@ namespace screens::menu {
                 );
             }
             
-            template<typename Action>
-            static void updateField(ST7796S::MSP4021 &tft, const Field<Action> &field) {
+            template<typename _Action>
+            static void _updateField(ST7796S::MSP4021 &tft, const Field<_Action> &field) {
                 const int gap = ui::settings::mockup::GAP;
                 tft.rectFill(
                     field.area.x + (field.area.w / 2),  field.area.y,
@@ -130,8 +130,8 @@ namespace screens::menu {
                 );
             }
 
-            template<typename Action>
-            static bool isPressed(const Field<Action> &field, int tx, int ty) {
+            template<typename _Action>
+            static bool _isPressed(const Field<_Action> &field, int tx, int ty) {
                 return
                     tx >= field.area.x && tx < field.area.x + field.area.w &&
                     ty >= field.area.y && ty < field.area.y + field.area.h;

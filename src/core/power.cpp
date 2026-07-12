@@ -1,5 +1,5 @@
 /*
- * core/power.cpp
+ * src/core/power.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,15 +25,16 @@
 #include "core/power.h"
 #include "services/battery.h"
 
-namespace core::power {
-    bool shouldShutdown() { return services::battery::isCritical(); }
+namespace power   = core::power;
+namespace battery = services::battery;
 
-    void shutdown() {
-        // futur :
-        // storage save
-        // flush logs
-        // etc
+bool power::shouldShutdown() { return battery::isCritical(); }
 
-        esp_deep_sleep_start();
-    }
+void power::shutdown() {
+    // futur :
+    // storage save
+    // flush logs
+    // etc
+
+    esp_deep_sleep_start();
 }

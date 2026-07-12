@@ -1,5 +1,5 @@
 /*
- * core/state.h
+ * include/core/state.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

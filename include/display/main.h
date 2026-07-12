@@ -1,5 +1,5 @@
 /*
- * display/main.h
+ * include/display/main.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

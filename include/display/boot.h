@@ -1,5 +1,5 @@
 /*
- * display/boot.h
+ * include/display/boot.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

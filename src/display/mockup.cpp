@@ -1,5 +1,5 @@
 /*
- * display/mockup.cpp
+ * src/display/mockup.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,32 +21,38 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <MSP4021.h>
 #include "display/internal.h"
 #include "display/mockup.h"
 #include "display/manager.h"
-#include "screens/mockup/buttons.h"
-#include "screens/mockup/grid.h"
-#include "screens/mockup/header.h"
-#include "screens/mockup/right.h"
+#include "ui/mockup/buttons.h"
+#include "ui/mockup/grid.h"
+#include "ui/mockup/header.h"
+#include "ui/mockup/right.h"
 
-namespace display::mockup {
-    namespace {
-        ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-    }
+namespace internal = display::internal;
+namespace mockup   = display::mockup;
+namespace buttons  = ui::mockup::buttons;
+namespace grid     = ui::mockup::grid;
+namespace header   = ui::mockup::header;
+namespace right    = ui::mockup::right;
 
-    void clearHeader() { screens::mockup::header::clear(tft()); }
-    void drawHeader()  { screens::mockup::header::draw(tft()); }
-
-    void clearGrid() { screens::mockup::grid::clear(tft()); }
-    void drawGrid()  { screens::mockup::grid::draw(tft()); }
-
-    void clearRight() { screens::mockup::right::clear(tft()); }
-    void drawRight()  { screens::mockup::right::draw(tft()); }
-
-    void clearButtons() { screens::mockup::buttons::clear(tft()); }
-    void drawButtons()  { screens::mockup::buttons::draw(tft()); }
-
-    void updateMARK() { screens::mockup::buttons::updateMARK(tft()); }
-    void updateSOTA() { screens::mockup::buttons::updateSOTA(tft()); }
-    void updateMENU() { screens::mockup::buttons::updateMENU(tft()); }
+namespace {
+    ST7796S::MSP4021& _tft() { return *display::internal::TFT; }
 }
+
+void mockup::clearHeader() { header::clear(_tft()); }
+void mockup::drawHeader () { header::draw(_tft()); }
+
+void mockup::clearGrid() { grid::clear(_tft()); }
+void mockup::drawGrid () { grid::draw(_tft()); }
+
+void mockup::clearRight() { right::clear(_tft()); }
+void mockup::drawRight () { right::draw(_tft()); }
+
+void mockup::clearButtons() { buttons::clear(_tft()); }
+void mockup::drawButtons () { buttons::draw(_tft()); }
+
+void mockup::updateMARK() { buttons::updateMARK(_tft()); }
+void mockup::updateSOTA() { buttons::updateSOTA(_tft()); }
+void mockup::updateMENU() { buttons::updateMENU(_tft()); }

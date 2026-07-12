@@ -1,5 +1,5 @@
 /*
- * ui/settings/gps.h
+ * include/ui/settings/gps.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,15 +24,13 @@
 #pragma once
 #include <cstdint>
 
-namespace ui::settings {
-    namespace gps {
-        constexpr double MIN_HEADING_SPEED_KMH  = 2.0;
-        constexpr double HDOP_EXCELLENT         = 1.0;
-        constexpr double HDOP_GOOD              = 2.0;
-        constexpr double HDOP_FAIR              = 5.0;
-        constexpr double HDOP_POOR              = 10.0;
-        constexpr int SAT_MIN_FIX               = 4;
-        constexpr int SAT_GOOD                  = 7;
-        constexpr int SAT_EXCELLENT             = 10;
-    }
+namespace ui::settings::gps {
+    constexpr double MIN_HEADING_SPEED_KMH  = 2.0;
+    constexpr double HDOP_EXCELLENT         = 1.0;
+    constexpr double HDOP_GOOD              = 2.0;
+    constexpr double HDOP_FAIR              = 5.0;
+    constexpr double HDOP_POOR              = 10.0;
+    constexpr int SAT_MIN_FIX               = 4;
+    constexpr int SAT_GOOD                  = 7;
+    constexpr int SAT_EXCELLENT             = 10;
 }

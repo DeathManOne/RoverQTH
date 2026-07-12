@@ -1,5 +1,5 @@
 /*
- * core/battery.h
+ * include/core/battery.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

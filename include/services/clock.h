@@ -1,5 +1,5 @@
 /*
- * services/clock.h
+ * include/services/clock.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -27,6 +27,7 @@
 namespace services::clock {
     void sync(uint32_t utcEpoch);
     bool isSynced();
+
     uint32_t now();
     void reset();
 }

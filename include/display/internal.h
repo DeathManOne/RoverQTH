@@ -1,5 +1,5 @@
 /*
- * display/internal.h
+ * include/display/internal.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

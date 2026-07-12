@@ -1,5 +1,5 @@
 /*
- * RoverQTH.cpp
+ * src/RoverQTH.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,87 +21,92 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "RoverQTH.h"
 #include <Arduino.h>
 #include <SPI.h>
+
 #include "core/boot.h"
 #include "core/power.h"
 #include "core/screenManager.h"
 #include "core/state.h"
-#include "database/nvs.h"
 #include "display/manager.h"
+#include "RoverQTH.h"
 #include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
 #include "services/update.h"
 
-namespace RoverQTH {
-    namespace {
-        SPIClass sdSPI(HSPI);
-        HardwareSerial gpsUART(1);
+namespace boot       = core::boot;
+namespace power      = core::power;
+namespace manager    = core::screenManager;
+namespace state      = core::state;
+namespace app        = RoverQTH;
+namespace battery    = services::battery;
+namespace gps        = services::gps;
+namespace navigation = services::navigation;
+namespace settings   = services::settings;
+namespace update     = services::update;
 
-        uint32_t nextScreenRefresh  = 0;
-        uint32_t nextBatteryRefresh = 0;
+namespace {
+    SPIClass _sdSPI(HSPI);
+    HardwareSerial _gpsUART(1);
 
-        TaskHandle_t gpsTaskHandle  = nullptr;
+    uint32_t _nextScreenRefresh  = 0;
+    uint32_t _nextBatteryRefresh = 0;
+    TaskHandle_t _gpsTaskHandle  = nullptr;
 
-        constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = 900;
-        constexpr uint32_t GPS_TASK_PERIOD_MS    = 1000;
-        constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
+    constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = 900;
+    constexpr uint32_t GPS_TASK_PERIOD_MS    = 1000;
+    constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
 
-        void gpsTask(void*) {
-            while (true) {
-                const uint32_t startMs = millis();
-                services::gps::update(GPS_UPDATE_TIMEOUT_MS);
+    void _gpsTask(void*) {
+        while (true) {
+            const uint32_t startMs = millis();
+            gps::update(GPS_UPDATE_TIMEOUT_MS);
 
-                const uint32_t elapsedMs = millis() - startMs;
-                if (elapsedMs < GPS_TASK_PERIOD_MS)
-                    { vTaskDelay(pdMS_TO_TICKS(GPS_TASK_PERIOD_MS - elapsedMs)); }
-            }
+            const uint32_t elapsedMs = millis() - startMs;
+            if (elapsedMs < GPS_TASK_PERIOD_MS)
+                { vTaskDelay(pdMS_TO_TICKS(GPS_TASK_PERIOD_MS - elapsedMs)); }
         }
     }
+}
 
-    void setup() {
-        services::settings::begin();
-        services::battery::begin(BATT_PIN);
-        if (core::power::shouldShutdown())
-            { core::power::shutdown(); }
+void app::setup() {
+    settings::begin();
+    battery::begin(BATT_PIN);
+    if (power::shouldShutdown())
+        { power::shutdown(); }
 
-        display::begin(
-            TFT_CLK,        TFT_MISO,       TFT_MOSI,
-            TFT_TOUCH_CS,   TFT_SCREEN_CS,  TFT_SCREEN_DC,
-            TFT_SCREEN_RST, TFT_WIDTH,      TFT_HEIGHT
-        );
+    display::begin(
+        TFT_CLK,        TFT_MISO,       TFT_MOSI,
+        TFT_TOUCH_CS,   TFT_SCREEN_CS,  TFT_SCREEN_DC,
+        TFT_SCREEN_RST, TFT_WIDTH,      TFT_HEIGHT
+    );
 
-        services::update::begin();
-        services::navigation::begin();
+    update::begin();
+    navigation::begin();
 
-        core::state::begin();
-        core::boot::run(gpsUART, sdSPI);
-        core::screenManager::begin();
+    state::begin();
+    boot::run(_gpsUART, _sdSPI);
+    manager::begin();
 
-        nextScreenRefresh   = millis() + GPS_TASK_PERIOD_MS;
-        nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
-        xTaskCreatePinnedToCore(gpsTask, "GNSS", 8192, nullptr, 1, &gpsTaskHandle, 0);
+    _nextScreenRefresh   = millis() + GPS_TASK_PERIOD_MS;
+    _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
+    xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0);
+}
+
+void app::loop() {
+    const uint32_t now = millis();
+    if (now >= _nextBatteryRefresh) {
+        battery::update();
+        if (power::shouldShutdown())
+            { power::shutdown(); }
+        _nextBatteryRefresh = now + BATTERY_PERIOD_MS;
     }
+    manager::handleTouch();
 
-    void loop() {
-        const uint32_t now = millis();
-
-        if (now >= nextBatteryRefresh) {
-            services::battery::update();
-            if (core::power::shouldShutdown())
-                { core::power::shutdown(); }
-            nextBatteryRefresh = now + BATTERY_PERIOD_MS;
-        }
-
-        core::screenManager::handleTouch();
-
-        if (now < nextScreenRefresh)
-            { return; }
-        uint32_t nextRefreshIn = GPS_TASK_PERIOD_MS;
-        core::screenManager::update(nextRefreshIn);
-        nextScreenRefresh = now + nextRefreshIn;
-    }
+    if (now < _nextScreenRefresh) { return; }
+    uint32_t nextRefreshIn = GPS_TASK_PERIOD_MS;
+    manager::update(nextRefreshIn);
+    _nextScreenRefresh = now + nextRefreshIn;
 }

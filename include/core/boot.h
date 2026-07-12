@@ -1,5 +1,5 @@
 /*
- * core/boot.h
+ * include/core/boot.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

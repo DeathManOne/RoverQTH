@@ -1,5 +1,5 @@
 /*
- * screens/menu/navigation.h
+ * include/screens/menu/navigation.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

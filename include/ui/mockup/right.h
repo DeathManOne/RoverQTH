@@ -1,5 +1,5 @@
 /*
- * include/screens/menu.h
+ * include/ui/mockup/right.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,25 +24,17 @@
 #pragma once
 #include <MSP4021.h>
 
-namespace screens::menu {
-    enum class Item {
-        GENERAL,
-        DISPLAYER,
-        NETWORK,
-        UPDATES,
-        STORAGE,
-        BATTERY,
-        ABOUT,
-        COUNT
-    };
-    Item current();
+namespace ui::mockup::right {
+    void clear(ST7796S::MSP4021 &tft);
+    void draw (ST7796S::MSP4021 &tft);
 
-    bool isEditing();
+    int outerX();
+    int outerY();
+    int outerWidth();
+    int outerHeight();
 
-    void select(Item item);
-    void reset();
-
-    void draw       (ST7796S::MSP4021 &tft);
-    void update     (ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+    int innerX();
+    int innerY();
+    int innerWidth();
+    int innerHeight();
 }

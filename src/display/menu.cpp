@@ -1,5 +1,5 @@
 /*
- * display/menu.cpp
+ * src/display/menu.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,38 +21,43 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <MSP4021.h>
 #include "display/internal.h"
 #include "display/menu.h"
 #include "screens/menu.h"
 #include "screens/menu/navigation.h"
 #include "ui/settings/themes/defaults.h"
 
-namespace display::menu {
-    namespace {
-        ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-    }
+namespace internal   = display::internal;
+namespace menu       = display::menu;
+namespace sMenu      = screens::menu;
+namespace navigation = screens::menu::navigation;
+namespace theme      = ui::settings::themes::defaults;
 
-    void preload()  { screens::menu::reset(); }
-    void draw()     { screens::menu::draw(tft()); }
+namespace {
+    ST7796S::MSP4021& _tft() { return *internal::TFT; }
+}
 
-    void update(uint32_t &nextRefreshIn) {
-        screens::menu::update(tft());
-        nextRefreshIn = 1000;
-    }
+void menu::preload() { sMenu::reset(); }
+void menu::draw()    { sMenu::draw(_tft()); }
 
-    bool handleTouch(int x, int y) {
-        if (screens::menu::isEditing()) {
-            bool handled = screens::menu::handleTouch(tft(), x, y);
-            if (handled && !screens::menu::isEditing()) {
-                tft().fillScreen(ui::settings::themes::defaults::BLACK);
-                draw();
-            }
-            return true;
-        }
-        if (screens::menu::navigation::handleTouch(x, y)) {
+void menu::update(uint32_t &nextRefreshIn) {
+    sMenu::update(_tft());
+    nextRefreshIn = 1000;
+}
+
+bool menu::handleTouch(int x, int y) {
+    if (sMenu::isEditing()) {
+        bool handled = sMenu::handleTouch(_tft(), x, y);
+        if (handled && !sMenu::isEditing()) {
+            _tft().fillScreen(theme::BLACK);
             draw();
-            return true;
         }
-        return screens::menu::handleTouch(tft(), x, y);
+        return true;
     }
+    if (sMenu::navigation::handleTouch(x, y)) {
+        draw();
+        return true;
+    }
+    return sMenu::handleTouch(_tft(), x, y);
 }

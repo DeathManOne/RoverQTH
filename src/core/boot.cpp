@@ -1,5 +1,5 @@
 /*
- * core/boot.cpp
+ * src/core/boot.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -29,115 +29,117 @@
 #include "services/storage.h"
 #include "ui/widgets/buttons.h"
 
-namespace core::boot {
-    namespace {
-        bool wifiOk = false;
-        bool sdOk   = false;
-        bool gpsOk  = false;
+namespace boot    = core::boot;
+namespace state   = core::state;
+namespace dBoot   = display::boot;
+namespace gps     = services::gps;
+namespace storage = services::storage;
+namespace buttons = ui::widgets::buttons;
 
-        void initSdCard(SPIClass &sdSPI, uint32_t timeout);
-        void initGPS(HardwareSerial &gpsUART);
-        void waitGPSAcquisition(HardwareSerial &gpsUART);
+namespace {
+    bool _wifiOk = false;
+    bool _sdOk   = false;
+    bool _gpsOk  = false;
 
-        void initSdCard(SPIClass &sdSPI, uint32_t timeout) {
-            sdOk = services::storage::begin(sdSPI, timeout);
-            display::boot::updateSD(&sdOk);
+    void _initSdCard(SPIClass &sdSPI, uint32_t timeout);
+    void _initGPS           (HardwareSerial &gpsUART);
+    void _waitGPSAcquisition(HardwareSerial &gpsUART);
 
-            if (sdOk) {
-                uint8_t type;
-                uint64_t size, totalBytes, usedBytes;
-                sdOk = services::storage::readCardInfos(type, size, totalBytes, usedBytes);
-                display::boot::updateSD(&sdOk);
-            }
-        }
+    void _initSdCard(SPIClass &sdSPI, uint32_t timeout) {
+        _sdOk = storage::begin(sdSPI, timeout);
 
-        void initGPS(HardwareSerial &gpsUART) {
-            gpsOk = services::gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-            display::boot::updateGPS(&gpsOk);
+        dBoot::updateSD(&_sdOk);
+        if (!_sdOk) { return; }
 
-            if (gpsOk)
-                { return; }
-            while (true) {
-                int x, y;
-                if (display::TRead(x, y)) {
-                    if (ui::widgets::buttons::isPressed(ui::widgets::buttons::BOOT_SEARCH_GPS, x, y)) {
-                        display::boot::updateGPS(nullptr);
+        uint8_t type        = 0;
+        uint64_t size       = 0;
+        uint64_t totalBytes = 0;
+        uint64_t usedBytes  = 0;
 
-                        gpsOk = services::gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-                        display::boot::updateGPS(&gpsOk);
-                        if (gpsOk)
-                            { return; }
-                    }
-                }
-                delay(50);
-            }
-        }
+        _sdOk = storage::readCardInfos(type, size, totalBytes, usedBytes);
+        dBoot::updateSD(&_sdOk);
+    }
 
-        void waitGPSAcquisition(HardwareSerial &gpsUART) {
-            constexpr uint32_t CHECK_INTERVAL_MS = 500;
-            constexpr uint32_t STALL_TIMEOUT_MS  = 30000;
+    void _initGPS(HardwareSerial &gpsUART) {
+        _gpsOk = gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+        dBoot::updateGPS(&_gpsOk);
 
-            uint8_t progress = 0;
-            uint32_t lastProgressAt = millis();
+        if (_gpsOk) { return; }
+        while (true) {
+            int x, y;
+            if (display::TRead(x, y)) {
+                if (buttons::isPressed(buttons::bootSearchGPS, x, y)) {
+                    dBoot::updateGPS(nullptr);
+                    _gpsOk = gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
 
-            while (true) {
-                delay(CHECK_INTERVAL_MS);
-                const uint8_t currentProgress = services::gps::getAcquisitionProgress();
-                if (currentProgress > progress) {
-                    progress = currentProgress;
-                    lastProgressAt = millis();
-
-                    display::boot::updateGPSProgress(progress);
-                    if (progress >= 100)
-                        { break; }
-                    continue;
-                }
-                if (progress == 0)
-                    { continue; }
-                if ((millis() - lastProgressAt) >= STALL_TIMEOUT_MS) {
-                    display::boot::updateGPS(nullptr);
-
-                    gpsOk = services::gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-                    display::boot::updateGPS(&gpsOk);
-
-                    if (!gpsOk)
-                        { initGPS(gpsUART); }
-                    progress = 0;
-                    lastProgressAt = millis();
-                    display::boot::updateGPSProgress(progress);
+                    dBoot::updateGPS(&_gpsOk);
+                    if (_gpsOk) { return; }
                 }
             }
+            delay(50);
         }
     }
 
-    bool run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
-        wifiOk = false;
-        sdOk   = false;
-        gpsOk  = false;
+    void _waitGPSAcquisition(HardwareSerial &gpsUART) {
+        constexpr uint32_t CHECK_INTERVAL_MS = 500;
+        constexpr uint32_t STALL_TIMEOUT_MS  = 30000;
 
-        display::boot::clear();
-        display::boot::drawLogo();
-        display::boot::draw();
+        uint8_t progress        = 0;
+        uint32_t lastProgressAt = millis();
 
-        display::boot::updateWifi(&wifiOk);
+        while (true) {
+            delay(CHECK_INTERVAL_MS);
+            const uint8_t currentProgress = gps::getAcquisitionProgress();
+            if (currentProgress > progress) {
+                progress = currentProgress;
+                lastProgressAt = millis();
 
-        initSdCard(sdSPI, 10);
-        if (sdOk) {
-            core::state::setButtonState(
-                core::state::Button::MARK_QTH,
-                core::state::ButtonState::READY
-            );
+                dBoot::updateGPSProgress(progress);
+                if (progress >= 100) { break; }
+                continue;
+            }
+
+            if (progress == 0) { continue; }
+            if ((millis() - lastProgressAt) >= STALL_TIMEOUT_MS) {
+                dBoot::updateGPS(nullptr);
+
+                _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+                dBoot::updateGPS(&_gpsOk);
+                if (!_gpsOk) { _initGPS(gpsUART); }
+
+                progress       = 0;
+                lastProgressAt = millis();
+                dBoot::updateGPSProgress(progress);
+            }
         }
-        display::boot::updateSD(&sdOk);
+    }
+}
 
-        initGPS(gpsUART);
-        if (gpsOk) { waitGPSAcquisition(gpsUART); }
+bool boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
+    _wifiOk = false;
+    _sdOk   = false;
+    _gpsOk  = false;
 
-        core::state::setButtonState(
-            core::state::Button::MENU,
-            core::state::ButtonState::READY
+    dBoot::clear();
+    dBoot::drawLogo();
+    dBoot::draw();
+    dBoot::updateWifi(&_wifiOk);
+
+    _initSdCard(sdSPI, 10);
+    if (_sdOk) {
+        state::setButtonState(
+            state::Button::MARK_QTH,
+            state::ButtonState::READY
         );
-
-        return sdOk && gpsOk;
     }
+    dBoot::updateSD(&_sdOk);
+
+    _initGPS(gpsUART);
+    if (_gpsOk) { _waitGPSAcquisition(gpsUART); }
+
+    state::setButtonState(
+        state::Button::MENU,
+        state::ButtonState::READY
+    );
+    return _sdOk && _gpsOk;
 }

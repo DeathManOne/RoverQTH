@@ -1,5 +1,5 @@
 /*
- * services/gps.cpp
+ * src/services/gps.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,311 +21,396 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
+#include <cstdio>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
+
 #include "services/gps.h"
 #include "ui/settings/gps.h"
 
-namespace services::gps {
-    namespace {
-        SFE_UBLOX_GNSS *_GPS = nullptr;
-        int _SAT_FIX = 0;
-        int _SAT_COUNT = 0;
-        double _MASL = 0.0;
-        double _HDG = 0.0;
-        double _SPEED = 0.0;
-        double _HDOP = 0.0;
-        double _VDOP = 0.0;
-        double _PDOP = 0.0;
-        double _LATITUDE = 0.0;
-        double _LONGITUDE = 0.0;
-        int _DATE_YEAR = 0;
-        int _DATE_MONTH = 0;
-        int _DATE_DAY = 0;
-        int _TIME_HOUR = 0;
-        int _TIME_MINUTE = 0;
-        int _TIME_SECOND = 0;
+namespace gps      = services::gps;
+namespace settings = ui::settings::gps;
 
-        void getCoordinates(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize, void (*formatter)(double, bool, char*, size_t)) {
-            formatter(_LATITUDE, true, latitude, latitudeSize);
-            formatter(_LONGITUDE, false, longitude, longitudeSize);
-            decimalToGridLocator(_LATITUDE, _LONGITUDE, qth, qthSize);
-        }
+namespace {
+    SFE_UBLOX_GNSS *_gps = nullptr;
+    int _satFix          = 0;
+    int _satCount        = 0;
+    double _masl         = 0.0;
+    double _hdg          = 0.0;
+    double _speed        = 0.0;
+    double _hdop         = 0.0;
+    double _vdop         = 0.0;
+    double _pdop         = 0.0;
+    double _latitude     = 0.0;
+    double _longitude    = 0.0;
+    int _dateYear        = 0;
+    int _dateMonth       = 0;
+    int _dateDay         = 0;
+    int _timeHour        = 0;
+    int _timeMinute      = 0;
+    int _timeSecond      = 0;
 
-        bool readCache() {
-            const bool fixOk = _GPS->getGnssFixOk();
-            if (!fixOk) { return false; }
+    bool _readCache();
+    void _getCoordinates(
+        char* latitude,  size_t latitudeSize,
+        char* longitude, size_t longitudeSize,
+        char* qth,       size_t qthSize,
+        void (*formatter)(double, bool, char*, size_t)
+    );
 
-            _SAT_FIX = _GPS->getFixType();
-            _SAT_COUNT = _GPS->getSIV();
-            _MASL = _GPS->getAltitude() / 1000.0;
-            _HDG = _GPS->getHeading() / 100000.0;
-            _SPEED = (_GPS->getGroundSpeed() / 1000.0) * 3.6;
-            _HDOP = _GPS->getHorizontalDOP() / 100.0;
-            _VDOP = _GPS->getVerticalDOP() / 100.0;
-            _PDOP = _GPS->getPDOP() / 100.0;
-            _LATITUDE = _GPS->getLatitude() / 10000000.0;
-            _LONGITUDE = _GPS->getLongitude() / 10000000.0;
-
-            if (_GPS->getDateValid()) {
-                _DATE_YEAR = _GPS->getYear();
-                _DATE_MONTH = _GPS->getMonth();
-                _DATE_DAY = _GPS->getDay();
-            }
-
-            if (_GPS->getTimeValid()) {
-                _TIME_HOUR = _GPS->getHour();
-                _TIME_MINUTE = _GPS->getMinute();
-                _TIME_SECOND = _GPS->getSecond();
-            }
-            return true;
-        }
+    void _getCoordinates(
+        char* latitude,  size_t latitudeSize,
+        char* longitude, size_t longitudeSize,
+        char* qth,       size_t qthSize,
+        void (*formatter)(double, bool, char*, size_t)
+    ) {
+        formatter(_latitude,  true,  latitude,  latitudeSize);
+        formatter(_longitude, false, longitude, longitudeSize);
+        gps::decimalToGridLocator(_latitude, _longitude, qth, qthSize);
     }
 
-    char getHemisphere(const double value, const bool isLatitude) {
-        if (isLatitude) { return (value >= 0) ? 'N' : 'S'; }
-        return (value >= 0) ? 'E' : 'W';
-    }
+    bool _readCache() {
+        const bool fixOk = _gps->getGnssFixOk();
+        if (!fixOk) { return false; }
 
-    bool begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
-        if (!_GPS)
-            { _GPS = new SFE_UBLOX_GNSS(); }
-        static constexpr uint32_t BAUD_COUNT = 4;
-        static const uint32_t bauds[BAUD_COUNT] = {9600, 38400, 57600, 115200};
+        _satFix    = _gps->getFixType();
+        _satCount  = _gps->getSIV();
+        _masl      = _gps->getAltitude() / 1000.0;
+        _hdg       = _gps->getHeading() / 100000.0;
+        _speed     = (_gps->getGroundSpeed() / 1000.0) * 3.6;
+        _hdop      = _gps->getHorizontalDOP() / 100.0;
+        _vdop      = _gps->getVerticalDOP() / 100.0;
+        _pdop      = _gps->getPDOP() / 100.0;
+        _latitude  = _gps->getLatitude() / 10000000.0;
+        _longitude = _gps->getLongitude() / 10000000.0;
 
-        for (const uint32_t baud : bauds) {
-            uart.begin(baud, SERIAL_8N1, rx, tx);
-            while (uart.available())
-                { uart.read(); }
-            delay(100);
-
-            const uint32_t start = millis();
-            do {
-                if (_GPS->begin(uart)) {
-                    _GPS->setAutoPVT(true);
-                    _GPS->setAutoDOPrate(1);
-                    _GPS->setNavigationFrequency(5);
-                    _GPS->setSerialRate(finalBaud);
-
-                    delay(100);
-                    uart.updateBaudRate(finalBaud);
-                    delay(100);
-                    return true;
-                }
-                delay(250);
-            } while ((millis() - start) < timeout * 1000);
-        }
-        return false;
-    }
-
-    bool restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
-        uart.end();
-        delay(500);
-
-        if (_GPS) {
-            delete _GPS;
-            _GPS = nullptr;
+        if (_gps->getDateValid()) {
+            _dateYear  = _gps->getYear();
+            _dateMonth = _gps->getMonth();
+            _dateDay   = _gps->getDay();
         }
 
-        _SAT_FIX = 0;
-        _SAT_COUNT = 0;
-        _HDOP = 0.0;
-        _VDOP = 0.0;
-        _PDOP = 0.0;
-
-        return begin(uart, rx, tx, finalBaud, timeout);
+        if (_gps->getTimeValid()) {
+            _timeHour   = _gps->getHour();
+            _timeMinute = _gps->getMinute();
+            _timeSecond = _gps->getSecond();
+        }
+        return true;
     }
+}
 
-    bool update(uint32_t timeoutMs) {
-        if (!_GPS)
-            { return false; }
+char gps::getHemisphere(const double value, const bool isLatitude) {
+    if (isLatitude)
+        { return (value >= 0) ? 'N' : 'S'; }
+    return (value >= 0) ? 'E' : 'W';
+}
+
+bool gps::begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
+    if (!_gps) { _gps = new SFE_UBLOX_GNSS(); }
+
+    static constexpr uint32_t BAUD_COUNT    = 4;
+    static const uint32_t bauds[BAUD_COUNT] = {9600, 38400, 57600, 115200};
+
+    for (const uint32_t baud : bauds) {
+        uart.begin(baud, SERIAL_8N1, rx, tx);
+        while (uart.available())
+            { uart.read(); }
+        delay(100);
+
         const uint32_t start = millis();
         do {
-            _GPS->checkUblox();
-            if (readCache())
-                { return true; }
-            delay(1);
-        } while ((millis() - start) < timeoutMs);
-        return false;
+            if (_gps->begin(uart)) {
+                _gps->setAutoPVT(true);
+                _gps->setAutoDOPrate(1);
+                _gps->setNavigationFrequency(5);
+                _gps->setSerialRate(finalBaud);
+
+                delay(100);
+                uart.updateBaudRate(finalBaud);
+                delay(100);
+                return true;
+            }
+            delay(250);
+        } while ((millis() - start) < timeout * 1000);
+    }
+    return false;
+}
+
+bool gps::restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
+    uart.end();
+    delay(500);
+
+    if (_gps) {
+        delete _gps;
+        _gps = nullptr;
     }
 
-    bool poll() {
-        if (!_GPS)
-            { return false; }
-        _GPS->checkUblox();
-        return readCache();
-    }
+    _satFix   = 0;
+    _satCount = 0;
+    _hdop     = 0.0;
+    _vdop     = 0.0;
+    _pdop     = 0.0;
+    return begin(uart, rx, tx, finalBaud, timeout);
+}
 
-    void getDate(char* buffer, size_t size) {
-        snprintf(buffer, size, "%04d %02d %02d", _DATE_YEAR, _DATE_MONTH, _DATE_DAY);
-    }
+bool gps::update(uint32_t timeoutMs) {
+    if (!_gps)
+        { return false; }
+    const uint32_t start = millis();
+    do {
+        _gps->checkUblox();
+        if (_readCache())
+            { return true; }
+        delay(1);
+    } while ((millis() - start) < timeoutMs);
+    return false;
+}
 
-    void getTime(char* buffer, size_t size, bool withSecond) {
-        if (withSecond) { snprintf(buffer, size, "%02d : %02d : %02d", _TIME_HOUR, _TIME_MINUTE, _TIME_SECOND); }
-        else { snprintf(buffer, size, "%02d : %02d", _TIME_HOUR, _TIME_MINUTE); }
-    }
+bool gps::poll() {
+    if (!_gps)
+        { return false; }
+    _gps->checkUblox();
+    return _readCache();
+}
 
-    uint8_t getAcquisitionProgress() {
-        int fix, sat;
-        double hdop, vdop, pdop;
-        uint8_t progress = 0;
+void gps::getDate(char* buffer, size_t size) {
+    snprintf(
+        buffer, size,
+        "%04d %02d %02d",
+        _dateYear, _dateMonth, _dateDay
+    );
+}
 
-        if (!update())
-            { return progress; }
-        getSat(fix, sat);
-        getDOP(hdop, vdop, pdop);
-
-        if (sat >= 1)  { progress += 10; }
-        if (sat >= 4)  { progress += 15; }
-        if (sat >= 8)  { progress += 10; }
-
-        if (fix >= 2)  { progress += 20; }
-        if (fix >= 3)  { progress += 20; }
-
-        const bool goodHDOP = hdop > 0 && hdop < ui::settings::gps::HDOP_FAIR;
-        const bool excellentHDOP = hdop > 0 && hdop < ui::settings::gps::HDOP_GOOD;
-        const bool goodPDOP = pdop > 0 && pdop < 3.0;
-
-        if (goodHDOP)       { progress += 10; }
-        if (excellentHDOP)  { progress += 10; }
-        if (goodPDOP)       { progress += 5; }
-
-        if (fix >= 3 && sat >= ui::settings::gps::SAT_MIN_FIX && goodHDOP)
-            { progress = 100; }
-        return (progress >= 100) ? 100 : progress;
-    }
-
-    const char* headingToCardinal(const double heading) {
-        if (isnan(heading))
-            { return ""; }
-        static constexpr const char* directions[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
-
-        const double normalized = fmod((heading + 22.5), 360.0);
-        const int index = static_cast<int>(normalized / 45.0) % 8;
-        return directions[index];
-    }
-
-    void getSat(int &fix, int &count) {
-        fix = _SAT_FIX;
-        count = _SAT_COUNT;
-    }
-
-    void getPrecision(double &MASL, double &HDG, double &speed) {
-        MASL = _MASL;
-        const bool moving = _SPEED >= ui::settings::gps::MIN_HEADING_SPEED_KMH;
-        if (moving) {
-            HDG = _HDG;
-            speed = _SPEED;
-        } else {
-            HDG = NAN;
-            speed = 0.0;
-        }
-    }
-
-    void getDOP(double &HDOP, double &VDOP, double &PDOP) {
-        HDOP = _HDOP;
-        VDOP = _VDOP;
-        PDOP = _PDOP;
-    }
-
-    void getPosition(double &latitude, double &longitude) {
-        latitude = _LATITUDE;
-        longitude = _LONGITUDE;
-    }
-
-    void getDD(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
-        getCoordinates(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize, decimalToDD);
-    }
-
-    void getDMS(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
-        getCoordinates(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize, decimalToDMS);
-    }
-
-    void getDDM(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
-        getCoordinates(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize, decimalToDDM);
-    }
-
-    void decimalToDD(const double value, const bool isLatitude, char* buffer, size_t size) {
-        const char hemisphere = getHemisphere(value, isLatitude);
-        const double absValue = std::abs(value);
-
-        if (isLatitude) { snprintf(buffer, size, "%09.6f° %c", absValue, hemisphere); }
-        else { snprintf(buffer, size, "%010.6f° %c", absValue, hemisphere); }
-    }
-
-    void decimalToDDM(const double value, const bool isLatitude, char* buffer, size_t size) {
-        const char hemisphere = getHemisphere(value, isLatitude);
-        const double absValue = std::abs(value);
-
-        const int degrees = static_cast<int>(absValue);
-        const double minutes = (absValue - degrees) * 60.0;
-
-        if (isLatitude) { snprintf(buffer, size, "%02d°%07.4f' %c", degrees, minutes, hemisphere); }
-        else { snprintf(buffer, size, "%03d°%07.4f' %c", degrees, minutes, hemisphere); }
-    }
-
-    void decimalToDMS(const double value, const bool isLatitude, char* buffer, size_t size) {
-        const char hemisphere = getHemisphere(value, isLatitude);
-        const double absValue = std::abs(value);
-
-        const int degrees = static_cast<int>(absValue);
-        const double minutesFull = (absValue - degrees) * 60.0;
-        const int minutes = static_cast<int>(minutesFull);
-        const double seconds = (minutesFull - minutes) * 60.0;
-
-        if (isLatitude) { snprintf(buffer, size, "%02d°%02d'%05.2f\" %c", degrees, minutes, seconds, hemisphere); }
-        else { snprintf(buffer, size, "%03d°%02d'%05.2f\" %c", degrees, minutes, seconds, hemisphere); }
-    }
-
-    void decimalToGridLocator(const double latitude, const double longitude, char* buffer, size_t size) {
-        if (!buffer || size == 0)
-            { return; }
-        buffer[0] = '\0';
-
-        if (latitude < -90.0 || latitude > 90.0 || longitude < -180.0 || longitude > 180.0) {
-            snprintf(buffer, size, "ERROR");
-            return;
-        }
-
-        char grid[11];
-        double lat = (latitude >= 90.0) ? 89.999999 : latitude;
-        double lon = (longitude >= 180.0) ? 179.999999 : longitude;
-
-        lon += 180.0;
-        lat += 90.0;
-        grid[0] = 'A' + static_cast<int>(lon / 20.0);
-        grid[1] = 'A' + static_cast<int>(lat / 10.0);
-
-        lon = fmod(lon, 20.0);
-        lat = fmod(lat, 10.0);
-        grid[2] = '0' + static_cast<int>(lon / 2.0);
-        grid[3] = '0' + static_cast<int>(lat);
-
-        lon = fmod(lon, 2.0);
-        lat = fmod(lat, 1.0);
-        grid[4] = 'A' + static_cast<int>(lon * 12.0);
-        grid[5] = 'A' + static_cast<int>(lat * 24.0);
-
-        lon = fmod(lon, 2.0 / 24.0);
-        lat = fmod(lat, 1.0 / 24.0);
-        grid[6] = '0' + static_cast<int>(lon * 120.0);
-        grid[7] = '0' + static_cast<int>(lat * 240.0);
-
-        lon = fmod(lon, 2.0 / 240.0);
-        lat = fmod(lat, 1.0 / 240.0);
-        grid[8] = 'A' + static_cast<int>(lon * 2880.0);
-        grid[9] = 'A' + static_cast<int>(lat * 5760.0);
-        grid[10] = '\0';
-
+void gps::getTime(char* buffer, size_t size, bool withSecond) {
+    if (withSecond) {
         snprintf(
             buffer, size,
-            "%c%c%c%c %c%c %c%c %c%c",
-            grid[0], grid[1], grid[2], grid[3],
-            grid[4], grid[5],
-            grid[6], grid[7],
-            grid[8], grid[9]
+            "%02d : %02d : %02d",
+            _timeHour, _timeMinute, _timeSecond
+        );
+    } else {
+        snprintf(
+            buffer, size,
+            "%02d : %02d",
+            _timeHour, _timeMinute
         );
     }
+}
+
+uint8_t gps::getAcquisitionProgress() {
+    int fix          = 0;
+    int sat          = 0;
+    double hdop      = 0.0;
+    double vdop      = 0.0;
+    double pdop      = 0.0;
+    uint8_t progress = 0;
+    if (!update()) { return progress; }
+
+    getSat(fix, sat);
+    getDOP(hdop, vdop, pdop);
+
+    if (sat >= 1) { progress += 10; }
+    if (sat >= 4) { progress += 15; }
+    if (sat >= 8) { progress += 10; }
+
+    if (fix >= 2) { progress += 20; }
+    if (fix >= 3) { progress += 20; }
+
+    const bool goodHDOP      = hdop > 0 && hdop < settings::HDOP_FAIR;
+    const bool excellentHDOP = hdop > 0 && hdop < settings::HDOP_GOOD;
+    const bool goodPDOP      = pdop > 0 && pdop < 3.0;
+
+    if (goodHDOP)      { progress += 10; }
+    if (excellentHDOP) { progress += 10; }
+    if (goodPDOP)      { progress += 5; }
+
+    if (fix >= 3 && sat >= settings::SAT_MIN_FIX && goodHDOP)
+        { progress = 100; }
+    return (progress >= 100) ? 100 : progress;
+}
+
+const char* gps::headingToCardinal(const double heading) {
+    if (isnan(heading)) { return ""; }
+
+    static constexpr const char* directions[] = {
+        "N", "NE",
+        "E", "SE",
+        "S", "SW",
+        "W", "NW"
+    };
+
+    const double normalized = fmod((heading + 22.5), 360.0);
+    const int index         = static_cast<int>(normalized / 45.0) % 8;
+    return directions[index];
+}
+
+void gps::getSat(int &fix, int &count) {
+    fix   = _satFix;
+    count = _satCount;
+}
+
+void gps::getPrecision(double &MASL, double &HDG, double &speed) {
+    MASL              = _masl;
+    const bool moving = _speed >= settings::MIN_HEADING_SPEED_KMH;
+
+    if (moving) {
+        HDG   = _hdg;
+        speed = _speed;
+    } else {
+        HDG   = NAN;
+        speed = 0.0;
+    }
+}
+
+void gps::getDOP(double &HDOP, double &VDOP, double &PDOP) {
+    HDOP = _hdop;
+    VDOP = _vdop;
+    PDOP = _pdop;
+}
+
+void gps::getPosition(double &latitude, double &longitude) {
+    latitude  = _latitude;
+    longitude = _longitude;
+}
+
+void gps::getDD(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
+    _getCoordinates(
+        latitude,  latitudeSize,
+        longitude, longitudeSize,
+        qth,       qthSize,
+        decimalToDD
+    );
+}
+
+void gps::getDMS(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
+    _getCoordinates(
+        latitude,  latitudeSize,
+        longitude, longitudeSize,
+        qth,       qthSize,
+        decimalToDMS
+    );
+}
+
+void gps::getDDM(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
+    _getCoordinates(
+        latitude,  latitudeSize,
+        longitude, longitudeSize,
+        qth,       qthSize,
+        decimalToDDM
+    );
+}
+
+void gps::decimalToDD(const double value, const bool isLatitude, char* buffer, size_t size) {
+    const char hemisphere = getHemisphere(value, isLatitude);
+    const double absValue = std::abs(value);
+
+    if (isLatitude) {
+        snprintf(
+            buffer, size,
+            "%09.6f° %c",
+            absValue, hemisphere
+        );
+    } else {
+        snprintf(
+            buffer, size,
+            "%010.6f° %c",
+            absValue, hemisphere
+        );
+    }
+}
+
+void gps::decimalToDDM(const double value, const bool isLatitude, char* buffer, size_t size) {
+    const char hemisphere = getHemisphere(value, isLatitude);
+    const double absValue = std::abs(value);
+    const int degrees     = static_cast<int>(absValue);
+    const double minutes  = (absValue - degrees) * 60.0;
+
+    if (isLatitude) {
+        snprintf(
+            buffer, size,
+            "%02d°%07.4f' %c",
+            degrees, minutes, hemisphere
+        );
+    } else {
+        snprintf(
+            buffer, size,
+            "%03d°%07.4f' %c",
+            degrees, minutes, hemisphere
+        );
+    }
+}
+
+void gps::decimalToDMS(const double value, const bool isLatitude, char* buffer, size_t size) {
+    const char hemisphere    = getHemisphere(value, isLatitude);
+    const double absValue    = std::abs(value);
+    const int degrees        = static_cast<int>(absValue);
+    const double minutesFull = (absValue - degrees) * 60.0;
+    const int minutes        = static_cast<int>(minutesFull);
+    const double seconds     = (minutesFull - minutes) * 60.0;
+
+    if (isLatitude) {
+        snprintf(
+            buffer, size,
+            "%02d°%02d'%05.2f\" %c",
+            degrees, minutes, seconds, hemisphere
+        );
+    } else {
+        snprintf(
+            buffer, size,
+            "%03d°%02d'%05.2f\" %c",
+            degrees, minutes, seconds, hemisphere
+        );
+    }
+}
+
+void gps::decimalToGridLocator(const double latitude, const double longitude, char* buffer, size_t size) {
+    if (!buffer || size == 0) { return; }
+    buffer[0] = '\0';
+
+    if (latitude < -90.0   || latitude > 90.0 ||
+        longitude < -180.0 || longitude > 180.0
+    ) {
+        snprintf(buffer, size, "ERROR");
+        return;
+    }
+
+    char grid[11];
+    double lat = (latitude >= 90.0)   ? 89.999999  : latitude;
+    double lon = (longitude >= 180.0) ? 179.999999 : longitude;
+
+    lon += 180.0;
+    lat += 90.0;
+    grid[0] = 'A' + static_cast<int>(lon / 20.0);
+    grid[1] = 'A' + static_cast<int>(lat / 10.0);
+
+    lon = fmod(lon, 20.0);
+    lat = fmod(lat, 10.0);
+    grid[2] = '0' + static_cast<int>(lon / 2.0);
+    grid[3] = '0' + static_cast<int>(lat);
+
+    lon = fmod(lon, 2.0);
+    lat = fmod(lat, 1.0);
+    grid[4] = 'A' + static_cast<int>(lon * 12.0);
+    grid[5] = 'A' + static_cast<int>(lat * 24.0);
+
+    lon = fmod(lon, 2.0 / 24.0);
+    lat = fmod(lat, 1.0 / 24.0);
+    grid[6] = '0' + static_cast<int>(lon * 120.0);
+    grid[7] = '0' + static_cast<int>(lat * 240.0);
+
+    lon = fmod(lon, 2.0 / 240.0);
+    lat = fmod(lat, 1.0 / 240.0);
+    grid[8] = 'A' + static_cast<int>(lon * 2880.0);
+    grid[9] = 'A' + static_cast<int>(lat * 5760.0);
+    grid[10] = '\0';
+
+    snprintf(
+        buffer, size,
+        "%c%c%c%c %c%c %c%c %c%c",
+        grid[0], grid[1], grid[2], grid[3],
+        grid[4], grid[5],
+        grid[6], grid[7],
+        grid[8], grid[9]
+    );
 }

@@ -1,5 +1,5 @@
 /*
- * display/main.cpp
+ * src/display/main.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,23 +21,26 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <MSP4021.h>
 #include "display/internal.h"
 #include "display/main.h"
 #include "display/manager.h"
 #include "screens/main.h"
 
-namespace display::main {
-    namespace {
-        ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-    }
+namespace internal = display::internal;
+namespace main     = display::main;
+namespace sMain    = screens::main;
 
-    void preload()      { screens::main::preload(); }
-    void preloadGPS()   { screens::main::preloadGPS(); }
-    void preloadSOTA()  { screens::main::preloadSOTA(); }
-    void preloadMARK()  { screens::main::preloadMARK(); }
-
-    void draw() { screens::main::draw(tft()); }
-
-    void update(uint32_t &nextRefreshIn) { screens::main::update(tft(), nextRefreshIn); }
-    void updateMARK() { screens::main::updateMARK(tft()); }
+namespace {
+    ST7796S::MSP4021& _tft() { return *internal::TFT; }
 }
+
+void main::preload    () { sMain::preload(); }
+void main::preloadGPS () { sMain::preloadGPS(); }
+void main::preloadSOTA() { sMain::preloadSOTA(); }
+void main::preloadMARK() { sMain::preloadMARK(); }
+
+void main::draw() { sMain::draw(_tft()); }
+
+void main::update(uint32_t &nextRefreshIn) { sMain::update(_tft(), nextRefreshIn); }
+void main::updateMARK() { sMain::updateMARK(_tft()); }

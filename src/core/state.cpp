@@ -1,5 +1,5 @@
 /*
- * core/state.cpp
+ * src/core/state.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,38 +25,36 @@
 #include <array>
 #include "core/state.h"
 
-namespace core::state {
-    namespace {
-        Screen _currentScreen  = Screen::MAIN;
-        Screen _previousScreen = Screen::MAIN;
+namespace state = core::state;
 
-        std::array<ButtonState, static_cast<size_t>(Button::COUNT)> buttonStates {};
-    }
+namespace {
+    state::Screen _currentScreen  = state::Screen::MAIN;
+    state::Screen _previousScreen = state::Screen::MAIN;
+    std::array<state::ButtonState, static_cast<size_t>(state::Button::COUNT)> _buttonStates {};
+}
 
-    Screen currentScreen()                                  { return _currentScreen; }
-    Screen previousScreen()                                 { return _previousScreen; }
-    ButtonState buttonState(Button button)                  { return buttonStates[static_cast<size_t>(button)]; }
-    bool isScreen(Screen screen)                            { return _currentScreen == screen; }
-    void setButtonState(Button button, ButtonState state)   { buttonStates[static_cast<size_t>(button)] = state; }
+state::Screen state::currentScreen()                        { return _currentScreen; }
+state::Screen state::previousScreen()                       { return _previousScreen; }
+state::ButtonState state::buttonState(state::Button button) { return _buttonStates[static_cast<size_t>(button)]; }
+bool state::isScreen(state::Screen screen)                  { return _currentScreen == screen; }
 
-    void begin() {
-        _currentScreen  = Screen::MAIN;
-        _previousScreen = Screen::MAIN;
+void state::setButtonState(state::Button button, state::ButtonState state)   { _buttonStates[static_cast<size_t>(button)] = state; }
 
-        for (auto &state : buttonStates)
-            { state = ButtonState::UNAVAILABLE; }
-    }
+void state::begin() {
+    _currentScreen  = Screen::MAIN;
+    _previousScreen = Screen::MAIN;
+    for (auto &state : _buttonStates)
+        { state = ButtonState::UNAVAILABLE; }
+}
 
-    void setScreen(Screen screen) {
-        if (_currentScreen == screen)
-            { return; }
-        _previousScreen = _currentScreen;
-        _currentScreen  = screen;
-    }
+void state::setScreen(Screen screen) {
+    if (_currentScreen == screen) { return; }
+    _previousScreen = _currentScreen;
+    _currentScreen  = screen;
+}
 
-    void goBack() {
-        const Screen target = _previousScreen;
-        _previousScreen     = _currentScreen;
-        _currentScreen      = target;
-    }
+void state::goBack() {
+    const Screen target = _previousScreen;
+    _previousScreen     = _currentScreen;
+    _currentScreen      = target;
 }

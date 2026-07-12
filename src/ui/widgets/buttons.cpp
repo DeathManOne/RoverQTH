@@ -1,5 +1,5 @@
 /*
- * ui/widgets/buttons.cpp
+ * src/ui/widgets/buttons.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -23,25 +23,25 @@
 
 #include "ui/widgets/buttons.h"
 
-namespace ui::widgets::buttons {
-    ButtonArea BOOT_SEARCH_GPS;
-    ButtonArea MARK_QTH;
-    ButtonArea SOTA;
-    ButtonArea MENU;
+namespace buttons = ui::widgets::buttons;
 
-    ButtonArea makeArea(int x, int y, int width, int height) {
-        ButtonArea area;
-        area.x      = x;
-        area.y      = y;
-        area.width  = width;
-        area.height = height;
-        return area;
-    }
+buttons::ButtonArea buttons::bootSearchGPS {};
+buttons::ButtonArea buttons::markQTH {};
+buttons::ButtonArea buttons::sota {};
+buttons::ButtonArea buttons::menu {};
 
-    bool isPressed(const ButtonArea &button, int tx, int ty) {
-        return (
-            tx >= button.x && tx < (button.x + button.width) &&
-            ty >= button.y && ty < (button.y + button.height)
-        );
-    }
+buttons::ButtonArea buttons::makeArea(int x, int y, int width, int height) {
+    ButtonArea area;
+    area.x      = x;
+    area.y      = y;
+    area.width  = width;
+    area.height = height;
+    return area;
+}
+
+bool buttons::isPressed(const ButtonArea &button, int tx, int ty) {
+    return (
+        tx >= button.x && tx < (button.x + button.width) &&
+        ty >= button.y && ty < (button.y + button.height)
+    );
 }

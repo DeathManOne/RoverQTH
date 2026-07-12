@@ -1,5 +1,5 @@
 /*
- * screens/menu/network.cpp
+ * src/screens/menu/network.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,31 +22,32 @@
  */
 
 #include "screens/menu/network.h"
-#include "screens/mockup/grid.h"
+#include "ui/mockup/grid.h"
+#include "ui/settings/mockup.h"
 
-namespace screens::menu {
-    void Network::draw(ST7796S::MSP4021 &tft) {
-        screens::mockup::grid::draw(tft);
+using screens::menu::Network;
+namespace grid     = ui::mockup::grid;
+namespace uiMockup = ui::settings::mockup;
 
-        const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
-        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
-        const int rowH  = 28;
+void Network::draw(ST7796S::MSP4021 &tft) {
+    grid::draw(tft);
 
-        int rowY = y + rowH + (gap * 3);
-        for (Field<Action>* field : fields) {
-            makeFieldArea(*field, x, rowY, w, rowH);
-            rowY += rowH;
-        }
+    const int gap   = uiMockup::GAP;
+    const int x     = grid::innerX()     + (gap * 2);
+    const int y     = grid::innerY()     + (gap * 2);
+    const int w     = grid::innerWidth() - (gap * 4);
+    const int rowH  = 28;
 
-        wifiSsidField.value = wifiSsidValue;
-        wifiPassField.value = wifiPassValue;
-        btNameField.value   = btNameValue;
-        btPassField.value   = btPassValue;
-        
-        drawTitle(tft, x, y, w, rowH, gap, "network");
-        for (Field<Action>* field : fields)
-            { drawLine(tft, *field); }
+    int rowY = y + rowH + (gap * 3);
+    for (Field<_Action>* field : _fields) {
+        _makeFieldArea(*field, x, rowY, w, rowH);
+        rowY += rowH;
     }
+
+    _wifiSsidField.value = _wifiSsidValue;
+    _wifiPassField.value = _wifiPassValue;
+    
+    _drawTitle(tft, x, y, w, rowH, gap, "network");
+    for (Field<_Action>* field : _fields)
+        { _drawLine(tft, *field); }
 }

@@ -1,5 +1,5 @@
 /*
- * ui/widgets/buttons.h
+ * include/ui/widgets/buttons.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -31,10 +31,10 @@ namespace ui::widgets::buttons {
         int height  = 0;
     };
 
-    extern ButtonArea BOOT_SEARCH_GPS;
-    extern ButtonArea MARK_QTH;
-    extern ButtonArea SOTA;
-    extern ButtonArea MENU;
+    extern ButtonArea bootSearchGPS;
+    extern ButtonArea markQTH;
+    extern ButtonArea sota;
+    extern ButtonArea menu;
 
     ButtonArea makeArea(int x, int y, int width, int height);
     bool isPressed(const ButtonArea &button, int tx, int ty);

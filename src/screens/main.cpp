@@ -1,5 +1,5 @@
 /*
- * screens/main.cpp
+ * src/screens/main.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,255 +25,271 @@
 #include "screens/main/datas.h"
 #include "screens/main/locator.h"
 #include "screens/main/title.h"
-#include "screens/mockup/buttons.h"
 #include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
+#include "ui/mockup/buttons.h"
 #include "ui/settings/themes/defaults.h"
 
-namespace screens::main {
-    namespace {
-        void formatDuration(uint32_t seconds, char* buffer, size_t size) {
-            const uint32_t hours = seconds / 3600;
-            seconds %= 3600;
-            const uint32_t minutes = seconds / 60;
-            seconds %= 60;
-            if (hours > 0) {
-                snprintf(buffer, size, "%luh %02lum", hours, minutes);
-                return;
-            }
-            snprintf(buffer, size, "%lum %02lus", minutes, seconds);
-        }
+namespace main       = screens::main;
+namespace datas      = screens::main::datas;
+namespace locator    = screens::main::locator;
+namespace title      = screens::main::title;
+namespace battery    = services::battery;
+namespace gps        = services::gps;
+namespace navigation = services::navigation;
+namespace settings   = services::settings;
+namespace buttons    = ui::mockup::buttons;
+namespace theme      = ui::settings::themes::defaults;
 
-        void formatSpeed(double kmh, char* buffer, size_t size) {
-            if (services::settings::getUnits() == services::settings::Units::IMPERIAL) {
-                std::snprintf(buffer, size, "%.1f mph", kmh * 0.621371);
-                return;
-            }
-            std::snprintf(buffer, size, "%.1f km/h", kmh);
-        }
+namespace {
+    void _formatSpeed   (double kmh,       char* buffer, size_t size);
+    void _formatAltitude(double meters,    char* buffer, size_t size);
+    void _formatDuration(uint32_t seconds, char* buffer, size_t size);
 
-        void formatAltitude(double meters, char* buffer, size_t size) {
-            if (services::settings::getUnits() == services::settings::Units::IMPERIAL) {
-                std::snprintf(buffer, size, "%.0f ft", meters * 3.28084);
-                return;
-            }
-            std::snprintf(buffer, size, "%.0f m", meters);
-        }
-    }
+    void _formatDuration(uint32_t seconds, char* buffer, size_t size) {
+        const uint32_t hours = seconds / 3600;
+        seconds %= 3600;
 
-    void preload() {
-        char battery[8] = {};
-        screens::main::title::getBatteryLevel(battery, sizeof(battery));
-        screens::main::title::setBattery(battery);
+        const uint32_t minutes = seconds / 60;
+        seconds %= 60;
 
-        preloadGPS();
-        preloadSOTA();
-        preloadMARK();
-    }
-
-    void preloadGPS() {
-        double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
-        int satFix, satCount;
-
-        char date[16];
-        char time[16];
-        char latitude[32];
-        char longitude[32];
-        char qth[32];
-        char speedBuffer[16];
-        char hdgBuffer[16];
-        char aslBuffer[16];
-        char uptime[16];
-        char gpsStatus[32];
-
-        char callsign[32];
-        screens::main::title::getUptime(uptime, sizeof(uptime));
-
-        services::gps::getDate(date, sizeof(date));
-        services::gps::getTime(time, sizeof(time));
-        services::gps::getDDM(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
-        services::gps::getPrecision(masl, hdg, speed);
-        services::gps::getDOP(hdop, vdop, pdop);
-        services::gps::getSat(satFix, satCount);
-        services::gps::getPosition(gpsLatitude, gpsLongitude);
-
-        services::navigation::setCurrentPosition(gpsLatitude, gpsLongitude);
-
-        if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
-        else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, services::gps::headingToCardinal(hdg)); }
-
-        formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
-        formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
-        snprintf(
-            gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
-            satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
-        );
-
-        if (!services::settings::getFullCallsign(callsign, sizeof(callsign)))
-            { strcpy(callsign, "ERROR"); }
-        screens::main::title::setCallsign   (callsign);
-        screens::main::title::setDate       (date);
-        screens::main::title::setTime       (uptime);
-        //screens::main::title::setBattery  ("");
-
-        screens::main::datas::setLatitude   (latitude);
-        screens::main::datas::setLongitude  (longitude);
-        screens::main::datas::setSpeed      (speedBuffer);
-        screens::main::datas::setHeading    (hdgBuffer);
-        screens::main::datas::setASL        (aslBuffer);
-        screens::main::datas::setUpdate     (time);
-
-        //screens::main::locator::setStatusTop  ("");
-        screens::main::locator::setLocator      (qth);
-        screens::main::locator::setStatusBottom (gpsStatus);
-    }
-
-    void preloadSOTA() {
-        if (!services::navigation::hasSOTA()) {
-            screens::main::locator::setSOTABearing("---");
-            screens::main::locator::setSOTADistance("---");
-            screens::main::locator::setSOTAPoints("---");
-            screens::main::locator::setSOTAAltitude("---");
-            screens::main::locator::setSOTACode("---");
+        if (hours > 0) {
+            snprintf(buffer, size, "%luh %02lum", hours, minutes);
             return;
         }
-
-        char distance[16];
-        char bearing[16];
-        char points[16];
-        char altitude[16];
-        char code[24];
-
-        services::navigation::formatDistance(services::navigation::sotaDistanceKm(), distance, sizeof(distance));
-        services::navigation::formatBearing(services::navigation::sotaBearingDeg(), bearing, sizeof(bearing));
-        services::navigation::getSOTACode(code, sizeof(code));
-
-        snprintf(points, sizeof(points), "%d (+1)", services::navigation::getSOTAPoints());
-        formatAltitude(services::navigation::getSOTAAltitude(), altitude, sizeof(altitude));
-
-        screens::main::locator::setSOTABearing(bearing);
-        screens::main::locator::setSOTADistance(distance);
-        screens::main::locator::setSOTAPoints(points);
-        screens::main::locator::setSOTAAltitude(altitude);
-        screens::main::locator::setSOTACode(code);
+        snprintf(buffer, size, "%lum %02lus", minutes, seconds);
     }
 
-    void preloadMARK() {
-        if (!services::navigation::hasMark()) {
-            screens::main::locator::setMarkLocator("---");
-            screens::main::locator::setMarkBearing("---");
-            screens::main::locator::setMarkDistance("---");
-            screens::main::locator::setMarkTimer("-- : -- : --");
+    void _formatSpeed(double kmh, char* buffer, size_t size) {
+        if (settings::getUnits() == settings::Units::IMPERIAL) {
+            std::snprintf(buffer, size, "%.1f mph", kmh * 0.621371);
             return;
         }
-
-        char locator[32];
-        char distance[16];
-        char bearing[16];
-        char timer[16];
-
-        services::navigation::getMarkStartLocator(locator, sizeof(locator));
-        services::navigation::formatDistance(services::navigation::markCurrentDistanceKm(), distance, sizeof(distance));
-        services::navigation::formatBearing(services::navigation::markCurrentBearingDeg(), bearing, sizeof(bearing));
-        formatDuration(services::navigation::markElapsedSeconds(), timer, sizeof(timer));
-
-        screens::main::locator::setMarkLocator(locator);
-        screens::main::locator::setMarkBearing(bearing);
-        screens::main::locator::setMarkDistance(distance);
-        screens::main::locator::setMarkTimer(timer);
+        std::snprintf(buffer, size, "%.1f km/h", kmh);
     }
 
-    void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
-        nextRefreshIn = 1000;
-
-        char battery[8] = {};
-        screens::main::title::getBatteryLevel(battery, sizeof(battery));
-        screens::main::title::updateBattery(tft, battery);
-
-        double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
-        int satFix, satCount;
-
-        char date[16];
-        char time[16];
-        char latitude[32];
-        char longitude[32];
-        char qth[32];
-        char speedBuffer[16];
-        char hdgBuffer[16];
-        char aslBuffer[16];
-        char uptime[16];
-        char gpsStatus[32];
-
-        screens::main::title::getUptime(uptime, sizeof(uptime));
-
-        services::gps::getDate(date, sizeof(date));
-        services::gps::getTime(time, sizeof(time));
-        services::gps::getDDM(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
-        services::gps::getPrecision(masl, hdg, speed);
-        services::gps::getDOP(hdop, vdop, pdop);
-        services::gps::getSat(satFix, satCount);
-        services::gps::getPosition(gpsLatitude, gpsLongitude);
-        services::navigation::setCurrentPosition(gpsLatitude, gpsLongitude);
-
-        if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
-        else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, services::gps::headingToCardinal(hdg)); }
-
-        formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
-        formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
-        snprintf(
-            gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
-            satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
-        );
-
-        screens::main::title::updateDate     (tft, date);
-        screens::main::title::updateTime     (tft, uptime);
-        screens::main::datas::updateLatitude (tft, latitude);
-        screens::main::datas::updateLongitude(tft, longitude);
-        screens::main::datas::updateSpeed    (tft, speedBuffer);
-        screens::main::datas::updateHeading  (tft, hdgBuffer);
-        screens::main::datas::updateASL      (tft, aslBuffer);
-        screens::main::datas::updateUpdate   (tft, time);
-        screens::main::locator::updateLocator(tft, qth);
-
-        screens::main::locator::updateStatusBottom(tft, gpsStatus);
-        updateMARK(tft);
-    }
-
-    void updateMARK(ST7796S::MSP4021 &tft) {
-        if (!services::navigation::hasMark() ||
-        (services::navigation::markState() == services::navigation::MarkState::READY_TO_SAVE && services::navigation::markTotalDistanceKm() <= 0.0)) {
-            screens::main::locator::updateMarkLocator(tft, "---");
-            screens::main::locator::updateMarkBearing(tft, "---");
-            screens::main::locator::updateMarkDistance(tft, "---");
-            screens::main::locator::updateMarkTimer(tft, "-- : -- : --");
+    void _formatAltitude(double meters, char* buffer, size_t size) {
+        if (settings::getUnits() == settings::Units::IMPERIAL) {
+            std::snprintf(buffer, size, "%.0f ft", meters * 3.28084);
             return;
         }
+        std::snprintf(buffer, size, "%.0f m", meters);
+    }
+}
 
-        char locator[32];
-        char distance[16];
-        char bearing[16];
-        char timer[16];
+void main::preload() {
+    char battery[8] = {};
 
-        services::navigation::getMarkStartLocator(locator, sizeof(locator));
-        services::navigation::formatDistance(services::navigation::markCurrentDistanceKm(), distance, sizeof(distance));
-        services::navigation::formatBearing(services::navigation::markCurrentBearingDeg(), bearing, sizeof(bearing));
-        formatDuration(services::navigation::markElapsedSeconds(), timer, sizeof(timer));
+    title::getBatteryLevel(battery, sizeof(battery));
+    title::setBattery(battery);
 
-        screens::main::locator::updateMarkLocator(tft, locator);
-        screens::main::locator::updateMarkBearing(tft, bearing);
-        screens::main::locator::updateMarkDistance(tft, distance);
-        screens::main::locator::updateMarkTimer(tft, timer);
+    preloadGPS();
+    preloadSOTA();
+    preloadMARK();
+}
+
+void main::preloadGPS() {
+    double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
+    int satFix, satCount;
+
+    char date[16];
+    char time[16];
+    char latitude[32];
+    char longitude[32];
+    char qth[32];
+    char speedBuffer[16];
+    char hdgBuffer[16];
+    char aslBuffer[16];
+    char uptime[16];
+    char gpsStatus[32];
+
+    char callsign[32];
+    title::getUptime(uptime, sizeof(uptime));
+
+    gps::getDate(date, sizeof(date));
+    gps::getTime(time, sizeof(time));
+    gps::getDDM(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
+    gps::getPrecision(masl, hdg, speed);
+    gps::getDOP(hdop, vdop, pdop);
+    gps::getSat(satFix, satCount);
+    gps::getPosition(gpsLatitude, gpsLongitude);
+
+    navigation::setCurrentPosition(gpsLatitude, gpsLongitude);
+
+    if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
+    else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }
+
+    _formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
+    _formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
+    snprintf(
+        gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
+        satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
+    );
+
+    if (!settings::getFullCallsign(callsign, sizeof(callsign)))
+        { strcpy(callsign, "ERROR"); }
+    title::setCallsign   (callsign);
+    title::setDate       (date);
+    title::setTime       (uptime);
+    //title::setBattery  ("");
+
+    datas::setLatitude   (latitude);
+    datas::setLongitude  (longitude);
+    datas::setSpeed      (speedBuffer);
+    datas::setHeading    (hdgBuffer);
+    datas::setASL        (aslBuffer);
+    datas::setUpdate     (time);
+
+    //locator::setStatusTop  ("");
+    locator::setLocator      (qth);
+    locator::setStatusBottom (gpsStatus);
+}
+
+void main::preloadSOTA() {
+    if (!navigation::hasSOTA()) {
+        locator::setSOTABearing("---");
+        locator::setSOTADistance("---");
+        locator::setSOTAPoints("---");
+        locator::setSOTAAltitude("---");
+        locator::setSOTACode("---");
+        return;
     }
 
-    void draw(ST7796S::MSP4021 &tft) {
-        tft.fillScreen(ui::settings::themes::defaults::BLACK);
+    char distance[16];
+    char bearing[16];
+    char points[16];
+    char altitude[16];
+    char code[24];
 
-        screens::main::title::draw(tft);
-        screens::main::locator::draw(tft);
-        screens::main::datas::draw(tft);
+    navigation::formatDistance(navigation::sotaDistanceKm(), distance, sizeof(distance));
+    navigation::formatBearing(navigation::sotaBearingDeg(), bearing, sizeof(bearing));
+    navigation::getSOTACode(code, sizeof(code));
 
-        screens::mockup::buttons::draw(tft);
+    snprintf(points, sizeof(points), "%d (+1)", navigation::getSOTAPoints());
+    _formatAltitude(navigation::getSOTAAltitude(), altitude, sizeof(altitude));
+
+    locator::setSOTABearing(bearing);
+    locator::setSOTADistance(distance);
+    locator::setSOTAPoints(points);
+    locator::setSOTAAltitude(altitude);
+    locator::setSOTACode(code);
+}
+
+void main::preloadMARK() {
+    if (!services::navigation::hasMark()) {
+        locator::setMarkLocator("---");
+        locator::setMarkBearing("---");
+        locator::setMarkDistance("---");
+        locator::setMarkTimer("-- : -- : --");
+        return;
     }
+
+    char locator[32];
+    char distance[16];
+    char bearing[16];
+    char timer[16];
+
+    navigation::getMarkStartLocator(locator, sizeof(locator));
+    navigation::formatDistance(navigation::markCurrentDistanceKm(), distance, sizeof(distance));
+    navigation::formatBearing(navigation::markCurrentBearingDeg(), bearing, sizeof(bearing));
+    _formatDuration(navigation::markElapsedSeconds(), timer, sizeof(timer));
+
+    locator::setMarkLocator(locator);
+    locator::setMarkBearing(bearing);
+    locator::setMarkDistance(distance);
+    locator::setMarkTimer(timer);
+}
+
+void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
+    nextRefreshIn = 1000;
+
+    char battery[8] = {};
+    title::getBatteryLevel(battery, sizeof(battery));
+    title::updateBattery(tft, battery);
+
+    double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
+    int satFix, satCount;
+
+    char date[16];
+    char time[16];
+    char latitude[32];
+    char longitude[32];
+    char qth[32];
+    char speedBuffer[16];
+    char hdgBuffer[16];
+    char aslBuffer[16];
+    char uptime[16];
+    char gpsStatus[32];
+
+    title::getUptime(uptime, sizeof(uptime));
+
+    gps::getDate(date, sizeof(date));
+    gps::getTime(time, sizeof(time));
+    gps::getDDM(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
+    gps::getPrecision(masl, hdg, speed);
+    gps::getDOP(hdop, vdop, pdop);
+    gps::getSat(satFix, satCount);
+    gps::getPosition(gpsLatitude, gpsLongitude);
+    navigation::setCurrentPosition(gpsLatitude, gpsLongitude);
+
+    if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
+    else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }
+
+    _formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
+    _formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
+    snprintf(
+        gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
+        satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
+    );
+
+    title::updateDate     (tft, date);
+    title::updateTime     (tft, uptime);
+    datas::updateLatitude (tft, latitude);
+    datas::updateLongitude(tft, longitude);
+    datas::updateSpeed    (tft, speedBuffer);
+    datas::updateHeading  (tft, hdgBuffer);
+    datas::updateASL      (tft, aslBuffer);
+    datas::updateUpdate   (tft, time);
+    locator::updateLocator(tft, qth);
+
+    locator::updateStatusBottom(tft, gpsStatus);
+    updateMARK(tft);
+}
+
+void main::updateMARK(ST7796S::MSP4021 &tft) {
+    if (!navigation::hasMark() ||
+    (navigation::markState() == navigation::MarkState::READY_TO_SAVE && navigation::markTotalDistanceKm() <= 0.0)) {
+        locator::updateMarkLocator(tft, "---");
+        locator::updateMarkBearing(tft, "---");
+        locator::updateMarkDistance(tft, "---");
+        locator::updateMarkTimer(tft, "-- : -- : --");
+        return;
+    }
+
+    char locator[32];
+    char distance[16];
+    char bearing[16];
+    char timer[16];
+
+    navigation::getMarkStartLocator(locator, sizeof(locator));
+    navigation::formatDistance(navigation::markCurrentDistanceKm(), distance, sizeof(distance));
+    navigation::formatBearing(navigation::markCurrentBearingDeg(), bearing, sizeof(bearing));
+    _formatDuration(navigation::markElapsedSeconds(), timer, sizeof(timer));
+
+    locator::updateMarkLocator(tft, locator);
+    locator::updateMarkBearing(tft, bearing);
+    locator::updateMarkDistance(tft, distance);
+    locator::updateMarkTimer(tft, timer);
+}
+
+void main::draw(ST7796S::MSP4021 &tft) {
+    tft.fillScreen(theme::BLACK);
+
+    title::draw(tft);
+    locator::draw(tft);
+    datas::draw(tft);
+
+    buttons::draw(tft);
 }

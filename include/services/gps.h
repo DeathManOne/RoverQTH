@@ -1,5 +1,5 @@
 /*
- * services/gps.h
+ * include/services/gps.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -28,9 +28,9 @@
 #include <cstdint>
 
 namespace services::gps {
-    bool begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
+    bool begin  (HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
     bool restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
-    bool update(uint32_t timeoutMs = 10);
+    bool update (uint32_t timeoutMs = 10);
     bool poll();
 
     void getDate(char* buffer, size_t size);
@@ -43,11 +43,11 @@ namespace services::gps {
     void getDOP(double &HDOP, double &VDOP, double &PDOP);
     void getPosition(double &latitude, double &longitude);
 
-    void getDD(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
+    void getDD (char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
     void getDMS(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
     void getDDM(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
 
-    void decimalToDD(const double value, const bool isLatitude, char* buffer, size_t size);
+    void decimalToDD (const double value, const bool isLatitude, char* buffer, size_t size);
     void decimalToDDM(const double value, const bool isLatitude, char* buffer, size_t size);
     void decimalToDMS(const double value, const bool isLatitude, char* buffer, size_t size);
     void decimalToGridLocator(const double latitude, const double longitude, char* buffer, size_t size);

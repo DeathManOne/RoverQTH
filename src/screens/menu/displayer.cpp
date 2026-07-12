@@ -1,5 +1,5 @@
 /*
- * screens/menu/displayer.cpp
+ * src/screens/menu/displayer.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -27,90 +27,94 @@
 #include "display/manager.h"
 #include "screens/menu.h"
 #include "screens/menu/displayer.h"
-#include "screens/mockup/grid.h"
+#include "ui/mockup/grid.h"
+#include "ui/settings/mockup.h"
 
-namespace screens::menu {
-    services::settings::TFTRotation Displayer::nextRotation(services::settings::TFTRotation rotation) {
-        switch (rotation) {
-            case services::settings::TFTRotation::NORMAL:
-                return services::settings::TFTRotation::REVERSED;
-            case services::settings::TFTRotation::REVERSED:
-            default:
-                return services::settings::TFTRotation::NORMAL;
-        }
-    }
+using screens::menu::Displayer;
+namespace menu     = screens::menu;
+namespace settings = services::settings;
+namespace grid     = ui::mockup::grid;
+namespace uiMockup = ui::settings::mockup;
 
-    const char* Displayer::rotationToText(services::settings::TFTRotation rotation) {
-        switch (rotation) {
-            case services::settings::TFTRotation::REVERSED:
-                return "Reversed";
-            case services::settings::TFTRotation::NORMAL:
-            default:
-                return "Normal";
-        }
-    }
-
-    void Displayer::actionRotation(ST7796S::MSP4021 &tft) {
-        const services::settings::TFTRotation rotation = nextRotation(services::settings::getTFTRotation());
-        services::settings::setTFTRotation(rotation);
-        tft.setRotation(static_cast<uint8_t>(rotation));
-        display::TLoad();
-        display::clearScreen();
-        screens::menu::draw(tft);
-    }
-
-    void Displayer::actionCalibration(ST7796S::MSP4021 &tft) {
-        services::settings::resetTouchCalibration();
-        while (!display::TCalibrate())
-            { delay(10); }
-        display::clearScreen();
-        screens::menu::draw(tft);
-    }
-
-    void Displayer::draw(ST7796S::MSP4021 &tft) {
-        screens::mockup::grid::draw(tft);
-
-        const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
-        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
-        const int rowH  = 28;
-
-        int rowY = y + rowH + (gap * 3);
-        for (Field<Action>* field : fields) {
-            makeFieldArea(*field, x, rowY, w, rowH);
-            rowY += rowH;
-        }
-
-        std::snprintf(widthValue,  sizeof(widthValue),  "%d px", TFT_WIDTH);
-        std::snprintf(heightValue, sizeof(heightValue), "%d px", TFT_HEIGHT);
-        rotationField.value = rotationToText(services::settings::getTFTRotation());
-
-        widthField.value       = widthValue;
-        heightField.value      = heightValue;
-        calibrationField.value = "Recalibrate";
-
-        drawTitle(tft, x, y, w, rowH, gap, "display");
-        for (Field<Action>* field : fields)
-            { drawLine(tft, *field); }
-    }
-
-    bool Displayer::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
-        for (Field<Action>* field : fields) {
-            if (!isPressed(*field, x, y))
-                { continue; }
-            switch (field->action) {
-                case Action::ROTATION:
-                    actionRotation(tft);
-                    return true;
-                case Action::CALIBRATION:
-                    actionCalibration(tft);
-                    return true;
-                case Action::NONE:
-                default:
-                    return false;
-            }
-        }
-        return false;
+settings::TFTRotation Displayer::_nextRotation(settings::TFTRotation rotation) {
+    switch (rotation) {
+        case settings::TFTRotation::NORMAL:
+            return settings::TFTRotation::REVERSED;
+        case settings::TFTRotation::REVERSED:
+        default:
+            return settings::TFTRotation::NORMAL;
     }
 }
+
+const char* Displayer::_rotationToText(settings::TFTRotation rotation) {
+    switch (rotation) {
+        case settings::TFTRotation::REVERSED:
+            return "Reversed";
+        case settings::TFTRotation::NORMAL:
+        default:
+            return "Normal";
+    }
+}
+
+void Displayer::_actionRotation(ST7796S::MSP4021 &tft) {
+    const settings::TFTRotation rotation = _nextRotation(settings::getTFTRotation());
+    settings::setTFTRotation(rotation);
+    tft.setRotation(static_cast<uint8_t>(rotation));
+    display::TLoad();
+    display::clearScreen();
+    menu::draw(tft);
+}
+
+void Displayer::_actionCalibration(ST7796S::MSP4021 &tft) {
+    settings::resetTouchCalibration();
+    while (!display::TCalibrate())
+        { delay(10); }
+    display::clearScreen();
+    menu::draw(tft);
+}
+
+void Displayer::draw(ST7796S::MSP4021 &tft) {
+    grid::draw(tft);
+
+    const int gap   = uiMockup::GAP;
+    const int x     = grid::innerX()       + (gap * 2);
+    const int y     = grid::innerY()       + (gap * 2);
+    const int w     = grid::innerWidth()   - (gap * 4);
+    const int rowH  = 28;
+
+    int rowY = y + rowH + (gap * 3);
+    for (Field<_Action>* field : _fields) {
+        _makeFieldArea(*field, x, rowY, w, rowH);
+        rowY += rowH;
+    }
+
+    std::snprintf(_widthValue,  sizeof(_widthValue),  "%d px", TFT_WIDTH);
+    std::snprintf(_heightValue, sizeof(_heightValue), "%d px", TFT_HEIGHT);
+    _rotationField.value = _rotationToText(settings::getTFTRotation());
+
+    _widthField.value       = _widthValue;
+    _heightField.value      = _heightValue;
+    _calibrationField.value = "Recalibrate";
+
+    _drawTitle(tft, x, y, w, rowH, gap, "display");
+    for (Field<_Action>* field : _fields)
+        { _drawLine(tft, *field); }
+}
+
+bool Displayer::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
+    for (Field<_Action>* field : _fields) {
+        if (!_isPressed(*field, x, y)) { continue; }
+        switch (field->action) {
+            case _Action::ROTATION:
+                _actionRotation(tft);
+                return true;
+            case _Action::CALIBRATION:
+                _actionCalibration(tft);
+                return true;
+            case _Action::NONE:
+            default: return false;
+        }
+    }
+    return false;
+}
+

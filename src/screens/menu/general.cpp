@@ -1,5 +1,5 @@
 /*
- * screens/menu/general.cpp
+ * src/screens/menu/general.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,186 +25,189 @@
 
 #include "screens/main/title.h"
 #include "screens/menu/general.h"
-#include "screens/mockup/grid.h"
+#include "ui/mockup/grid.h"
+#include "ui/settings/mockup.h"
 
-namespace screens::menu {
-    void General::actionCallsign(ST7796S::MSP4021 &tft) {
-        char callsign[32] = "";
-        if (services::settings::getCallsign(callsign, sizeof(callsign)))
-            { tft.KSetText(callsign); }
-        tft.KDraw("Callsign");
-        mode = Mode::KEYBOARD;
+using screens::menu::General;
+namespace title    = screens::main::title;
+namespace settings = services::settings;
+namespace grid     = ui::mockup::grid;
+namespace uiMockup = ui::settings::mockup;
+
+void General::_actionCallsign(ST7796S::MSP4021 &tft) {
+    char callsign[32] = "";
+    if (settings::getCallsign(callsign, sizeof(callsign)))
+        { tft.KSetText(callsign); }
+    tft.KDraw("Callsign");
+    _mode = Mode::KEYBOARD;
+}
+
+settings::CallsignSuffix General::_nextSuffix(settings::CallsignSuffix suffix) {
+    switch (suffix) {
+        case settings::CallsignSuffix::NONE:
+            return settings::CallsignSuffix::P;
+        case settings::CallsignSuffix::P:
+            return settings::CallsignSuffix::M;
+        case settings::CallsignSuffix::M:
+            return settings::CallsignSuffix::MM;
+        case settings::CallsignSuffix::MM:
+            return settings::CallsignSuffix::AM;
+        case settings::CallsignSuffix::AM:
+        default:
+            return settings::CallsignSuffix::NONE;
+    }
+}
+
+const char* General::_suffixToText(settings::CallsignSuffix suffix) {
+    switch (suffix) {
+        case settings::CallsignSuffix::P:
+            return "/P";
+        case settings::CallsignSuffix::M:
+            return "/M";
+        case settings::CallsignSuffix::MM:
+            return "/MM";
+        case settings::CallsignSuffix::AM:
+            return "/AM";
+        case settings::CallsignSuffix::NONE:
+        default:
+            return "None";
+    }
+}
+
+void General::_actionSuffix(ST7796S::MSP4021 &tft, Field<_Action> &field) {
+    const settings::CallsignSuffix suffix = _nextSuffix(settings::getCallsignSuffix());
+    settings::setCallsignSuffix(suffix);
+    field.value = _suffixToText(suffix);
+    _updateField(tft, field);
+}
+
+settings::Units General::_nextUnits(settings::Units units) {
+    switch (units) {
+        case settings::Units::METRIC:
+            return settings::Units::IMPERIAL;
+        case settings::Units::IMPERIAL:
+        default:
+            return settings::Units::METRIC;
+    }
+}
+
+const char* General::_unitsToText(settings::Units units) {
+    switch (units) {
+        case settings::Units::IMPERIAL:
+            return "Imperial";
+        case settings::Units::METRIC:
+        default:
+            return "Metric";
+    }
+}
+
+void General::_actionUnits(ST7796S::MSP4021 &tft, Field<_Action> &field) {
+    const settings::Units units = _nextUnits(settings::getUnits());
+    settings::setUnits(units);
+    field.value = _unitsToText(units);
+    _updateField(tft, field);
+}
+
+settings::Theme General::_nextTheme(settings::Theme theme) {
+    switch (theme) {
+        case settings::Theme::DEFAULTS:
+            return settings::Theme::NIGHT;
+        case settings::Theme::NIGHT:
+            return settings::Theme::HIGHS;
+        case settings::Theme::HIGHS:
+        default:
+            return settings::Theme::DEFAULTS;
+    }
+}
+
+const char* General::_themeToText(settings::Theme theme) {
+    switch (theme) {
+        case settings::Theme::NIGHT:
+            return "Night";
+        case settings::Theme::HIGHS:
+            return "High";
+        case settings::Theme::DEFAULTS:
+        default:
+            return "Default";
+    }
+}
+
+void General::_actionTheme(ST7796S::MSP4021 &tft, Field<_Action> &field) {
+    return; // TODO: Feature temporarily disabled.
+    const settings::Theme theme = _nextTheme(settings::getTheme());
+    settings::setTheme(theme);
+    field.value = _themeToText(theme);
+    _updateField(tft, field);
+}
+
+void General::draw(ST7796S::MSP4021 &tft) {
+    grid::draw(tft);
+
+    const int gap   = uiMockup::GAP;
+    const int x     = grid::innerX()     + (gap * 2);
+    const int y     = grid::innerY()     + (gap * 2);
+    const int w     = grid::innerWidth() - (gap * 4);
+    const int rowH  = 28;
+
+    int rowY = y + rowH + (gap * 3);
+    for (Field<_Action>* field : _fields) {
+        _makeFieldArea(*field, x, rowY, w, rowH);
+        rowY += rowH;
     }
 
-    services::settings::CallsignSuffix General::nextSuffix(services::settings::CallsignSuffix suffix) {
-        switch (suffix) {
-            case services::settings::CallsignSuffix::NONE:
-                return services::settings::CallsignSuffix::P;
-            case services::settings::CallsignSuffix::P:
-                return services::settings::CallsignSuffix::M;
-            case services::settings::CallsignSuffix::M:
-                return services::settings::CallsignSuffix::MM;
-            case services::settings::CallsignSuffix::MM:
-                return services::settings::CallsignSuffix::AM;
-            case services::settings::CallsignSuffix::AM:
-            default:
-                return services::settings::CallsignSuffix::NONE;
-        }
-    }
+    if (!settings::getCallsign(_callsignValue, sizeof(_callsignValue)))
+        { std::strcpy(_callsignValue, "ERROR"); }
 
-    const char* General::suffixToText(services::settings::CallsignSuffix suffix) {
-        switch (suffix) {
-            case services::settings::CallsignSuffix::P:
-                return "/P";
-            case services::settings::CallsignSuffix::M:
-                return "/M";
-            case services::settings::CallsignSuffix::MM:
-                return "/MM";
-            case services::settings::CallsignSuffix::AM:
-                return "/AM";
-            case services::settings::CallsignSuffix::NONE:
-            default:
-                return "None";
-        }
-    }
+    const settings::CallsignSuffix suffix = settings::getCallsignSuffix();
+    const settings::Units units           = settings::getUnits();
+    const settings::Theme theme           = settings::getTheme();
 
-    void General::actionSuffix(ST7796S::MSP4021 &tft, Field<Action> &field) {
-        const services::settings::CallsignSuffix suffix = nextSuffix(services::settings::getCallsignSuffix());
-        services::settings::setCallsignSuffix(suffix);
-        field.value = suffixToText(suffix);
-        updateField(tft, field);
-    }
+    _callsignField.value = _callsignValue;
+    _suffixField.value   = _suffixToText(suffix);
+    _unitsField.value    = _unitsToText(units);
+    _themeField.value    = _themeToText(theme);
+    
+    _drawTitle(tft, x, y, w, rowH, gap, "general");
+    for (Field<_Action>* field : _fields)
+        { _drawLine(tft, *field); }
+}
 
-    services::settings::Units General::nextUnits(services::settings::Units units) {
-        switch (units) {
-            case services::settings::Units::METRIC:
-                return services::settings::Units::IMPERIAL;
-            case services::settings::Units::IMPERIAL:
-            default:
-                return services::settings::Units::METRIC;
-        }
-    }
+void General::update(ST7796S::MSP4021 &tft) {
+    char callsign[32] = "";
+    if (!settings::getFullCallsign(callsign, sizeof(callsign)))
+        { std::strcpy(callsign, "ERROR"); }
+    title::updateCallsign(tft, callsign);
+}
 
-    const char* General::unitsToText(services::settings::Units units) {
-        switch (units) {
-            case services::settings::Units::IMPERIAL:
-                return "Imperial";
-            case services::settings::Units::METRIC:
-            default:
-                return "Metric";
-        }
-    }
-
-    void General::actionUnits(ST7796S::MSP4021 &tft, Field<Action> &field) {
-        const services::settings::Units units = nextUnits(services::settings::getUnits());
-        services::settings::setUnits(units);
-        field.value = unitsToText(units);
-        updateField(tft, field);
-    }
-
-    services::settings::Theme General::nextTheme(services::settings::Theme theme) {
-        switch (theme) {
-            case services::settings::Theme::DEFAULTS:
-                return services::settings::Theme::NIGHT;
-            case services::settings::Theme::NIGHT:
-                return services::settings::Theme::HIGHS;
-            case services::settings::Theme::HIGHS:
-            default:
-                return services::settings::Theme::DEFAULTS;
-        }
-    }
-
-    const char* General::themeToText(services::settings::Theme theme) {
-        switch (theme) {
-            case services::settings::Theme::NIGHT:
-                return "Night";
-            case services::settings::Theme::HIGHS:
-                return "High";
-            case services::settings::Theme::DEFAULTS:
-            default:
-                return "Default";
-        }
-    }
-
-    void General::actionTheme(ST7796S::MSP4021 &tft, Field<Action> &field) {
-        return; // TODO: Feature temporarily disabled.
-        const services::settings::Theme theme = nextTheme(services::settings::getTheme());
-        services::settings::setTheme(theme);
-        field.value = themeToText(theme);
-        updateField(tft, field);
-    }
-
-    void General::draw(ST7796S::MSP4021 &tft) {
-        screens::mockup::grid::draw(tft);
-
-        const int gap   = ui::settings::mockup::GAP;
-        const int x     = screens::mockup::grid::innerX()       + (gap * 2);
-        const int y     = screens::mockup::grid::innerY()       + (gap * 2);
-        const int w     = screens::mockup::grid::innerWidth()   - (gap * 4);
-        const int rowH  = 28;
-
-        int rowY = y + rowH + (gap * 3);
-        for (Field<Action>* field : fields) {
-            makeFieldArea(*field, x, rowY, w, rowH);
-            rowY += rowH;
-        }
-
-        if (!services::settings::getCallsign(callsignValue, sizeof(callsignValue)))
-            { std::strcpy(callsignValue, "ERROR"); }
-
-        const services::settings::CallsignSuffix suffix = services::settings::getCallsignSuffix();
-        const services::settings::Units units           = services::settings::getUnits();
-        const services::settings::Theme theme           = services::settings::getTheme();
-
-        callsignField.value = callsignValue;
-        suffixField.value   = suffixToText(suffix);
-        unitsField.value    = unitsToText(units);
-        themeField.value    = themeToText(theme);
-        
-        drawTitle(tft, x, y, w, rowH, gap, "general");
-        for (Field<Action>* field : fields)
-            { drawLine(tft, *field); }
-    }
-
-    void General::update(ST7796S::MSP4021 &tft) {
-        char callsign[32] = "";
-        if (!services::settings::getFullCallsign(callsign, sizeof(callsign)))
-            { std::strcpy(callsign, "ERROR"); }
-        screens::main::title::updateCallsign(tft, callsign);
-    }
-
-    bool General::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
-        if (mode == Mode::KEYBOARD) {
-            if (tft.KUpdate(x, y)) {
-                const char* value = tft.KRead();
-                services::settings::setCallsign(value);
-                mode = Mode::GRID;
-                tft.setTextScale(1);
-                return true;
-            }
+bool General::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
+    if (_mode == Mode::KEYBOARD) {
+        if (tft.KUpdate(x, y)) {
+            const char* value = tft.KRead();
+            settings::setCallsign(value);
+            _mode = Mode::GRID;
+            tft.setTextScale(1);
             return true;
         }
-        for (Field<Action>* field : fields) {
-            if (!isPressed(*field, x, y))
-                { continue; }
-            switch (field->action) {
-                case Action::CALLSIGN:
-                    actionCallsign(tft);
-                    return true;
-                case Action::SUFFIX:
-                    actionSuffix(tft, *field);
-                    return true;
-                case Action::UNITS:
-                    actionUnits(tft, *field);
-                    return true;
-                case Action::THEME:
-                    actionTheme(tft, *field);
-                    return true;
-                case Action::NONE:
-                default:
-                    return false;
-            }
-        }
-        return false;
+        return true;
     }
+    for (Field<_Action>* field : _fields) {
+        if (!_isPressed(*field, x, y)) { continue; }
+        switch (field->action) {
+            case _Action::CALLSIGN:
+                _actionCallsign(tft);
+                return true;
+            case _Action::SUFFIX:
+                _actionSuffix(tft, *field);
+                return true;
+            case _Action::UNITS:
+                _actionUnits(tft, *field);
+                return true;
+            case _Action::THEME:
+                _actionTheme(tft, *field);
+                return true;
+            case _Action::NONE:
+            default: return false;
+        }
+    }
+    return false;
 }

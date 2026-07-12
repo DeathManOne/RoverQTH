@@ -1,5 +1,5 @@
 /*
- * services/settings.cpp
+ * src/services/settings.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,247 +25,178 @@
 #include "database/nvs.h"
 #include "services/settings.h"
 
-namespace services::settings {
-    bool begin() {
-        return database::nvs::begin();
-    }
+namespace nvs      = database::nvs;
+namespace settings = services::settings;
 
-    bool getTouchCalibration(Calibration &calibration) {
-        switch (getTFTRotation()) {
-            case TFTRotation::NORMAL:
-                return database::nvs::getTouchCalibrationNormal(
-                    calibration.swapXY,     calibration.invertX, calibration.invertY,
-                    calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
-                    calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
-                );
-            case TFTRotation::REVERSED:
-                return database::nvs::getTouchCalibrationReversed(
-                    calibration.swapXY,     calibration.invertX, calibration.invertY,
-                    calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
-                    calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
-                );
-            default:
-                return false;
-        }
-    }
+bool settings::begin() { return nvs::begin(); }
 
-    bool setTouchCalibration(const Calibration &normal, const Calibration &reversed) {
-        bool ok = true;
-        ok = database::nvs::setTouchCalibrationNormal(
-            normal.swapXY,     normal.invertX, normal.invertY,
-            normal.coeffXA,    normal.coeffXB, normal.coeffXC,
-            normal.coeffYA,    normal.coeffYB, normal.coeffYC
-        ) && ok;
-        ok = database::nvs::setTouchCalibrationReversed(
-            reversed.swapXY,    reversed.invertX, reversed.invertY,
-            reversed.coeffXA,   reversed.coeffXB, reversed.coeffXC,
-            reversed.coeffYA,   reversed.coeffYB, reversed.coeffYC
-        ) && ok;
-        return ok;
+bool settings::getTouchCalibration(Calibration &calibration) {
+    switch (getTFTRotation()) {
+        case TFTRotation::NORMAL:
+            return nvs::getTouchCalibrationNormal(
+                calibration.swapXY,     calibration.invertX, calibration.invertY,
+                calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
+                calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+            );
+        case TFTRotation::REVERSED:
+            return nvs::getTouchCalibrationReversed(
+                calibration.swapXY,     calibration.invertX, calibration.invertY,
+                calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
+                calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+            );
+        default:
+            return false;
     }
+}
 
-    bool resetTouchCalibration() {
-        bool ok = true;
-        ok = database::nvs::resetTouchCalibrationNormal()   && ok;
-        ok = database::nvs::resetTouchCalibrationReversed() && ok;
-        return ok;
+bool settings::setTouchCalibration(const Calibration &normal, const Calibration &reversed) {
+    bool ok = true;
+    ok = nvs::setTouchCalibrationNormal(
+        normal.swapXY,     normal.invertX, normal.invertY,
+        normal.coeffXA,    normal.coeffXB, normal.coeffXC,
+        normal.coeffYA,    normal.coeffYB, normal.coeffYC
+    ) && ok;
+    ok = nvs::setTouchCalibrationReversed(
+        reversed.swapXY,    reversed.invertX, reversed.invertY,
+        reversed.coeffXA,   reversed.coeffXB, reversed.coeffXC,
+        reversed.coeffYA,   reversed.coeffYB, reversed.coeffYC
+    ) && ok;
+    return ok;
+}
+
+bool settings::resetTouchCalibration() {
+    bool ok = true;
+    ok = nvs::resetTouchCalibrationNormal()   && ok;
+    ok = nvs::resetTouchCalibrationReversed() && ok;
+    return ok;
+}
+
+uint32_t settings::getBatteryCapacity()              { return nvs::getBatteryCapacity(); }
+bool settings::setBatteryCapacity(uint32_t capacity) { return nvs::setBatteryCapacity(capacity); }
+bool settings::resetBatteryCapacity()                { return nvs::resetBatteryCapacity(); }
+
+float settings::getBatteryMinimal()             { return nvs::getBatteryMinimal(); }
+bool settings::setBatteryMinimal(float voltage) { return nvs::setBatteryMinimal(voltage); }
+bool settings::resetBatteryMinimal()            { return nvs::resetBatteryMinimal(); }
+
+float settings::getBatteryNominal()             { return nvs::getBatteryNominal(); }
+bool settings::setBatteryNominal(float voltage) { return nvs::setBatteryNominal(voltage); }
+bool settings::resetBatteryNominal()            { return nvs::resetBatteryNominal(); }
+
+float settings::getBatteryMaximal()             { return nvs::getBatteryMaximal(); }
+bool settings::setBatteryMaximal(float voltage) { return nvs::setBatteryMaximal(voltage); }
+bool settings::resetBatteryMaximal()            { return nvs::resetBatteryMaximal(); }
+
+uint8_t settings::getBatteryRatioHigh()           { return nvs::getBatteryRatioHigh(); }
+bool settings::setBatteryRatioHigh(uint8_t ratio) { return nvs::setBatteryRatioHigh(ratio); }
+bool settings::resetBatteryRatioHigh()            { return nvs::resetBatteryRatioHigh(); }
+
+bool settings::getCallsign(char* buffer, unsigned int size) { return nvs::getCallsign(buffer, size); }
+bool settings::setCallsign(const char* callsign)            { return nvs::setCallsign(callsign); }
+bool settings::resetCallsign()                              { return nvs::resetCallsign(); }
+
+settings::CallsignSuffix settings::getCallsignSuffix() {
+    uint8_t value = nvs::getCallsignSuffix();
+    switch (static_cast<CallsignSuffix>(value)) {
+        case CallsignSuffix::NONE:
+        case CallsignSuffix::P:
+        case CallsignSuffix::M:
+        case CallsignSuffix::MM:
+        case CallsignSuffix::AM:
+            return static_cast<CallsignSuffix>(value);
+        default:
+            return CallsignSuffix::NONE;
     }
+}
 
-    uint32_t getBatteryCapacity() {
-        return database::nvs::getBatteryCapacity();
+bool settings::setCallsignSuffix(CallsignSuffix callsignSuffix) { return nvs::setCallsignSuffix(static_cast<uint8_t>(callsignSuffix)); }
+bool settings::resetCallsignSuffix()                            { return nvs::resetCallsignSuffix(); }
+
+bool settings::getFullCallsign(char* buffer, unsigned int size) {
+    if (buffer == nullptr || size == 0) { return false; }
+
+    char callsign[32];
+    if (!getCallsign(callsign, sizeof(callsign))) { return false; }
+
+    const auto suffix = getCallsignSuffix();
+    const char* suffixText = "";
+
+    switch (suffix) {
+        case CallsignSuffix::NONE:
+            suffixText = "";
+            break;
+        case CallsignSuffix::P:
+            suffixText = "/P";
+            break;
+        case CallsignSuffix::M:
+            suffixText = "/M";
+            break;
+        case CallsignSuffix::MM:
+            suffixText = "/MM";
+            break;
+        case CallsignSuffix::AM:
+            suffixText = "/AM";
+            break;
     }
+    snprintf(buffer, size, "%s%s", callsign, suffixText);
+    return true;
+}
 
-    bool setBatteryCapacity(uint32_t capacity) {
-        return database::nvs::setBatteryCapacity(capacity);
+settings::Theme settings::getTheme() {
+    uint8_t value = nvs::getTheme();
+    switch (static_cast<Theme>(value)) {
+        case Theme::DEFAULTS:
+        case Theme::NIGHT:
+        case Theme::HIGHS:
+            return static_cast<Theme>(value);
+        default:
+            return Theme::DEFAULTS;
     }
+}
 
-    bool resetBatteryCapacity() {
-        return database::nvs::resetBatteryCapacity();
+bool settings::setTheme(Theme theme) { return nvs::setTheme(static_cast<uint8_t>(theme)); }
+bool settings::resetTheme()          { return nvs::resetTheme(); }
+
+settings::TFTRotation settings::getTFTRotation() {
+    uint8_t value = nvs::getTFTRotation();
+    switch (static_cast<TFTRotation>(value)) {
+        case TFTRotation::NORMAL:
+        case TFTRotation::REVERSED:
+            return static_cast<TFTRotation>(value);
+        default:
+            return TFTRotation::NORMAL;
     }
+}
 
-    float getBatteryMinimal() {
-        return database::nvs::getBatteryMinimal();
+bool settings::setTFTRotation(TFTRotation rotation) { return nvs::setTFTRotation(static_cast<uint8_t>(rotation)); }
+bool settings::resetTFTRotation()                   { return nvs::resetTFTRotation(); }
+
+settings::Units settings::getUnits() {
+    uint8_t value = nvs::getUnits();
+    switch (static_cast<Units>(value)) {
+        case Units::METRIC:
+        case Units::IMPERIAL:
+            return static_cast<Units>(value);
+        default:
+            return Units::METRIC;
     }
+}
 
-    bool setBatteryMinimal(float voltage) {
-        return database::nvs::setBatteryMinimal(voltage);
-    }
+bool settings::setUnits(Units units) { return database::nvs::setUnits(static_cast<uint8_t>(units)); }
+bool settings::resetUnits()          { return database::nvs::resetUnits(); }
 
-    bool resetBatteryMinimal() {
-        return database::nvs::resetBatteryMinimal();
-    }
-
-    float getBatteryNominal() {
-        return database::nvs::getBatteryNominal();
-    }
-
-    bool setBatteryNominal(float voltage) {
-        return database::nvs::setBatteryNominal(voltage);
-    }
-
-    bool resetBatteryNominal() {
-        return database::nvs::resetBatteryNominal();
-    }
-
-    float getBatteryMaximal() {
-        return database::nvs::getBatteryMaximal();
-    }
-
-    bool setBatteryMaximal(float voltage) {
-        return database::nvs::setBatteryMaximal(voltage);
-    }
-
-    bool resetBatteryMaximal() {
-        return database::nvs::resetBatteryMaximal();
-    }
-
-    uint8_t getBatteryRatioHigh() {
-        return database::nvs::getBatteryRatioHigh();
-    }
-
-    bool setBatteryRatioHigh(uint8_t ratio) {
-        return database::nvs::setBatteryRatioHigh(ratio);
-    }
-
-    bool resetBatteryRatioHigh() {
-        return database::nvs::resetBatteryRatioHigh();
-    }
-
-    bool getCallsign(char* buffer, unsigned int size) {
-        return database::nvs::getCallsign(buffer, size);
-    }
-
-    bool setCallsign(const char* callsign) {
-        return database::nvs::setCallsign(callsign);
-    }
-
-    bool resetCallsign() {
-        return database::nvs::resetCallsign();
-    }
-
-    CallsignSuffix getCallsignSuffix() {
-        uint8_t value = database::nvs::getCallsignSuffix();
-        switch (static_cast<CallsignSuffix>(value)) {
-            case CallsignSuffix::NONE:
-            case CallsignSuffix::P:
-            case CallsignSuffix::M:
-            case CallsignSuffix::MM:
-            case CallsignSuffix::AM:
-                return static_cast<CallsignSuffix>(value);
-            default:
-                return CallsignSuffix::NONE;
-        }
-    }
-
-    bool setCallsignSuffix(CallsignSuffix callsignSuffix) {
-        return database::nvs::setCallsignSuffix(static_cast<uint8_t>(callsignSuffix));
-    }
-
-    bool resetCallsignSuffix() {
-        return database::nvs::resetCallsignSuffix();
-    }
-
-    bool getFullCallsign(char* buffer, unsigned int size) {
-        if (buffer == nullptr || size == 0)
-            { return false; }
-        char callsign[32];
-        if (!services::settings::getCallsign(callsign, sizeof(callsign)))
-            { return false; }
-        const auto suffix = services::settings::getCallsignSuffix();
-        const char* suffixText = "";
-
-        switch (suffix) {
-            case services::settings::CallsignSuffix::NONE:
-                suffixText = "";
-                break;
-            case services::settings::CallsignSuffix::P:
-                suffixText = "/P";
-                break;
-            case services::settings::CallsignSuffix::M:
-                suffixText = "/M";
-                break;
-            case services::settings::CallsignSuffix::MM:
-                suffixText = "/MM";
-                break;
-            case services::settings::CallsignSuffix::AM:
-                suffixText = "/AM";
-                break;
-        }
-        snprintf(buffer, size, "%s%s", callsign, suffixText);
-        return true;
-    }
-
-    Theme getTheme() {
-        uint8_t value = database::nvs::getTheme();
-        switch (static_cast<Theme>(value)) {
-            case Theme::DEFAULTS:
-            case Theme::NIGHT:
-            case Theme::HIGHS:
-                return static_cast<Theme>(value);
-            default:
-                return Theme::DEFAULTS;
-        }
-    }
-
-    bool setTheme(Theme theme) {
-        return database::nvs::setTheme(static_cast<uint8_t>(theme));
-    }
-
-    bool resetTheme() {
-        return database::nvs::resetTheme();
-    }
-
-    TFTRotation getTFTRotation() {
-        uint8_t value = database::nvs::getTFTRotation();
-        switch (static_cast<TFTRotation>(value)) {
-            case TFTRotation::NORMAL:
-            case TFTRotation::REVERSED:
-                return static_cast<TFTRotation>(value);
-            default:
-                return TFTRotation::NORMAL;
-        }
-    }
-
-    bool setTFTRotation(TFTRotation rotation) {
-        return database::nvs::setTFTRotation(static_cast<uint8_t>(rotation));
-    }
-
-    bool resetTFTRotation() {
-        return database::nvs::resetTFTRotation();
-    }
-
-    Units getUnits() {
-        uint8_t value = database::nvs::getUnits();
-        switch (static_cast<Units>(value)) {
-            case Units::METRIC:
-            case Units::IMPERIAL:
-                return static_cast<Units>(value);
-            default:
-                return Units::METRIC;
-        }
-    }
-
-    bool setUnits(Units units) {
-        return database::nvs::setUnits(static_cast<uint8_t>(units));
-    }
-
-    bool resetUnits() {
-        return database::nvs::resetUnits();
-    }
-
-    bool resetAll() {
-        bool ok = true;
-        ok = resetTouchCalibration()    && ok;
-        ok = resetBatteryCapacity()     && ok;
-        ok = resetBatteryMinimal()      && ok;
-        ok = resetBatteryNominal()      && ok;
-        ok = resetBatteryMaximal()      && ok;
-        ok = resetBatteryRatioHigh()    && ok;
-        ok = resetCallsign()            && ok;
-        ok = resetCallsignSuffix()      && ok;
-        ok = resetTheme()               && ok;
-        ok = resetTFTRotation()         && ok;
-        ok = resetUnits()               && ok;
-        return ok;
-    }
+bool settings::resetAll() {
+    bool ok = true;
+    ok = resetTouchCalibration()    && ok;
+    ok = resetBatteryCapacity()     && ok;
+    ok = resetBatteryMinimal()      && ok;
+    ok = resetBatteryNominal()      && ok;
+    ok = resetBatteryMaximal()      && ok;
+    ok = resetBatteryRatioHigh()    && ok;
+    ok = resetCallsign()            && ok;
+    ok = resetCallsignSuffix()      && ok;
+    ok = resetTheme()               && ok;
+    ok = resetTFTRotation()         && ok;
+    ok = resetUnits()               && ok;
+    return ok;
 }

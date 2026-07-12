@@ -1,5 +1,5 @@
 /*
- * screens/main.h
+ * include/screens/main.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -32,7 +32,7 @@ namespace screens::main {
     void preloadSOTA();
     void preloadMARK();
 
-    void draw(ST7796S::MSP4021 &tft);
-    void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn);
+    void draw      (ST7796S::MSP4021 &tft);
+    void update    (ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn);
     void updateMARK(ST7796S::MSP4021 &tft);
 }

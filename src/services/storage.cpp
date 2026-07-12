@@ -1,5 +1,5 @@
 /*
- * services/storage.cpp
+ * src/services/storage.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,152 +24,136 @@
 #include <cstring>
 #include "services/storage.h"
 
-namespace services::storage {
-    namespace {
-        SDCard *_SD = nullptr;
-        bool _READY = false;
+namespace storage = services::storage;
 
-        constexpr const char* DIR_ROOT   = "/RoverQTH";
-        constexpr const char* DIR_LOGS   = "/RoverQTH/logs";
-        constexpr const char* DIR_CONFIG = "/RoverQTH/config";
-        constexpr const char* DIR_UPDATE = "/RoverQTH/update";
+namespace {
+    SDCard *_sd = nullptr;
+    bool _ready = false;
 
-        constexpr const char* FILE_QTH    = "/RoverQTH/logs/QTH.jsonl";
-        constexpr const char* FILE_QSO    = "/RoverQTH/logs/QSO.jsonl";
-        constexpr const char* FILE_DEBUG  = "/RoverQTH/logs/debug.log";
-        constexpr const char* FILE_CONFIG = "/RoverQTH/config/settings.json";
+    constexpr const char* DIR_ROOT   = "/RoverQTH";
+    constexpr const char* DIR_LOGS   = "/RoverQTH/logs";
+    constexpr const char* DIR_CONFIG = "/RoverQTH/config";
+    constexpr const char* DIR_UPDATE = "/RoverQTH/update";
 
-        bool available() { return _SD && _READY; }
-    }
+    constexpr const char* FILE_QTH    = "/RoverQTH/logs/QTH.jsonl";
+    constexpr const char* FILE_QSO    = "/RoverQTH/logs/QSO.jsonl";
+    constexpr const char* FILE_DEBUG  = "/RoverQTH/logs/debug.log";
+    constexpr const char* FILE_CONFIG = "/RoverQTH/config/settings.json";
 
-    bool begin(SPIClass &spi, uint32_t timeoutSec) {
-        spi.begin(SD_CLK, SD_MISO, SD_MOSI);
-        if (!_SD)
-            { _SD = new SDCard(); }
-        const uint32_t start = millis();
-        do {
-            if (_SD->initialize(spi, SD_CS)) {
-                _READY = true;
-                ensureTree();
-                return true;
-            }
-            delay(250);
-        } while ((millis() - start) < timeoutSec * 1000);
-        _READY = false;
-        return false;
-    }
-
-    bool isReady() {
-        return available();
-    }
-
-    SDCard* card() {
-        return _SD;
-    }
-
-    bool readCardInfos(uint8_t &type, uint64_t &size, uint64_t &totalBytes, uint64_t &usedBytes) {
-        if (!available())
-            { return false; }
-        return _SD->cardInfos(type, size, totalBytes, usedBytes);
-    }
-
-    bool ensureTree() {
-        if (!available())
-            { return false; }
-        bool ok = true;
-        ok &= _SD->dirCreate(DIR_ROOT);
-        ok &= _SD->dirCreate(DIR_LOGS);
-        ok &= _SD->dirCreate(DIR_CONFIG);
-        ok &= _SD->dirCreate(DIR_UPDATE);
-        return ok;
-    }
-
-    bool fileExists(const char* path) {
-        if (!available() || !path)
-            { return false; }
-        return _SD->fileExists(path);
-    }
-
-    size_t fileSize(const char* path) {
-        if (!available() || !path)
-            { return 0; }
-        return _SD->fileSize(path);
-    }
-
-    bool writeFile(const char* path, const char* data) {
-        if (!available() || !path || !data)
-            { return false; }
-        return _SD->fileWrite(path, data);
-    }
-
-    bool appendFile(const char* path, const char* data) {
-        if (!available() || !path || !data)
-            { return false; }
-        return _SD->fileAppend(path, data);
-    }
-
-    bool writeOrAppendFile(const char* path, const char* data) {
-        if (!available() || !path || !data)
-            { return false; }
-        return _SD->fileWriteOrAppend(path, data);
-    }
-
-    bool readFile(const char* path, char* buffer, size_t size) {
-        if (!available() || !path || !buffer || size == 0)
-            { return false; }
-        struct Context {
-            char* buffer;
-            size_t size;
-            size_t used;
-        };
-
-        Context ctx = {buffer, size, 0};
-        buffer[0] = '\0';
-
-        const bool ok = _SD->fileRead(
-            path, [](const uint8_t* chunk, size_t length, void* userData) -> bool {
-                Context* ctx = static_cast<Context*>(userData);
-                if (ctx->used >= ctx->size - 1)
-                    { return false; }
-                const size_t remaining = (ctx->size - 1) - ctx->used;
-                const size_t toCopy = length < remaining ? length : remaining;
-                memcpy(ctx->buffer + ctx->used, chunk, toCopy);
-                ctx->used += toCopy;
-                ctx->buffer[ctx->used] = '\0';
-                return toCopy == length;
-            },
-            &ctx
-        );
-        return ok && ctx.used > 0;
-    }
-
-    bool deleteFile(const char* path) {
-        if (!available() || !path)
-            { return false; }
-        return _SD->fileDelete(path);
-    }
-
-    bool renameFile(const char* from, const char* to) {
-        if (!available() || !from || !to)
-            { return false; }
-        return _SD->fileRename(from, to);
-    }
-
-    const char* path(FileKind kind) {
-        switch (kind) {
-            case FileKind::QTH:
-                return FILE_QTH;
-            case FileKind::QSO:
-                return FILE_QSO;
-            case FileKind::DEBUG:
-                return FILE_DEBUG;
-            case FileKind::CONFIG:
-                return FILE_CONFIG;
-        }
-        return DIR_ROOT;
-    }
-
-    bool appendQTHRecord(const char* data)   { return writeOrAppendFile(FILE_QTH, data); }
-    bool appendQSORecord(const char* data)   { return writeOrAppendFile(FILE_QSO, data); }
-    bool appendDebugRecord(const char* data) { return writeOrAppendFile(FILE_DEBUG, data); }
+    bool _available() { return _sd && _ready; }
 }
+
+bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
+    spi.begin(SD_CLK, SD_MISO, SD_MOSI);
+    if (!_sd) { _sd = new SDCard(); }
+
+    const uint32_t start = millis();
+    do {
+        if (_sd->initialize(spi, SD_CS)) {
+            _ready = true;
+            ensureTree();
+            return true;
+        }
+        delay(250);
+    } while ((millis() - start) < timeoutSec * 1000);
+
+    _ready = false;
+    return false;
+}
+
+bool storage::isReady() { return _available(); }
+SDCard* storage::card() { return _sd; }
+
+bool storage::readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used) {
+    if (!_available()) { return false; }
+    return _sd->cardInfos(type, size, total, used);
+}
+
+bool storage::ensureTree() {
+    if (!_available()) { return false; }
+
+    bool ok = true;
+    ok &= _sd->dirCreate(DIR_ROOT);
+    ok &= _sd->dirCreate(DIR_LOGS);
+    ok &= _sd->dirCreate(DIR_CONFIG);
+    ok &= _sd->dirCreate(DIR_UPDATE);
+    return ok;
+}
+
+bool storage::fileExists(const char* path) {
+    if (!_available() || !path) { return false; }
+    return _sd->fileExists(path);
+}
+
+size_t storage::fileSize(const char* path) {
+    if (!_available() || !path) { return 0; }
+    return _sd->fileSize(path);
+}
+
+bool storage::writeFile(const char* path, const char* data) {
+    if (!_available() || !path || !data) { return false; }
+    return _sd->fileWrite(path, data);
+}
+
+bool storage::appendFile(const char* path, const char* data) {
+    if (!_available() || !path || !data) { return false; }
+    return _sd->fileAppend(path, data);
+}
+
+bool storage::writeOrAppendFile(const char* path, const char* data) {
+    if (!_available() || !path || !data) { return false; }
+    return _sd->fileWriteOrAppend(path, data);
+}
+
+bool storage::readFile(const char* path, char* buffer, size_t size) {
+    if (!_available() || !path || !buffer || size == 0) { return false; }
+
+    struct Context {
+        char* buffer;
+        size_t size;
+        size_t used;
+    };
+
+    Context ctx = {buffer, size, 0};
+    buffer[0]   = '\0';
+
+    const bool ok = _sd->fileRead(
+        path, [](const uint8_t* chunk, size_t length, void* userData) -> bool {
+            Context* ctx = static_cast<Context*>(userData);
+            if (ctx->used >= ctx->size - 1) { return false; }
+
+            const size_t remaining = (ctx->size - 1) - ctx->used;
+            const size_t toCopy    = length < remaining ? length : remaining;
+
+            memcpy(ctx->buffer + ctx->used, chunk, toCopy);
+            ctx->used += toCopy;
+            ctx->buffer[ctx->used] = '\0';
+            return toCopy == length;
+        }, &ctx
+    );
+    return ok && ctx.used > 0;
+}
+
+bool storage::deleteFile(const char* path) {
+    if (!_available() || !path) { return false; }
+    return _sd->fileDelete(path);
+}
+
+bool storage::renameFile(const char* from, const char* to) {
+    if (!_available() || !from || !to) { return false; }
+    return _sd->fileRename(from, to);
+}
+
+const char* storage::path(FileKind kind) {
+    switch (kind) {
+        case FileKind::QTH:    return FILE_QTH;
+        case FileKind::QSO:    return FILE_QSO;
+        case FileKind::DEBUG:  return FILE_DEBUG;
+        case FileKind::CONFIG: return FILE_CONFIG;
+        default:               return DIR_ROOT;
+    }
+}
+
+bool storage::appendQTHRecord  (const char* data) { return writeOrAppendFile(FILE_QTH,   data); }
+bool storage::appendQSORecord  (const char* data) { return writeOrAppendFile(FILE_QSO,   data); }
+bool storage::appendDebugRecord(const char* data) { return writeOrAppendFile(FILE_DEBUG, data); }

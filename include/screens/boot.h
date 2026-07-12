@@ -1,5 +1,5 @@
 /*
- * screens/boot.h
+ * include/screens/boot.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -28,7 +28,7 @@
 
 namespace screens::boot {
     void clear(ST7796S::MSP4021 &tft);
-    void draw(ST7796S::MSP4021 &tft);
+    void draw (ST7796S::MSP4021 &tft);
 
     void updateWifi (ST7796S::MSP4021 &tft, bool* value);
     void updateSD   (ST7796S::MSP4021 &tft, bool* value);

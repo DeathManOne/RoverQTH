@@ -1,5 +1,5 @@
 /*
- * core/screenManager.cpp
+ * src/core/screenManager.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -32,147 +32,154 @@
 #include "services/navigation.h"
 #include "ui/widgets/buttons.h"
 
-namespace core::screenManager {
-    namespace {
-        uint32_t lastTouchMs                    = 0;
-        constexpr uint32_t TOUCH_DEBOUNCE_MS    = 180;
+namespace manager    = core::screenManager;
+namespace state      = core::state;
+namespace main       = display::main;
+namespace menu       = display::menu;
+namespace mockup     = display::mockup;
+namespace sMenu      = screens::menu;
+namespace navigation = services::navigation;
+namespace buttons    = ui::widgets::buttons;
 
-        bool touchDebounced();
-        void drawMain();
-        void toggleMARK();
-        bool handleMainTouch(int x, int y);
-        void drawMenu();
-        bool handleMenuTouch(int x, int y);
+namespace {
+    uint32_t _lastTouchMs                = 0;
+    constexpr uint32_t TOUCH_DEBOUNCE_MS = 180;
 
-        bool touchDebounced() {
-            const uint32_t now = millis();
-            if ((now - lastTouchMs) >= TOUCH_DEBOUNCE_MS) {
-                lastTouchMs = now;
-                return false;
-            }
-            return true;
-        }
+    bool _touchDebounced();
+    void _toggleMARK();
+    void _drawMain();
+    void _drawMenu();
+    bool _handleMainTouch(int x, int y);
+    bool _handleMenuTouch(int x, int y);
 
-        void drawMain() {
-            display::main::preload();
-            display::main::draw();
-        }
-
-        void toggleMARK() {
-            if (!services::navigation::isMarkRecording()) {
-                services::navigation::startMark();
-
-                core::state::setButtonState(
-                    core::state::Button::MARK_QTH,
-                    core::state::ButtonState::RUNNING
-                );
-
-                display::mockup::updateMARK();
-                display::main::updateMARK();
-                return;
-            }
-            services::navigation::stopMark();
-
-            // TODO: écriture SD
-            services::navigation::clearMark();
-
-            core::state::setButtonState(
-                core::state::Button::MARK_QTH,
-                core::state::ButtonState::READY
-            );
-
-            display::mockup::updateMARK();
-            display::main::updateMARK();
-        }
-
-        bool handleMainTouch(int x, int y) {
-            if (core::state::buttonState(core::state::Button::MARK_QTH) != core::state::ButtonState::UNAVAILABLE) {
-                if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MARK_QTH, x, y)) {
-                    toggleMARK();
-                    return true;
-                }
-            }
-            if (core::state::buttonState(core::state::Button::MENU) != core::state::ButtonState::UNAVAILABLE) {
-                if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MENU, x, y)) {
-                    core::state::setButtonState(core::state::Button::MENU, core::state::ButtonState::RUNNING);
-                    core::state::setScreen(core::state::Screen::MENU);
-                    draw();
-                    return true;
-                }
-            }
+    bool _touchDebounced() {
+        const uint32_t now = millis();
+        if ((now - _lastTouchMs) >= TOUCH_DEBOUNCE_MS) {
+            _lastTouchMs = now;
             return false;
         }
-    
-        void drawMenu() {
-            display::menu::preload();
-            display::menu::draw();
-        }
+        return true;
+    }
 
-        bool handleMenuTouch(int x, int y) {
-            if (screens::menu::isEditing())
-                { return display::menu::handleTouch(x, y); }
-            if (ui::widgets::buttons::isPressed(ui::widgets::buttons::MENU, x, y)) {
-                screens::menu::reset();
-                core::state::setButtonState(core::state::Button::MENU, core::state::ButtonState::READY);
-                core::state::setScreen(core::state::Screen::MAIN);
-                draw();
+    void _toggleMARK() {
+        if (!navigation::isMarkRecording()) {
+            navigation::startMark();
+
+            state::setButtonState(
+                state::Button::MARK_QTH,
+                state::ButtonState::RUNNING
+            );
+
+            mockup::updateMARK();
+            main::updateMARK();
+            return;
+        }
+        navigation::stopMark();
+
+        // TODO: écriture SD
+        navigation::clearMark();
+
+        state::setButtonState(
+            state::Button::MARK_QTH,
+            state::ButtonState::READY
+        );
+
+        mockup::updateMARK();
+        main::updateMARK();
+    }
+
+    void _drawMain() {
+        main::preload();
+        main::draw();
+    }
+
+    void _drawMenu() {
+        menu::preload();
+        menu::draw();
+    }
+
+    bool _handleMainTouch(int x, int y) {
+        if (state::buttonState(state::Button::MARK_QTH) != state::ButtonState::UNAVAILABLE) {
+            if (buttons::isPressed(buttons::markQTH, x, y)) {
+                _toggleMARK();
                 return true;
             }
-            return display::menu::handleTouch(x, y);
         }
+        if (state::buttonState(state::Button::MENU) != state::ButtonState::UNAVAILABLE) {
+            if (buttons::isPressed(buttons::menu, x, y)) {
+                state::setButtonState(state::Button::MENU, state::ButtonState::RUNNING);
+                state::setScreen(state::Screen::MENU);
+                manager::draw();
+                return true;
+            }
+        }
+        return false;
     }
 
-    void begin() { draw(); }
-    void draw() {
-        switch (core::state::currentScreen()) {
-            case core::state::Screen::MAIN:
-                drawMain();
-                break;
-            case core::state::Screen::MENU:
-                drawMenu();
-                break;
-            case core::state::Screen::MAP:
-                break;
-            case core::state::Screen::SOTA:
-                break;
+    bool _handleMenuTouch(int x, int y) {
+        if (sMenu::isEditing()) { return menu::handleTouch(x, y); }
+        if (buttons::isPressed(buttons::menu, x, y)) {
+            sMenu::reset();
+            state::setButtonState(state::Button::MENU, state::ButtonState::READY);
+            state::setScreen(state::Screen::MAIN);
+            manager::draw();
+            return true;
         }
+        return menu::handleTouch(x, y);
     }
+}
 
-    void update(uint32_t &nextRefreshIn) {
-        switch (core::state::currentScreen()) {
-            case core::state::Screen::MAIN:
-                display::main::update(nextRefreshIn);
-                break;
-            case core::state::Screen::MENU:
-                display::menu::update(nextRefreshIn);
-                break;
-            case core::state::Screen::MAP:
-                nextRefreshIn = 1000;
-                break;
-            case core::state::Screen::SOTA:
-                nextRefreshIn = 1000;
-                break;
-        }
+void manager::begin() { draw(); }
+void manager::draw() {
+    switch (state::currentScreen()) {
+        case state::Screen::MENU:
+            _drawMenu();
+            break;
+        case state::Screen::MAP:
+            break;
+        case state::Screen::SOTA:
+            break;
+        case state::Screen::MAIN:
+        default:
+            _drawMain();
+            break;
     }
+}
 
-    void handleTouch() {
-        int x, y;
-        if (!display::TRead(x, y))  { return; }
-        if (touchDebounced())       { return; }
+void manager::update(uint32_t &nextRefreshIn) {
+    switch (state::currentScreen()) {
+        case state::Screen::MENU:
+            menu::update(nextRefreshIn);
+            break;
+        case state::Screen::MAP:
+            nextRefreshIn = 1000;
+            break;
+        case state::Screen::SOTA:
+            nextRefreshIn = 1000;
+            break;
+        case state::Screen::MAIN:
+        default:
+            main::update(nextRefreshIn);
+            break;
+    }
+}
 
-        switch (core::state::currentScreen()) {
-            case core::state::Screen::MAIN:
-                if (handleMainTouch(x, y))
-                    { return; }
-                break;
-            case core::state::Screen::MENU:
-                if (handleMenuTouch(x, y))
-                    { return; }
-                break;
-            case core::state::Screen::MAP:
-                break;
-            case core::state::Screen::SOTA:
-                break;
-        }
+void manager::handleTouch() {
+    int x, y;
+    if (!display::TRead(x, y)) { return; }
+    if (_touchDebounced())     { return; }
+
+    switch (state::currentScreen()) {
+        case state::Screen::MAIN:
+            if (_handleMainTouch(x, y))
+                { return; }
+            break;
+        case state::Screen::MENU:
+            if (_handleMenuTouch(x, y))
+                { return; }
+            break;
+        case state::Screen::MAP:
+        case state::Screen::SOTA:
+        default: break;
     }
 }

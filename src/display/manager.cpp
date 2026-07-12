@@ -1,5 +1,5 @@
 /*
- * display/manager.cpp
+ * src/display/manager.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,78 +21,77 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <MSP4021.h>
 #include "display/internal.h"
 #include "display/manager.h"
 #include "ui/settings/themes/defaults.h"
 
-namespace display::internal {
-    SPIClass TFT_SPI(FSPI);
-    ST7796S::MSP4021* TFT = nullptr;
+namespace internal = display::internal;
+namespace settings = services::settings;
+namespace theme    = ui::settings::themes::defaults;
+
+SPIClass internal::TFT_SPI(FSPI);
+ST7796S::MSP4021* internal::TFT = nullptr;
+
+namespace {
+    ST7796S::MSP4021& _tft() { return *internal::TFT; }
 }
 
-namespace display {
-    namespace {
-        ST7796S::MSP4021& tft() { return *display::internal::TFT; }
-    }
+void display::begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height) {
+    internal::TFT_SPI.begin(clk, miso, mosi);
 
-    void begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, uint8_t screenCS, uint8_t screenDC, uint8_t screenRST, uint16_t width, uint16_t height) {
-        display::internal::TFT_SPI.begin(clk, miso, mosi);
-
-        if (!display::internal::TFT) {
-            display::internal::TFT = new ST7796S::MSP4021(
-                display::internal::TFT_SPI,
-                touchCS,    screenCS,   screenDC,
-                width,      height,     screenRST
-            );
-        }
-        tft().setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
-
-        if (TLoad())            { return; }
-        while (!TCalibrate())   { delay(10); }
-    }
-
-    bool TLoad() {
-        services::settings::Calibration calibration;
-        if (!services::settings::getTouchCalibration(calibration))
-            { return false; }
-        TCalibrate(calibration);
-        return true;
-    }
-
-    bool TCalibrate() {
-        services::settings::Calibration normal;
-        tft().setRotation(static_cast<uint8_t>(services::settings::TFTRotation::NORMAL));
-        if (tft().TCalibrate()) { TCalibrateInfo(normal); }
-        else { return false; }
-
-        services::settings::Calibration reversed;
-        tft().setRotation(static_cast<uint8_t>(services::settings::TFTRotation::REVERSED));
-        if (tft().TCalibrate()) { TCalibrateInfo(reversed); }
-        else { return false; }
-
-        tft().setRotation(static_cast<uint8_t>(services::settings::getTFTRotation()));
-
-        if(!services::settings::setTouchCalibration(normal, reversed))
-            { return false; }
-        return TLoad();
-    }
-
-    void TCalibrate(services::settings::Calibration &calibration) {
-        tft().TCalibrate(
-            calibration.swapXY,     calibration.invertX, calibration.invertY,
-            calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
-            calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+    if (!internal::TFT) {
+        internal::TFT = new ST7796S::MSP4021(
+            internal::TFT_SPI,
+            touchCS,    screenCS,   screenDC,
+            width,      height,     screenRST
         );
     }
+    _tft().setRotation(static_cast<uint8_t>(settings::getTFTRotation()));
 
-    void TCalibrateInfo(services::settings::Calibration &calibration) {
-        tft().TCalibrateInfo(
-            calibration.swapXY,     calibration.invertX, calibration.invertY,
-            calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
-            calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
-        );
-    }
-
-    bool TRead(int &x, int &y)  { return tft().TRead(x, y); }
-    void clearScreen()          { tft().fillScreen(ui::settings::themes::defaults::BLACK); }
+    if (TLoad())          { return; }
+    while (!TCalibrate()) { delay(10); }
 }
+
+bool display::TLoad() {
+    settings::Calibration calibration;
+    if (!settings::getTouchCalibration(calibration))
+        { return false; }
+    TCalibrate(calibration);
+    return true;
+}
+
+bool display::TCalibrate() {
+    settings::Calibration normal;
+    _tft().setRotation(static_cast<uint8_t>(settings::TFTRotation::NORMAL));
+    if (_tft().TCalibrate()) { TCalibrateInfo(normal); }
+    else { return false; }
+
+    settings::Calibration reversed;
+    _tft().setRotation(static_cast<uint8_t>(settings::TFTRotation::REVERSED));
+    if (_tft().TCalibrate()) { TCalibrateInfo(reversed); }
+    else { return false; }
+
+    _tft().setRotation(static_cast<uint8_t>(settings::getTFTRotation()));
+    if(!settings::setTouchCalibration(normal, reversed)) { return false; }
+    return TLoad();
+}
+
+void display::TCalibrate(settings::Calibration &calibration) {
+    _tft().TCalibrate(
+        calibration.swapXY,     calibration.invertX, calibration.invertY,
+        calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
+        calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+    );
+}
+
+void display::TCalibrateInfo(settings::Calibration &calibration) {
+    _tft().TCalibrateInfo(
+        calibration.swapXY,     calibration.invertX, calibration.invertY,
+        calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
+        calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
+    );
+}
+
+bool display::TRead(int &x, int &y) { return _tft().TRead(x, y); }
+void display::clearScreen()         { _tft().fillScreen(theme::BLACK); }

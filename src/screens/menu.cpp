@@ -1,5 +1,5 @@
 /*
- * screens/menu.cpp
+ * src/screens/menu.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -23,89 +23,103 @@
 
 #include "screens/main/title.h"
 #include "screens/menu.h"
-#include "screens/menu/navigation.h"
-#include "screens/mockup/buttons.h"
 #include "screens/menu/about.h"
 #include "screens/menu/battery.h"
 #include "screens/menu/displayer.h"
 #include "screens/menu/general.h"
+#include "screens/menu/navigation.h"
 #include "screens/menu/network.h"
+#include "screens/menu/page.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
 #include "services/gps.h"
+#include "ui/mockup/buttons.h"
 
-namespace screens::menu {
-    namespace {
-        Item currentItem = Item::GENERAL;
+using screens::menu::About;
+using screens::menu::Battery;
+using screens::menu::Displayer;
+using screens::menu::General;
+using screens::menu::Network;
+using screens::menu::Page;
+using screens::menu::Storage;
+using screens::menu::Updates;
 
-        General generalPage;
-        Displayer displayerPage;
-        Network networkPage;
-        Updates updatesPage;
-        Storage storagePage;
-        Battery batteryPage;
-        About aboutPage;
+namespace title      = screens::main::title;
+namespace menu       = screens::menu;
+namespace navigation = screens::menu::navigation;
+namespace gps        = services::gps;
+namespace buttons    = ui::mockup::buttons;
 
-        Page& pageFromItem(Item item) {
-            switch (item) {
-                case Item::GENERAL:     return generalPage;
-                case Item::DISPLAYER:   return displayerPage;
-                case Item::NETWORK:     return networkPage;
-                case Item::UPDATES:     return updatesPage;
-                case Item::STORAGE:     return storagePage;
-                case Item::BATTERY:     return batteryPage;
-                case Item::ABOUT:       return aboutPage;
-                case Item::COUNT:
-                default:                return generalPage;
-            }
+namespace {
+    menu::Item _currentItem = menu::Item::GENERAL;
+
+    General _general;
+    Displayer _displayer;
+    Network _network;
+    Updates _updates;
+    Storage _storage;
+    Battery _battery;
+    About _about;
+
+    Page& _pageFromItem(menu::Item item) {
+        switch (item) {
+            case menu::Item::GENERAL:   return _general;
+            case menu::Item::DISPLAYER: return _displayer;
+            case menu::Item::NETWORK:   return _network;
+            case menu::Item::UPDATES:   return _updates;
+            case menu::Item::STORAGE:   return _storage;
+            case menu::Item::BATTERY:   return _battery;
+            case menu::Item::ABOUT:     return _about;
+            case menu::Item::COUNT:
+            default:                    return _general;
         }
-        Page& currentPage() { return pageFromItem(currentItem); }
     }
-
-    bool isEditing() { return currentPage().isEditing(); }
-    Item current() { return currentItem; }
-
-    void select(Item item) {
-        if (item == Item::COUNT)
-            { return; }
-        currentItem = item;
-    }
-
-    void reset() {
-        currentItem = Item::GENERAL;
-
-        generalPage.reset();
-        displayerPage.reset();
-        networkPage.reset();
-        updatesPage.reset();
-        storagePage.reset();
-        batteryPage.reset();
-        aboutPage.reset();
-    }
-
-    void draw(ST7796S::MSP4021 &tft) {
-        screens::main::title::draw(tft);
-        screens::menu::navigation::draw(tft);
-        screens::mockup::buttons::draw(tft);
-        currentPage().draw(tft);
-    }
-
-    void update(ST7796S::MSP4021 &tft) {
-        if (isEditing()) { return; }
-
-        char date[16];
-        char uptime[16];
-        char battery[8];
-
-        services::gps::getDate(date, sizeof(date));
-        screens::main::title::getUptime(uptime, sizeof(uptime));
-        screens::main::title::getBatteryLevel(battery, sizeof(battery));
-        screens::main::title::updateDate(tft, date);
-        screens::main::title::updateTime(tft, uptime);
-        screens::main::title::updateBattery(tft, battery);
-
-        currentPage().update(tft);
-    }
-
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return currentPage().handleTouch(tft, x, y); }
+    Page& _currentPage() { return _pageFromItem(_currentItem); }
 }
+
+bool menu::isEditing    () { return _currentPage().isEditing(); }
+menu::Item menu::current() { return _currentItem; }
+
+void menu::select(Item item) {
+    if (item == Item::COUNT)
+        { return; }
+    _currentItem = item;
+}
+
+void menu::reset() {
+    _currentItem = Item::GENERAL;
+
+    _general.reset();
+    _displayer.reset();
+    _network.reset();
+    _updates.reset();
+    _storage.reset();
+    _battery.reset();
+    _about.reset();
+}
+
+void menu::draw(ST7796S::MSP4021 &tft) {
+    title::draw(tft);
+    navigation::draw(tft);
+    buttons::draw(tft);
+    _currentPage().draw(tft);
+}
+
+void menu::update(ST7796S::MSP4021 &tft) {
+    if (isEditing()) { return; }
+
+    char date[16];
+    char uptime[16];
+    char battery[8];
+
+    gps::getDate(date, sizeof(date));
+    title::getUptime(uptime, sizeof(uptime));
+    title::getBatteryLevel(battery, sizeof(battery));
+    title::updateDate(tft, date);
+    title::updateTime(tft, uptime);
+    title::updateBattery(tft, battery);
+
+    _currentPage().update(tft);
+}
+
+bool menu::handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return _currentPage().handleTouch(tft, x, y); }

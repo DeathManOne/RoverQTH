@@ -1,5 +1,5 @@
 /*
- * services/navigation.h
+ * include/services/navigation.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -71,7 +71,7 @@ namespace services::navigation {
     double markCurrentBearingDeg();
 
     void getMarkStartLocator(char* buffer, size_t size);
-    void getMarkEndLocator(char* buffer, size_t size);
+    void getMarkEndLocator  (char* buffer, size_t size);
 
     void setCurrentPosition(double latitude, double longitude);
     bool hasCurrentPosition();
@@ -90,7 +90,7 @@ namespace services::navigation {
     double markBearingDeg();
 
     void formatDistance(double km, char* buffer, size_t size);
-    void formatBearing(double deg, char* buffer, size_t size);
+    void formatBearing (double deg, char* buffer, size_t size);
 
     void setSOTA(const char* code, double latitude, double longitude, int points, int altitude);
 

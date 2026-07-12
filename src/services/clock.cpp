@@ -1,5 +1,5 @@
 /*
- * services/clock.cpp
+ * src/services/clock.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,32 +24,29 @@
 #include <Arduino.h>
 #include "services/clock.h"
 
-namespace services::clock {
-    namespace {
-        bool synced         = false;
-        uint32_t syncMillis = 0;
-        uint32_t syncEpoch  = 0;
-    }
+namespace sclock = services::clock;
 
-    void sync(uint32_t utcEpoch) {
-        syncEpoch   = utcEpoch;
-        syncMillis  = millis();
-        synced      = true;
-    }
+namespace {
+    bool _synced         = false;
+    uint32_t _syncMillis = 0;
+    uint32_t _syncEpoch  = 0;
+}
 
-    bool isSynced() {
-        return synced;
-    }
+bool sclock::isSynced() { return _synced; }
 
-    uint32_t now() {
-        if (!synced)
-            { return 0; }
-        return syncEpoch + ((millis() - syncMillis) / 1000);
-    }
+void sclock::sync(uint32_t utcEpoch) {
+    _syncEpoch   = utcEpoch;
+    _syncMillis  = millis();
+    _synced      = true;
+}
 
-    void reset() {
-        synced      = false;
-        syncMillis  = 0;
-        syncEpoch   = 0;
-    }
+uint32_t sclock::now() {
+    if (!_synced) { return 0; }
+    return _syncEpoch + ((millis() - _syncMillis) / 1000);
+}
+
+void sclock::reset() {
+    _synced      = false;
+    _syncMillis  = 0;
+    _syncEpoch   = 0;
 }

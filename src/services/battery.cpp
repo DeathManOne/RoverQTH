@@ -1,5 +1,5 @@
 /*
- * core/battery.cpp
+ * src/services/battery.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,78 +25,78 @@
 #include "services/battery.h"
 #include "services/settings.h"
 
-namespace services::battery {
-    namespace {
-        uint8_t batteryPin  = 0;
-        uint8_t percent     = 0;
-        float voltage       = 0.0f;
+namespace battery  = services::battery;
+namespace settings = services::settings;
 
-        bool present        = false;
-        bool low            = false;
-        bool critical       = false;
+namespace {
+    uint8_t _batteryPin  = 0;
+    uint8_t _percent     = 0;
+    float _voltage       = 0.0f;
+    bool _critical       = false;
+    bool _present        = false;
+    bool _low            = false;
 
-        constexpr float BATTERY_PRESENT             = 2.50f;
-        constexpr float BATTERY_LOW_PERCENT         = 20.0f;
-        constexpr float BATTERY_CRITICAL_PERCENT    = 10.0f;
+    constexpr float BATTERY_PRESENT             = 2.50f;
+    constexpr float BATTERY_LOW_PERCENT         = 20.0f;
+    constexpr float BATTERY_CRITICAL_PERCENT    = 10.0f;
 
-        constexpr float ADC_VREF    = 3.3f;
-        constexpr int ADC_MAX       = 4095;
-    }
+    constexpr float ADC_VREF    = 3.3f;
+    constexpr int ADC_MAX       = 4095;
+}
 
-    float   getVoltage()    { return voltage; }
-    uint8_t getPercent()    { return percent; }
-    bool    isPresent()     { return present; }
-    bool    isLow()         { return low; }
-    bool    isCritical()    { return critical; }
+float   battery::getVoltage() { return _voltage; }
+uint8_t battery::getPercent() { return _percent; }
+bool    battery::isPresent () { return _present; }
+bool    battery::isLow     () { return _low; }
+bool    battery::isCritical() { return _critical; }
 
-    bool begin(uint8_t pin) {
-        batteryPin = pin;
-        pinMode(batteryPin, INPUT);
+bool battery::begin(uint8_t pin) {
+    _batteryPin = pin;
+    pinMode(_batteryPin, INPUT);
 
-        analogReadResolution(12);
-        #ifdef ESP32
-            analogSetPinAttenuation(batteryPin, ADC_11db);
-        #endif
-        return update();
-    }
+    analogReadResolution(12);
+    #ifdef ESP32
+        analogSetPinAttenuation(_batteryPin, ADC_11db);
+    #endif
+    return update();
+}
 
-    bool update() {
-        const float min     = services::settings::getBatteryMinimal();
-        const float max     = services::settings::getBatteryMaximal();
+bool battery::update() {
+    const float min     = settings::getBatteryMinimal();
+    const float max     = settings::getBatteryMaximal();
 
-        const float range   = max - min;
-        if (range <= 0.0f) {
-            voltage     = 0.0f;
-            percent     = 0;
-            present     = false;
-            low         = false;
-            critical    = false;
-            return true;
-        }
-
-        const float ratioHigh   = services::settings::getBatteryRatioHigh() / 100.0f;
-        const float ratioLow    = 1.0f - ratioHigh;
-        if (ratioLow <= 0.0f || ratioHigh <= 0.0f) {
-            voltage     = 0.0f;
-            percent     = 0;
-            present     = false;
-            low         = false;
-            critical    = false;
-            return true;
-        }
-
-        const float lowVoltage      = min + (range * BATTERY_LOW_PERCENT / 100.0f);
-        const float criticalVoltage = min + (range * BATTERY_CRITICAL_PERCENT / 100.0f);
-
-        voltage     = (static_cast<float>(analogRead(batteryPin)) / ADC_MAX) * ADC_VREF / ratioLow;
-        present     = voltage > BATTERY_PRESENT;
-        low         = present && voltage <= lowVoltage;
-        critical    = present && voltage <= criticalVoltage;
-
-        if      (!present)          { percent = 0; }
-        else if (voltage <= min)    { percent = 0; }
-        else if (voltage >= max)    { percent = 100; }
-        else { percent = static_cast<uint8_t>(((voltage - min) * 100.0f) / range); }
+    const float range   = max - min;
+    if (range <= 0.0f) {
+        _voltage        = 0.0f;
+        _percent        = 0;
+        _present        = false;
+        _low            = false;
+        _critical       = false;
         return true;
     }
+
+    const float ratioHigh   = settings::getBatteryRatioHigh() / 100.0f;
+    const float ratioLow    = 1.0f - ratioHigh;
+    if (ratioLow <= 0.0f || ratioHigh <= 0.0f) {
+        _voltage            = 0.0f;
+        _percent            = 0;
+        _present            = false;
+        _low                = false;
+        _critical           = false;
+        return true;
+    }
+
+    const float lowVoltage      = min + (range * BATTERY_LOW_PERCENT / 100.0f);
+    const float criticalVoltage = min + (range * BATTERY_CRITICAL_PERCENT / 100.0f);
+
+    _voltage     = (static_cast<float>(analogRead(_batteryPin)) / ADC_MAX) * ADC_VREF / ratioLow;
+    _present     = _voltage > BATTERY_PRESENT;
+    _low         = _present && _voltage <= lowVoltage;
+    _critical    = _present && _voltage <= criticalVoltage;
+
+    if      (!_present)       { _percent = 0; }
+    else if (_voltage <= min) { _percent = 0; }
+    else if (_voltage >= max) { _percent = 100; }
+    else { _percent = static_cast<uint8_t>(((_voltage - min) * 100.0f) / range); }
+    return true;
 }

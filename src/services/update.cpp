@@ -1,34 +1,52 @@
+/*
+ * src/services/update.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ * 
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include "services/update.h"
 
-namespace services::update {
-    namespace {
-        bool _UPDATING = false;
-        int _PROGRESS = 0;
-    }
+namespace update = services::update;
 
-    bool begin() {
-        _UPDATING = false;
-        _PROGRESS = 0;
-        return true;
-    }
+namespace {
+    bool _updating = false;
+    int _progress  = 0;
+}
 
-    bool checkUpdate() {
-        // TODO
-        return false;
-    }
+bool update::isUpdating() { return _updating; }
+int update::progress   () { return _progress; }
 
-    bool startUpdate() {
-        // TODO
-        _UPDATING = true;
-        _PROGRESS = 0;
-        return false;
-    }
+bool update::begin() {
+    _updating = false;
+    _progress = 0;
+    return true;
+}
 
-    bool isUpdating() {
-        return _UPDATING;
-    }
+bool update::checkUpdate() {
+    // TODO
+    return false;
+}
 
-    int progress() {
-        return _PROGRESS;
-    }
+bool update::startUpdate() {
+    // TODO
+    _updating = true;
+    _progress = 0;
+    return false;
 }

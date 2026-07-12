@@ -1,5 +1,5 @@
 /*
- * screens/menu/updates.h
+ * include/screens/menu/updates.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -23,6 +23,8 @@
 
 
 #pragma once
+
+#include <MSP4021.h>
 #include "screens/menu/page.h"
 
 namespace screens::menu {
@@ -30,23 +32,23 @@ namespace screens::menu {
         public:
             void draw(ST7796S::MSP4021 &tft) override;
         private:
-            enum class Action {NONE};
+            enum class _Action {NONE};
 
-            char sotaVersionValue[16] = "";
-            char sotaUpdateValue[16]  = "";
-            char potaVersionValue[16] = "";
-            char potaUpdateValue[16]  = "";
+            char _sotaVersionValue[16] = "";
+            char _sotaUpdateValue[16]  = "";
+            char _potaVersionValue[16] = "";
+            char _potaUpdateValue[16]  = "";
 
-            Field<Action> sotaVersionField = makeField("SOTA version", Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> sotaUpdateField  = makeField("SOTA update",  Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> potaVersionField = makeField("POTA version", Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> potaUpdateField  = makeField("POTA update",  Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _sotaVersionField = _makeField("SOTA version", _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _sotaUpdateField  = _makeField("SOTA update",  _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _potaVersionField = _makeField("POTA version", _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _potaUpdateField  = _makeField("POTA update",  _Action::NONE, ui::settings::themes::defaults::WHITE);
 
-            Field<Action>* fields[4] = {
-                &sotaVersionField,
-                &sotaUpdateField,
-                &potaVersionField,
-                &potaUpdateField
+            Field<_Action>* _fields[4] = {
+                &_sotaVersionField,
+                &_sotaUpdateField,
+                &_potaVersionField,
+                &_potaUpdateField
             };
     };
 }

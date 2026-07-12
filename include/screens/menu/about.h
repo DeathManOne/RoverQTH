@@ -1,5 +1,5 @@
 /*
- * screens/menu/about.h
+ * include/screens/menu/about.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,6 +22,8 @@
  */
 
 #pragma once
+
+#include <MSP4021.h>
 #include "screens/menu/page.h"
 
 namespace screens::menu {
@@ -29,19 +31,19 @@ namespace screens::menu {
         public:
             void draw(ST7796S::MSP4021 &tft) override;
         private:
-            enum class Action {NONE};
-            Field<Action> nameField     = makeField("Name",     Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> versionField  = makeField("Version",  Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> authorField   = makeField("Author",   Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> licenseField  = makeField("License",  Action::NONE, ui::settings::themes::defaults::WHITE);
-            Field<Action> linkField     = makeField("Link",     Action::NONE, ui::settings::themes::defaults::WHITE);
+            enum class _Action {NONE};
+            Field<_Action> _nameField     = _makeField("Name",     _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _versionField  = _makeField("Version",  _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _authorField   = _makeField("Author",   _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _licenseField  = _makeField("License",  _Action::NONE, ui::settings::themes::defaults::WHITE);
+            Field<_Action> _linkField     = _makeField("Link",     _Action::NONE, ui::settings::themes::defaults::WHITE);
 
-            Field<Action>* fields[5] = {
-                &nameField,
-                &versionField,
-                &authorField,
-                &licenseField,
-                &linkField
+            Field<_Action>* _fields[5] = {
+                &_nameField,
+                &_versionField,
+                &_authorField,
+                &_licenseField,
+                &_linkField
             };
     };
 }
