@@ -30,13 +30,13 @@ namespace {
     SDCard *_sd = nullptr;
     bool _ready = false;
 
-    constexpr const char* DIR_ROOT   = "/RoverQTH";
-    constexpr const char* DIR_LOGS   = "/RoverQTH/logs";
-    constexpr const char* DIR_CONFIG = "/RoverQTH/config";
-    constexpr const char* DIR_UPDATE = "/RoverQTH/update";
+    constexpr const char* DIR_ROOT    = "/RoverQTH";
+    constexpr const char* DIR_QTH     = "/RoverQTH/qth";
+    constexpr const char* DIR_LOGS    = "/RoverQTH/logs";
+    constexpr const char* DIR_CONFIG  = "/RoverQTH/config";
+    constexpr const char* DIR_UPDATE  = "/RoverQTH/update";
 
-    constexpr const char* FILE_QTH    = "/RoverQTH/logs/QTH.jsonl";
-    constexpr const char* FILE_QSO    = "/RoverQTH/logs/QSO.jsonl";
+    constexpr const char* FILE_QTH    = "/RoverQTH/qth/QTH.jsonl";
     constexpr const char* FILE_DEBUG  = "/RoverQTH/logs/debug.log";
     constexpr const char* FILE_CONFIG = "/RoverQTH/config/settings.json";
 
@@ -74,6 +74,7 @@ bool storage::ensureTree() {
 
     bool ok = true;
     ok &= _sd->dirCreate(DIR_ROOT);
+    ok &= _sd->dirCreate(DIR_QTH);
     ok &= _sd->dirCreate(DIR_LOGS);
     ok &= _sd->dirCreate(DIR_CONFIG);
     ok &= _sd->dirCreate(DIR_UPDATE);
@@ -147,7 +148,6 @@ bool storage::renameFile(const char* from, const char* to) {
 const char* storage::path(FileKind kind) {
     switch (kind) {
         case FileKind::QTH:    return FILE_QTH;
-        case FileKind::QSO:    return FILE_QSO;
         case FileKind::DEBUG:  return FILE_DEBUG;
         case FileKind::CONFIG: return FILE_CONFIG;
         default:               return DIR_ROOT;
@@ -155,5 +155,4 @@ const char* storage::path(FileKind kind) {
 }
 
 bool storage::appendQTHRecord  (const char* data) { return writeOrAppendFile(FILE_QTH,   data); }
-bool storage::appendQSORecord  (const char* data) { return writeOrAppendFile(FILE_QSO,   data); }
 bool storage::appendDebugRecord(const char* data) { return writeOrAppendFile(FILE_DEBUG, data); }

@@ -91,7 +91,7 @@ void main::preload() {
 }
 
 void main::preloadGPS() {
-    double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
+    double masl, hdg, speed, hdop, vdop, pdop;
     int satFix, satCount;
 
     char date[16];
@@ -114,9 +114,6 @@ void main::preloadGPS() {
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
-    gps::getPosition(gpsLatitude, gpsLongitude);
-
-    navigation::setCurrentPosition(gpsLatitude, gpsLongitude);
 
     if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
     else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }
@@ -209,7 +206,7 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     title::getBatteryLevel(battery, sizeof(battery));
     title::updateBattery(tft, battery);
 
-    double masl, hdg, speed, hdop, vdop, pdop, gpsLatitude, gpsLongitude;
+    double masl, hdg, speed, hdop, vdop, pdop;
     int satFix, satCount;
 
     char date[16];
@@ -231,8 +228,6 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
-    gps::getPosition(gpsLatitude, gpsLongitude);
-    navigation::setCurrentPosition(gpsLatitude, gpsLongitude);
 
     if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
     else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }

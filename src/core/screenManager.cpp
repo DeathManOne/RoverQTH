@@ -30,6 +30,7 @@
 #include "display/mockup.h"
 #include "screens/menu.h"
 #include "services/navigation.h"
+#include "services/qth.h"
 #include "ui/widgets/buttons.h"
 
 namespace manager    = core::screenManager;
@@ -39,6 +40,7 @@ namespace menu       = display::menu;
 namespace mockup     = display::mockup;
 namespace sMenu      = screens::menu;
 namespace navigation = services::navigation;
+namespace qth        = services::qth;
 namespace buttons    = ui::widgets::buttons;
 
 namespace {
@@ -62,30 +64,45 @@ namespace {
     }
 
     void _toggleMARK() {
-        if (!navigation::isMarkRecording()) {
-            navigation::startMark();
+        const navigation::MarkState markState = navigation::markState();
 
-            state::setButtonState(
-                state::Button::MARK_QTH,
-                state::ButtonState::RUNNING
-            );
+        if (markState == navigation::MarkState::IDLE) {
+            const bool started = navigation::startMark();
+            if (!started) { return; }
 
+            state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
             mockup::updateMARK();
             main::updateMARK();
             return;
         }
-        navigation::stopMark();
 
-        // TODO: écriture SD
-        navigation::clearMark();
+        if (markState == navigation::MarkState::RECORDING) {
+            const bool stopped = navigation::stopMark();
+            if (!stopped) { return; }
+        }
 
-        state::setButtonState(
-            state::Button::MARK_QTH,
-            state::ButtonState::READY
-        );
+        if (navigation::markState() == navigation::MarkState::READY_TO_SAVE) {
+            if (!qth::isCurrentRecordLongEnough()) {
+                navigation::clearMark();
+                state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY);
+                mockup::updateMARK();
+                main::updateMARK();
+                return;
+            }
+            
+            const bool saved = qth::saveCurrentRecord();
+            if (!saved) {
+                state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
+                mockup::updateMARK();
+                main::updateMARK();
+                return;
+            }
 
-        mockup::updateMARK();
-        main::updateMARK();
+            navigation::clearMark();
+            state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY);
+            mockup::updateMARK();
+            main::updateMARK();
+        }
     }
 
     void _drawMain() {

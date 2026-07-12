@@ -35,17 +35,19 @@
 #include "services/navigation.h"
 #include "services/settings.h"
 #include "services/update.h"
+#include "ui/settings/gps.h"
 
-namespace boot       = core::boot;
-namespace power      = core::power;
-namespace manager    = core::screenManager;
-namespace state      = core::state;
-namespace app        = RoverQTH;
-namespace battery    = services::battery;
-namespace gps        = services::gps;
-namespace navigation = services::navigation;
-namespace settings   = services::settings;
-namespace update     = services::update;
+namespace boot        = core::boot;
+namespace power       = core::power;
+namespace manager     = core::screenManager;
+namespace state       = core::state;
+namespace app         = RoverQTH;
+namespace battery     = services::battery;
+namespace gps         = services::gps;
+namespace navigation  = services::navigation;
+namespace settings    = services::settings;
+namespace update      = services::update;
+namespace gpsSettings = ui::settings::gps;
 
 namespace {
     SPIClass _sdSPI(HSPI);
@@ -55,18 +57,19 @@ namespace {
     uint32_t _nextBatteryRefresh = 0;
     TaskHandle_t _gpsTaskHandle  = nullptr;
 
-    constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = 900;
-    constexpr uint32_t GPS_TASK_PERIOD_MS    = 1000;
+    constexpr uint32_t GPS_SAMPLE_PERIOD_MS  = 1000 / gpsSettings::NAVIGATION_RATE_HZ;
+    constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = GPS_SAMPLE_PERIOD_MS + 100;
+    constexpr uint32_t SCREEN_REFRESH_MS     = 1000;
     constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
 
     void _gpsTask(void*) {
         while (true) {
             const uint32_t startMs = millis();
-            gps::update(GPS_UPDATE_TIMEOUT_MS);
+            navigation::updateGPSFix(gps::update(GPS_UPDATE_TIMEOUT_MS));
 
             const uint32_t elapsedMs = millis() - startMs;
-            if (elapsedMs < GPS_TASK_PERIOD_MS)
-                { vTaskDelay(pdMS_TO_TICKS(GPS_TASK_PERIOD_MS - elapsedMs)); }
+            if (elapsedMs < GPS_SAMPLE_PERIOD_MS)
+                { vTaskDelay(pdMS_TO_TICKS(GPS_SAMPLE_PERIOD_MS - elapsedMs)); }
         }
     }
 }
@@ -90,7 +93,7 @@ void app::setup() {
     boot::run(_gpsUART, _sdSPI);
     manager::begin();
 
-    _nextScreenRefresh   = millis() + GPS_TASK_PERIOD_MS;
+    _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
     xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0);
 }
@@ -106,7 +109,8 @@ void app::loop() {
     manager::handleTouch();
 
     if (now < _nextScreenRefresh) { return; }
-    uint32_t nextRefreshIn = GPS_TASK_PERIOD_MS;
+    uint32_t nextRefreshIn = SCREEN_REFRESH_MS;
+
     manager::update(nextRefreshIn);
     _nextScreenRefresh = now + nextRefreshIn;
 }

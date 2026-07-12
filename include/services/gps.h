@@ -38,6 +38,7 @@ namespace services::gps {
     uint8_t getAcquisitionProgress();
     const char* headingToCardinal(const double heading);
 
+    double getAltitude();
     void getSat(int &fix, int &count);
     void getPrecision(double &MASL, double &HDG, double &speed);
     void getDOP(double &HDOP, double &VDOP, double &PDOP);

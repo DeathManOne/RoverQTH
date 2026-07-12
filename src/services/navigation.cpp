@@ -26,10 +26,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "services/clock.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
 
+namespace sclock     = services::clock;
 namespace gps        = services::gps;
 namespace navigation = services::navigation;
 namespace settings   = services::settings;
@@ -38,9 +40,10 @@ namespace {
     //constexpr double PI = 3.14159265358979323846;
     constexpr double EARTH_RADIUS_KM = 6371.0;
 
-    bool _hasCurrent = false;
-    bool _hasMark    = false;
-    bool _hasSOTA    = false;
+    bool _hasCurrent      = false;
+    bool _hasMark         = false;
+    bool _hasSOTA         = false;
+    bool _currentFixValid = false;
 
     double _toRad(double deg);
     double _toDeg(double rad);
@@ -62,36 +65,46 @@ namespace {
 }
 
 void navigation::begin() {
-    _hasCurrent   = false;
-    _hasMark      = false;
-    _hasSOTA      = false;
-    _current      = {};
-    _mark         = {};
-    _sota         = {};
-    _markSnapshot = {};
-    _markState    = MarkState::IDLE;
+    _hasCurrent         = false;
+    _hasMark            = false;
+    _hasSOTA            = false;
+    _current            = {};
+    _mark               = {};
+    _sota               = {};
+    _markSnapshot       = {};
+    _markState          = MarkState::IDLE;
+    _currentFixValid    = false;
 }
 
 bool navigation::startMark() {
-    if (!_hasCurrent) { return false; }
-    _markSnapshot.start     = _current;
-    _markSnapshot.end       = {};
-    _markSnapshot.startedAt = millis() / 1000;
-    _markSnapshot.stoppedAt = 0;
-    _markSnapshot.hasEnd    = false;
-    _mark                   = _current;
-    _hasMark                = true;
-    _markState              = MarkState::RECORDING;
+    if (!_hasCurrent || !_currentFixValid || !sclock::isSynced())
+        { return false; }
+    _markSnapshot = {};
+    _markSnapshot.start              = _current;
+    _markSnapshot.end                = {};
+    _markSnapshot.startUTC           = sclock::now();
+    _markSnapshot.stopUTC            = 0;
+    _markSnapshot.startedAtMillis    = millis();
+    _markSnapshot.stoppedAtMillis    = 0;
+    _markSnapshot.minAltitude        = _current.altitude;
+    _markSnapshot.maxAltitude        = _current.altitude;
+    _markSnapshot.hasEnd             = false;
+
+    _mark      = _current;
+    _hasMark   = true;
+    _markState = MarkState::RECORDING;
     return true;
 }
 
 bool navigation::stopMark() {
-    if (_markState != MarkState::RECORDING || !_hasCurrent)
+    if (_markState != MarkState::RECORDING || !_hasCurrent || !_currentFixValid || !sclock::isSynced())
         { return false; }
-    _markSnapshot.end       = _current;
-    _markSnapshot.stoppedAt = millis() / 1000;
-    _markSnapshot.hasEnd    = true;
-    _markState              = MarkState::READY_TO_SAVE;
+    _markSnapshot.end             = _current;
+    _markSnapshot.stopUTC         = sclock::now();
+    _markSnapshot.stoppedAtMillis = millis();
+    _markSnapshot.hasEnd          = true;
+
+    _markState = MarkState::READY_TO_SAVE;
     return true;
 }
 
@@ -103,16 +116,17 @@ uint32_t navigation::markElapsedSeconds() {
         { return 0; }
     if (_markState == MarkState::READY_TO_SAVE)
         { return markDurationSeconds(); }
-    return (millis() / 1000) - _markSnapshot.startedAt;
+    return (millis() - _markSnapshot.startedAtMillis) / 1000;
 }
 
 uint32_t navigation::markDurationSeconds() {
     if (!_markSnapshot.hasEnd) { return 0; }
-    return _markSnapshot.stoppedAt - _markSnapshot.startedAt;
+    return (_markSnapshot.stoppedAtMillis - _markSnapshot.startedAtMillis) / 1000;
 }
 
-navigation::Coordinate navigation::markStartPosition() { return _markSnapshot.start; }
-navigation::Coordinate navigation::markEndPosition()   { return _markSnapshot.end; }
+navigation::Coordinate navigation::markStartPosition()     { return _markSnapshot.start; }
+navigation::Coordinate navigation::markEndPosition()       { return _markSnapshot.end; }
+const navigation::MarkSnapshot& navigation::markSnapshot() { return _markSnapshot; }
 
 double navigation::markTotalDistanceKm() {
     if (!_markSnapshot.hasEnd) { return -1.0; }
@@ -154,10 +168,22 @@ void navigation::getMarkEndLocator(char* buffer, size_t size) {
     gps::decimalToGridLocator(_markSnapshot.end.latitude, _markSnapshot.end.longitude, buffer, size);
 }
 
-void navigation::setCurrentPosition(double latitude, double longitude) {
-    _current.latitude  = latitude;
-    _current.longitude = longitude;
-    _hasCurrent        = true;
+void navigation::updateGPSFix(bool fixValid) {
+    _currentFixValid = fixValid;
+    if (!fixValid) { return; }
+
+    double latitude;
+    double longitude;
+    gps::getPosition(latitude, longitude);
+
+    _current    = {latitude, longitude, gps::getAltitude()};
+    _hasCurrent = true;
+
+    if (_markState != MarkState::RECORDING) { return; }
+    if (_current.altitude < _markSnapshot.minAltitude)
+        { _markSnapshot.minAltitude = _current.altitude; }
+    if (_current.altitude > _markSnapshot.maxAltitude)
+        { _markSnapshot.maxAltitude = _current.altitude; }
 }
 
 bool navigation::hasCurrentPosition()                { return _hasCurrent; }

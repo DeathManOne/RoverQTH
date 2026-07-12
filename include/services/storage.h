@@ -29,7 +29,7 @@
 #include <SDCard.h>
 
 namespace services::storage {
-    enum class FileKind {QTH, QSO, DEBUG, CONFIG};
+    enum class FileKind {QTH, DEBUG, CONFIG};
 
     bool begin(SPIClass &spi, uint32_t timeoutSec = 10);
     bool isReady();
@@ -53,6 +53,5 @@ namespace services::storage {
     const char* path(FileKind kind);
 
     bool appendQTHRecord  (const char* data);
-    bool appendQSORecord  (const char* data);
     bool appendDebugRecord(const char* data);
 }

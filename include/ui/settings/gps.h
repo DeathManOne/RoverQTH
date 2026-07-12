@@ -25,6 +25,7 @@
 #include <cstdint>
 
 namespace ui::settings::gps {
+    constexpr uint8_t NAVIGATION_RATE_HZ    = 5;
     constexpr double MIN_HEADING_SPEED_KMH  = 2.0;
     constexpr double HDOP_EXCELLENT         = 1.0;
     constexpr double HDOP_GOOD              = 2.0;

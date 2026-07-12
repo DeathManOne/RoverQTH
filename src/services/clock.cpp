@@ -35,9 +35,11 @@ namespace {
 bool sclock::isSynced() { return _synced; }
 
 void sclock::sync(uint32_t utcEpoch) {
-    _syncEpoch   = utcEpoch;
-    _syncMillis  = millis();
-    _synced      = true;
+    if (_synced || utcEpoch == 0)
+        { return; }
+    _syncEpoch  = utcEpoch;
+    _syncMillis = millis();
+    _synced     = true;
 }
 
 uint32_t sclock::now() {

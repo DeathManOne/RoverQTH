@@ -30,6 +30,7 @@ namespace services::navigation {
     struct Coordinate {
         double latitude;
         double longitude;
+        double altitude;
     };
 
     struct SOTATarget {
@@ -48,8 +49,12 @@ namespace services::navigation {
     struct MarkSnapshot {
         Coordinate start;
         Coordinate end;
-        uint32_t startedAt;
-        uint32_t stoppedAt;
+        uint32_t startUTC;
+        uint32_t stopUTC;
+        uint32_t startedAtMillis;
+        uint32_t stoppedAtMillis;
+        double minAltitude;
+        double maxAltitude;
         bool hasEnd;
     };
 
@@ -66,6 +71,8 @@ namespace services::navigation {
     Coordinate markStartPosition();
     Coordinate markEndPosition();
 
+    const MarkSnapshot& markSnapshot();
+
     double markTotalDistanceKm();
     double markCurrentDistanceKm();
     double markCurrentBearingDeg();
@@ -73,7 +80,7 @@ namespace services::navigation {
     void getMarkStartLocator(char* buffer, size_t size);
     void getMarkEndLocator  (char* buffer, size_t size);
 
-    void setCurrentPosition(double latitude, double longitude);
+    void updateGPSFix(bool fixValid);
     bool hasCurrentPosition();
     Coordinate currentPosition();
 
@@ -89,7 +96,7 @@ namespace services::navigation {
     double markDistanceKm();
     double markBearingDeg();
 
-    void formatDistance(double km, char* buffer, size_t size);
+    void formatDistance(double km,  char* buffer, size_t size);
     void formatBearing (double deg, char* buffer, size_t size);
 
     void setSOTA(const char* code, double latitude, double longitude, int points, int altitude);

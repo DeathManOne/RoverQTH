@@ -26,9 +26,11 @@
 #include <cstdio>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
+#include "services/clock.h"
 #include "services/gps.h"
 #include "ui/settings/gps.h"
 
+namespace sclock   = services::clock;
 namespace gps      = services::gps;
 namespace settings = ui::settings::gps;
 
@@ -58,6 +60,8 @@ namespace {
         char* qth,       size_t qthSize,
         void (*formatter)(double, bool, char*, size_t)
     );
+    int64_t _daysFromCivil(int year, unsigned month, unsigned day);
+    uint32_t _toEpochUTC(int year, int month, int day, int hour, int minute, int second);
 
     void _getCoordinates(
         char* latitude,  size_t latitudeSize,
@@ -96,7 +100,43 @@ namespace {
             _timeMinute = _gps->getMinute();
             _timeSecond = _gps->getSecond();
         }
+
+        if (_gps->getDateValid() && _gps->getTimeValid()) {
+            const uint32_t utcEpoch = _toEpochUTC(
+                _dateYear, _dateMonth, _dateDay,
+                _timeHour, _timeMinute, _timeSecond
+            );
+            if (utcEpoch != 0) { sclock::sync(utcEpoch); }
+        }
         return true;
+    }
+
+    int64_t _daysFromCivil(int year, unsigned month, unsigned day) {
+        year -= month <= 2;
+
+        const int era            = (year >= 0 ? year : year - 399) / 400;
+        const unsigned yearOfEra = static_cast<unsigned>(year - era * 400);
+        const unsigned dayOfYear = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+        const unsigned dayOfEra  = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
+
+        return (static_cast<int64_t>(era) * 146097 + static_cast<int64_t>(dayOfEra) - 719468);
+    }
+
+    uint32_t _toEpochUTC(int year, int month, int day, int hour, int minute, int second) {
+        if (year   < 1970 ||
+            month  < 1    || month > 12  ||
+            day    < 1    || day   > 31  ||
+            hour   < 0    || hour  > 23  ||
+            minute < 0    || minute > 59 ||
+            second < 0    || second > 60
+        ) { return 0; }
+
+        const int64_t days  = _daysFromCivil(year, static_cast<unsigned>(month), static_cast<unsigned>(day));
+        const int64_t epoch = days * 86400LL + hour * 3600LL + minute * 60LL + second;
+
+        if (epoch <= 0 || epoch > UINT32_MAX)
+            { return 0; }
+        return static_cast<uint32_t>(epoch);
     }
 }
 
@@ -123,7 +163,7 @@ bool gps::begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud
             if (_gps->begin(uart)) {
                 _gps->setAutoPVT(true);
                 _gps->setAutoDOPrate(1);
-                _gps->setNavigationFrequency(5);
+                _gps->setNavigationFrequency(settings::NAVIGATION_RATE_HZ);
                 _gps->setSerialRate(finalBaud);
 
                 delay(100);
@@ -244,6 +284,8 @@ const char* gps::headingToCardinal(const double heading) {
     const int index         = static_cast<int>(normalized / 45.0) % 8;
     return directions[index];
 }
+
+double gps::getAltitude() { return _masl; }
 
 void gps::getSat(int &fix, int &count) {
     fix   = _satFix;
