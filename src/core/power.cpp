@@ -24,13 +24,16 @@
 #include <esp_sleep.h>
 #include "core/power.h"
 #include "services/battery.h"
+#include "services/storage.h"
 
 namespace power   = core::power;
 namespace battery = services::battery;
+namespace storage = services::storage;
 
 bool power::shouldShutdown() { return battery::isCritical(); }
 
 void power::shutdown() {
+    storage::appendLogRecord("SYSTEM_SHUTDOWN_BATTERY_CRITICAL");
     // futur :
     // storage save
     // flush logs

@@ -21,26 +21,127 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
+#include <cstdio>
+#include <ctime>
+#include "services/clock.h"
 #include "services/storage.h"
 
+namespace sclock  = services::clock;
 namespace storage = services::storage;
 
 namespace {
-    SDCard *_sd = nullptr;
-    bool _ready = false;
+    constexpr size_t MAX_LOGS_WAITING   = 20;
+    constexpr size_t MAX_LOGS_LENGTH    = 256;
 
-    constexpr const char* DIR_ROOT    = "/RoverQTH";
-    constexpr const char* DIR_QTH     = "/RoverQTH/qth";
-    constexpr const char* DIR_LOGS    = "/RoverQTH/logs";
-    constexpr const char* DIR_CONFIG  = "/RoverQTH/config";
-    constexpr const char* DIR_UPDATE  = "/RoverQTH/update";
+    struct WaitingLog {
+        const char* path;
+        char data[MAX_LOGS_LENGTH];
+    };
 
-    constexpr const char* FILE_QTH    = "/RoverQTH/qth/QTH.jsonl";
-    constexpr const char* FILE_DEBUG  = "/RoverQTH/logs/debug.log";
-    constexpr const char* FILE_CONFIG = "/RoverQTH/config/settings.json";
+    SDCard *_sd              = nullptr;
+    bool _ready              = false;
+    size_t _waitingLogsCount = 0;
+    WaitingLog _waitingLogs[MAX_LOGS_WAITING] {};
 
-    bool _available() { return _sd && _ready; }
+    constexpr const char* DIR_ROOT             = "/RoverQTH";
+
+    constexpr const char* DIR_DATABASE         = "/RoverQTH/database";
+    constexpr const char* FILE_DATABASE_POTA   = "/RoverQTH/database/pota.bin";
+    constexpr const char* FILE_DATABASE_SOTA   = "/RoverQTH/database/sota.bin";
+
+    constexpr const char* DIR_EXPORT           = "/RoverQTH/export";
+    constexpr const char* FILE_EXPORT_QTH      = "/RoverQTH/export/QTH.json";
+    constexpr const char* FILE_EXPORT_SETTINGS = "/RoverQTH/export/settings.json";
+
+    constexpr const char* DIR_LOGS             = "/RoverQTH/logs";
+    constexpr const char* FILE_LOGS_ERROR      = "/RoverQTH/logs/error.log";
+    constexpr const char* FILE_LOGS_SYSTEM     = "/RoverQTH/logs/system.log";
+
+    constexpr const char* DIR_QTH              = "/RoverQTH/qth";
+    constexpr const char* FILE_QTH             = "/RoverQTH/qth/QTH.jsonl";
+
+    constexpr const char* DIR_TMP              = "/RoverQTH/tmp";
+    constexpr const char* FILE_TMP_FIRMWARE    = "/RoverQTH/tmp/firmware.tmp";
+    constexpr const char* FILE_TMP_POTA        = "/RoverQTH/tmp/pota.tmp";
+    constexpr const char* FILE_TMP_SOTA        = "/RoverQTH/tmp/sota.tmp";
+
+    bool _formatRecord(const char* data, char* buffer, size_t size);
+    bool _queueLogs(const char* path, const char* data);
+    void _clearWaitingLogs();
+    void _flushWaitingLogs();
+    bool _ensureTree();
+
+    bool _formatRecord(const char* data, char* buffer, size_t size) {
+        if (!data || data[0] == '\0' || !buffer || size == 0) { return false; }
+
+        int written = 0;
+        if (sclock::isSynced()) {
+            const time_t rawTime = static_cast<time_t>(sclock::now());
+
+            struct tm utcTime {};
+            if (!gmtime_r(&rawTime, &utcTime)) { return false; }
+
+            written = std::snprintf(
+                buffer, size,
+                "%04d-%02d-%02dT%02d:%02d:%02dZ | %s\n",
+                utcTime.tm_year + 1900, utcTime.tm_mon + 1, utcTime.tm_mday,
+                utcTime.tm_hour, utcTime.tm_min, utcTime.tm_sec, data
+            );
+        } else {
+            written = std::snprintf(
+                buffer, size,
+                "BOOT+%010lums | %s\n",
+                static_cast<unsigned long>(millis()), data
+            );
+        }
+        return (written > 0 && static_cast<size_t>(written) < size);
+    }
+
+    bool _queueLogs(const char* path, const char* data) {
+        if (!path || !data || data[0] == '\0')     { return false; }
+        if (_waitingLogsCount >= MAX_LOGS_WAITING) { return false; }
+
+        WaitingLog& waiting = _waitingLogs[_waitingLogsCount];
+        waiting.path        = path;
+
+        std::snprintf(waiting.data, MAX_LOGS_LENGTH, "%s", data);
+        ++_waitingLogsCount;
+        return true;
+    }
+
+    void _clearWaitingLogs() {
+        for (size_t index = 0; index < _waitingLogsCount; ++index) {
+            _waitingLogs[index].path    = nullptr;
+            _waitingLogs[index].data[0] = '\0';
+        }
+        _waitingLogsCount = 0;
+    }
+
+    void _flushWaitingLogs() {
+        if (!storage::isReady()) { return; }
+        for (size_t index = 0; index < _waitingLogsCount; ++index) {
+            const WaitingLog& waiting = _waitingLogs[index];
+            if (!waiting.path || waiting.data[0] == '\0') { continue; }
+            if (!_sd->fileWriteOrAppend(waiting.path, waiting.data)) {
+                _ready = false;
+                _clearWaitingLogs();
+                return;
+            }
+        }
+        _clearWaitingLogs();
+    }
+
+    bool _ensureTree() {
+        if (!storage::isReady()) { return false; }
+        bool ok = true;
+        ok &= _sd->dirCreate(DIR_ROOT);
+        ok &= _sd->dirCreate(DIR_DATABASE);
+        ok &= _sd->dirCreate(DIR_EXPORT);
+        ok &= _sd->dirCreate(DIR_LOGS);
+        ok &= _sd->dirCreate(DIR_QTH);
+        ok &= _sd->dirCreate(DIR_TMP);
+        return ok;
+    }
 }
 
 bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
@@ -51,108 +152,69 @@ bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
     do {
         if (_sd->initialize(spi, SD_CS)) {
             _ready = true;
-            ensureTree();
-            return true;
+            if (!_ensureTree()) {
+                _ready = false;
+                _clearWaitingLogs();
+            } else { _flushWaitingLogs(); }
+            return _ready;
         }
         delay(250);
     } while ((millis() - start) < timeoutSec * 1000);
 
+    _clearWaitingLogs();
     _ready = false;
-    return false;
+    return _ready;
 }
 
-bool storage::isReady() { return _available(); }
-SDCard* storage::card() { return _sd; }
+bool storage::isReady() { return _sd && _ready; }
 
 bool storage::readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used) {
-    if (!_available()) { return false; }
+    if (!isReady()) { return false; }
     return _sd->cardInfos(type, size, total, used);
 }
 
-bool storage::ensureTree() {
-    if (!_available()) { return false; }
+bool storage::appendErrorRecord(const char* data) {
+    if (!data || data[0] == '\0') {return false; }
 
-    bool ok = true;
-    ok &= _sd->dirCreate(DIR_ROOT);
-    ok &= _sd->dirCreate(DIR_QTH);
-    ok &= _sd->dirCreate(DIR_LOGS);
-    ok &= _sd->dirCreate(DIR_CONFIG);
-    ok &= _sd->dirCreate(DIR_UPDATE);
-    return ok;
-}
-
-bool storage::fileExists(const char* path) {
-    if (!_available() || !path) { return false; }
-    return _sd->fileExists(path);
-}
-
-size_t storage::fileSize(const char* path) {
-    if (!_available() || !path) { return 0; }
-    return _sd->fileSize(path);
-}
-
-bool storage::writeFile(const char* path, const char* data) {
-    if (!_available() || !path || !data) { return false; }
-    return _sd->fileWrite(path, data);
-}
-
-bool storage::appendFile(const char* path, const char* data) {
-    if (!_available() || !path || !data) { return false; }
-    return _sd->fileAppend(path, data);
-}
-
-bool storage::writeOrAppendFile(const char* path, const char* data) {
-    if (!_available() || !path || !data) { return false; }
-    return _sd->fileWriteOrAppend(path, data);
-}
-
-bool storage::readFile(const char* path, char* buffer, size_t size) {
-    if (!_available() || !path || !buffer || size == 0) { return false; }
-
-    struct Context {
-        char* buffer;
-        size_t size;
-        size_t used;
-    };
-
-    Context ctx = {buffer, size, 0};
-    buffer[0]   = '\0';
-
-    const bool ok = _sd->fileRead(
-        path, [](const uint8_t* chunk, size_t length, void* userData) -> bool {
-            Context* ctx = static_cast<Context*>(userData);
-            if (ctx->used >= ctx->size - 1) { return false; }
-
-            const size_t remaining = (ctx->size - 1) - ctx->used;
-            const size_t toCopy    = length < remaining ? length : remaining;
-
-            memcpy(ctx->buffer + ctx->used, chunk, toCopy);
-            ctx->used += toCopy;
-            ctx->buffer[ctx->used] = '\0';
-            return toCopy == length;
-        }, &ctx
-    );
-    return ok && ctx.used > 0;
-}
-
-bool storage::deleteFile(const char* path) {
-    if (!_available() || !path) { return false; }
-    return _sd->fileDelete(path);
-}
-
-bool storage::renameFile(const char* from, const char* to) {
-    if (!_available() || !from || !to) { return false; }
-    return _sd->fileRename(from, to);
-}
-
-const char* storage::path(FileKind kind) {
-    switch (kind) {
-        case FileKind::QTH:    return FILE_QTH;
-        case FileKind::DEBUG:  return FILE_DEBUG;
-        case FileKind::CONFIG: return FILE_CONFIG;
-        default:               return DIR_ROOT;
+    char line[MAX_LOGS_LENGTH];
+    if (!_formatRecord(data, line, sizeof(line))) { return false; }
+    if (!_sd) {return _queueLogs(FILE_LOGS_ERROR, line); }
+    if (!isReady()) { return false; }
+    if (!_sd->fileWriteOrAppend(FILE_LOGS_ERROR, line)) {
+        _ready = false;
+        _clearWaitingLogs();
+        return false;
     }
+    return true;
 }
 
-bool storage::appendQTHRecord  (const char* data) { return writeOrAppendFile(FILE_QTH,   data); }
-bool storage::appendDebugRecord(const char* data) { return writeOrAppendFile(FILE_DEBUG, data); }
+bool storage::appendLogRecord(const char* data) {
+    if (!data || data[0] == '\0') {return false; }
+
+    char line[MAX_LOGS_LENGTH];
+    if (!_formatRecord(data, line, sizeof(line))) { return false; }
+    if (!_sd) {return _queueLogs(FILE_LOGS_SYSTEM, line); }
+    if (!isReady()) { return false; }
+    if (!_sd->fileWriteOrAppend(FILE_LOGS_SYSTEM, line)) {
+        _ready = false;
+        _clearWaitingLogs();
+        return false;
+    }
+    return true;
+}
+
+bool storage::appendQTHRecord(const char* data) {
+    if (!data || data[0] == '\0' || !isReady()) { return false; }
+
+    char line[1032];
+    const int written = std::snprintf(line, sizeof(line), "%s\n", data);
+
+    if (written <= 0 || static_cast<size_t>(written) >= sizeof(line))
+        { return false; }
+    if (!_sd->fileWriteOrAppend(FILE_QTH, line)) {
+        _ready = false;
+        _clearWaitingLogs();
+        return false;
+    }
+    return true;
+}

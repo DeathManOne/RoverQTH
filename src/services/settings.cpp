@@ -24,9 +24,18 @@
 #include <cstdio>
 #include "database/nvs.h"
 #include "services/settings.h"
+#include "services/storage.h"
 
 namespace nvs      = database::nvs;
 namespace settings = services::settings;
+namespace storage  = services::storage;
+
+namespace {
+    bool _checkWrite(bool result, const char* errorCode) {
+        if (!result) { storage::appendErrorRecord(errorCode); }
+        return result;
+    }
+}
 
 bool settings::begin() { return nvs::begin(); }
 
@@ -61,39 +70,87 @@ bool settings::setTouchCalibration(const Calibration &normal, const Calibration 
         reversed.coeffXA,   reversed.coeffXB, reversed.coeffXC,
         reversed.coeffYA,   reversed.coeffYB, reversed.coeffYC
     ) && ok;
-    return ok;
+    return _checkWrite(ok, "TOUCH_CALIBRATION_SAVE_FAILED");
 }
 
 bool settings::resetTouchCalibration() {
     bool ok = true;
     ok = nvs::resetTouchCalibrationNormal()   && ok;
     ok = nvs::resetTouchCalibrationReversed() && ok;
-    return ok;
+    return _checkWrite(ok, "TOUCH_CALIBRATION_RESET_FAILED");
 }
 
-uint32_t settings::getBatteryCapacity()              { return nvs::getBatteryCapacity(); }
-bool settings::setBatteryCapacity(uint32_t capacity) { return nvs::setBatteryCapacity(capacity); }
-bool settings::resetBatteryCapacity()                { return nvs::resetBatteryCapacity(); }
+uint32_t settings::getBatteryCapacity() {
+    return nvs::getBatteryCapacity();
+}
 
-float settings::getBatteryMinimal()             { return nvs::getBatteryMinimal(); }
-bool settings::setBatteryMinimal(float voltage) { return nvs::setBatteryMinimal(voltage); }
-bool settings::resetBatteryMinimal()            { return nvs::resetBatteryMinimal(); }
+bool settings::setBatteryCapacity(uint32_t capacity) {
+    return _checkWrite(nvs::setBatteryCapacity(capacity), "BATTERY_CAPACITY_SAVE_FAILED");
+}
 
-float settings::getBatteryNominal()             { return nvs::getBatteryNominal(); }
-bool settings::setBatteryNominal(float voltage) { return nvs::setBatteryNominal(voltage); }
-bool settings::resetBatteryNominal()            { return nvs::resetBatteryNominal(); }
+bool settings::resetBatteryCapacity() {
+    return _checkWrite(nvs::resetBatteryCapacity(), "BATTERY_CAPACITY_RESET_FAILED");
+}
 
-float settings::getBatteryMaximal()             { return nvs::getBatteryMaximal(); }
-bool settings::setBatteryMaximal(float voltage) { return nvs::setBatteryMaximal(voltage); }
-bool settings::resetBatteryMaximal()            { return nvs::resetBatteryMaximal(); }
+float settings::getBatteryMinimal() {
+    return nvs::getBatteryMinimal();
+}
 
-uint8_t settings::getBatteryRatioHigh()           { return nvs::getBatteryRatioHigh(); }
-bool settings::setBatteryRatioHigh(uint8_t ratio) { return nvs::setBatteryRatioHigh(ratio); }
-bool settings::resetBatteryRatioHigh()            { return nvs::resetBatteryRatioHigh(); }
+bool settings::setBatteryMinimal(float voltage) {
+    return _checkWrite(nvs::setBatteryMinimal(voltage), "BATTERY_MINIMAL_SAVE_FAILED");
+}
 
-bool settings::getCallsign(char* buffer, unsigned int size) { return nvs::getCallsign(buffer, size); }
-bool settings::setCallsign(const char* callsign)            { return nvs::setCallsign(callsign); }
-bool settings::resetCallsign()                              { return nvs::resetCallsign(); }
+bool settings::resetBatteryMinimal() {
+    return _checkWrite(nvs::resetBatteryMinimal(), "BATTERY_MINIMAL_RESET_FAILED");
+}
+
+float settings::getBatteryNominal() {
+    return nvs::getBatteryNominal();
+}
+
+bool settings::setBatteryNominal(float voltage) {
+    return _checkWrite(nvs::setBatteryNominal(voltage), "BATTERY_NOMINAL_SAVE_FAILED");
+}
+
+bool settings::resetBatteryNominal() {
+    return _checkWrite(nvs::resetBatteryNominal(), "BATTERY_NOMINAL_RESET_FAILED");
+}
+
+float settings::getBatteryMaximal() {
+    return nvs::getBatteryMaximal();
+}
+
+bool settings::setBatteryMaximal(float voltage) {
+    return _checkWrite(nvs::setBatteryMaximal(voltage), "BATTERY_MAXIMAL_SAVE_FAILED");
+}
+
+bool settings::resetBatteryMaximal() {
+    return _checkWrite(nvs::resetBatteryMaximal(), "BATTERY_MAXIMAL_RESET_FAILED");
+}
+
+uint8_t settings::getBatteryRatioHigh() {
+    return nvs::getBatteryRatioHigh();
+}
+
+bool settings::setBatteryRatioHigh(uint8_t ratio) {
+    return _checkWrite(nvs::setBatteryRatioHigh(ratio), "BATTERY_RATIO_SAVE_FAILED");
+}
+
+bool settings::resetBatteryRatioHigh() {
+    return _checkWrite(nvs::resetBatteryRatioHigh(), "BATTERY_RATIO_RESET_FAILED");
+}
+
+bool settings::getCallsign(char* buffer, unsigned int size) {
+    return nvs::getCallsign(buffer, size);
+}
+
+bool settings::setCallsign(const char* callsign) {
+    return _checkWrite(nvs::setCallsign(callsign), "CALLSIGN_SAVE_FAILED");
+}
+
+bool settings::resetCallsign() {
+    return _checkWrite(nvs::resetCallsign(), "CALLSIGN_RESET_FAILED");
+}
 
 settings::CallsignSuffix settings::getCallsignSuffix() {
     uint8_t value = nvs::getCallsignSuffix();
@@ -109,8 +166,13 @@ settings::CallsignSuffix settings::getCallsignSuffix() {
     }
 }
 
-bool settings::setCallsignSuffix(CallsignSuffix callsignSuffix) { return nvs::setCallsignSuffix(static_cast<uint8_t>(callsignSuffix)); }
-bool settings::resetCallsignSuffix()                            { return nvs::resetCallsignSuffix(); }
+bool settings::setCallsignSuffix(CallsignSuffix callsignSuffix) {
+    return _checkWrite(nvs::setCallsignSuffix(static_cast<uint8_t>(callsignSuffix)), "CALLSIGN_SUFFIX_SAVE_FAILED");
+}
+
+bool settings::resetCallsignSuffix() {
+    return _checkWrite(nvs::resetCallsignSuffix(), "CALLSIGN_SUFFIX_RESET_FAILED");
+}
 
 bool settings::getFullCallsign(char* buffer, unsigned int size) {
     if (buffer == nullptr || size == 0) { return false; }
@@ -154,8 +216,13 @@ settings::Theme settings::getTheme() {
     }
 }
 
-bool settings::setTheme(Theme theme) { return nvs::setTheme(static_cast<uint8_t>(theme)); }
-bool settings::resetTheme()          { return nvs::resetTheme(); }
+bool settings::setTheme(Theme theme) {
+    return _checkWrite(nvs::setTheme(static_cast<uint8_t>(theme)), "THEME_SAVE_FAILED");
+}
+
+bool settings::resetTheme() {
+    return _checkWrite(nvs::resetTheme(), "THEME_RESET_FAILED");
+}
 
 settings::TFTRotation settings::getTFTRotation() {
     uint8_t value = nvs::getTFTRotation();
@@ -168,8 +235,13 @@ settings::TFTRotation settings::getTFTRotation() {
     }
 }
 
-bool settings::setTFTRotation(TFTRotation rotation) { return nvs::setTFTRotation(static_cast<uint8_t>(rotation)); }
-bool settings::resetTFTRotation()                   { return nvs::resetTFTRotation(); }
+bool settings::setTFTRotation(TFTRotation rotation) {
+    return _checkWrite(nvs::setTFTRotation(static_cast<uint8_t>(rotation)), "TFT_ROTATION_SAVE_FAILED");
+}
+
+bool settings::resetTFTRotation() {
+    return _checkWrite(nvs::resetTFTRotation(), "TFT_ROTATION_RESET_FAILED");
+}
 
 settings::Units settings::getUnits() {
     uint8_t value = nvs::getUnits();
@@ -182,8 +254,13 @@ settings::Units settings::getUnits() {
     }
 }
 
-bool settings::setUnits(Units units) { return database::nvs::setUnits(static_cast<uint8_t>(units)); }
-bool settings::resetUnits()          { return database::nvs::resetUnits(); }
+bool settings::setUnits(Units units) {
+    return _checkWrite(nvs::setUnits(static_cast<uint8_t>(units)), "UNITS_SAVE_FAILED");
+}
+
+bool settings::resetUnits() {
+    return _checkWrite(database::nvs::resetUnits(), "UNITS_RESET_FAILED");
+}
 
 bool settings::resetAll() {
     bool ok = true;

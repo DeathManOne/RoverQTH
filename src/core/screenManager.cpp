@@ -31,6 +31,7 @@
 #include "screens/menu.h"
 #include "services/navigation.h"
 #include "services/qth.h"
+#include "services/storage.h"
 #include "ui/widgets/buttons.h"
 
 namespace manager    = core::screenManager;
@@ -41,6 +42,7 @@ namespace mockup     = display::mockup;
 namespace sMenu      = screens::menu;
 namespace navigation = services::navigation;
 namespace qth        = services::qth;
+namespace storage    = services::storage;
 namespace buttons    = ui::widgets::buttons;
 
 namespace {
@@ -70,6 +72,7 @@ namespace {
             const bool started = navigation::startMark();
             if (!started) { return; }
 
+            storage::appendLogRecord("QTH_RECORDING_STARTED");
             state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
             mockup::updateMARK();
             main::updateMARK();
@@ -83,6 +86,7 @@ namespace {
 
         if (navigation::markState() == navigation::MarkState::READY_TO_SAVE) {
             if (!qth::isCurrentRecordLongEnough()) {
+                storage::appendLogRecord("QTH_RECORDING_DISCARDED");
                 navigation::clearMark();
                 state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY);
                 mockup::updateMARK();
@@ -98,6 +102,7 @@ namespace {
                 return;
             }
 
+            storage::appendLogRecord("QTH_RECORDING_SAVED");
             navigation::clearMark();
             state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY);
             mockup::updateMARK();

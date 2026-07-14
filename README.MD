@@ -5,6 +5,7 @@
 RoverQTH is an autonomous GNSS assistant designed for amateur radio rover operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GPS information and Maidenhead locator data, allowing operators to quickly determine their current operating position in the field.
 
 The project is designed to run on compact portable hardware using a u-blox GNSS receiver and a 4-inch ST7796S touchscreen display (clone).
+It also provides persistent QTH session recording and onboard event logging to simplify post-operation analysis and future desktop software integration.
 
 ---
 
@@ -51,12 +52,17 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * Boot status screen
 * Settings menu
 * Modular settings page framework
-* Network configuration page (WiFi / Bluetooth preparation)
+* Network configuration page (WiFi)
 * Persistent configuration storage
 * SD card initialization
+* Persistent SD card storage
+* Automatic SD directory management
+* Persistent QTH recording (JSONL)
+* System event logging
+* Error logging
 * Battery monitoring
 * Battery profile configuration
-* GNSS-based clock service preparation
+* GNSS-synchronized UTC clock
 
 ### Power Management
 
@@ -67,6 +73,61 @@ The project is designed to run on compact portable hardware using a u-blox GNSS 
 * Configurable minimal, nominal and maximal battery voltage
 * Configurable voltage divider ratio (High / Low)
 * Dynamic low and critical battery thresholds
+
+---
+
+## QTH Recording
+
+RoverQTH records operating locations as independent QTH sessions.
+Each session is stored as a single JSON object using the JSONL format and contains:
+
+* Start position
+* Stop position
+* UTC timestamps
+* Maidenhead locators
+* Altitude
+* Duration
+* Air-line distance
+
+QTH sessions are stored in JSONL format to simplify post-processing and third-party software development.
+
+---
+
+## Storage
+
+The directory structure is automatically created during SD card initialization.
+RoverQTH stores its persistent data on the SD card using a dedicated directory structure.
+
+```text
+/RoverQTH/
+├── database/
+├── export/
+├── logs/
+│   ├── system.log
+│   └── error.log
+├── qth/
+│   └── QTH.jsonl
+└── tmp/
+```
+
+### Logging
+
+Two log files are automatically maintained.
+
+* `system.log`
+  * System events
+  * Boot sequence
+  * QTH recording events
+
+* `error.log`
+  * Initialization failures
+  * Storage failures
+  * Runtime errors
+
+Logs are automatically timestamped using:
+
+* Boot-relative timestamps before GNSS synchronization
+* ISO 8601 UTC timestamps after GNSS synchronization
 
 ---
 
@@ -254,7 +315,6 @@ Implemented:
 * Metric / Imperial units support
 * Boot status screen
 * NVS configuration storage
-* SD card initialization
 * Battery voltage monitoring
 * Battery percentage estimation
 * Battery presence detection
@@ -262,16 +322,23 @@ Implemented:
 * Configurable battery profile
 * Battery voltage divider configuration
 * Dynamic battery low/critical thresholds
-* GNSS-based clock service preparation
-* Network settings page
+* GNSS UTC clock synchronization
+* Network configuration page (WiFi)
+* Persistent SD storage
+* Persistent QTH session recording
+* JSONL export format
+* Automatic SD directory management
+* Persistent system logging with automatic timestamps
 
 Not yet implemented:
 
-* WiFi communication
+* WiFi connectivity
 * OTA firmware updates
-* Full MARK navigation/storage workflow
+* SOTA database support
+* POTA database support
+* Online update system
+* Export utilities
 * SOTA navigation
-* GSM emergency features
 * Storage actions (export, clear logs)
 * GNSS UTC time display
 

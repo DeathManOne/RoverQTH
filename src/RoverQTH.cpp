@@ -34,6 +34,7 @@
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
+#include "services/storage.h"
 #include "services/update.h"
 #include "ui/settings/gps.h"
 
@@ -46,6 +47,7 @@ namespace battery     = services::battery;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
 namespace settings    = services::settings;
+namespace storage     = services::storage;
 namespace update      = services::update;
 namespace gpsSettings = ui::settings::gps;
 
@@ -75,7 +77,10 @@ namespace {
 }
 
 void app::setup() {
-    settings::begin();
+    storage::appendLogRecord("SYSTEM_START");
+
+    if (!settings::begin()) { storage::appendErrorRecord("NVS_INIT_FAILED"); }
+
     battery::begin(BATT_PIN);
     if (power::shouldShutdown())
         { power::shutdown(); }
@@ -95,7 +100,11 @@ void app::setup() {
 
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
-    xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0);
+
+    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0);
+    if (gpsTaskResult != pdPASS) { storage::appendErrorRecord("GPS_TASK_CREATE_FAILED"); }
+    else { storage::appendLogRecord("SYSTEM_READY"); }
+
 }
 
 void app::loop() {

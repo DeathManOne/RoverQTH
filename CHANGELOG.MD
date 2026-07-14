@@ -7,6 +7,57 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.5.0] - 2026-07-14
+
+### Added
+- Complete SD card storage architecture
+- Persistent QTH session tracking and recording in JSONL format
+- System event logging
+- Error logging
+- Automatic log timestamping:
+  - Boot-relative timestamps before GNSS synchronization
+  - ISO 8601 UTC timestamps after GNSS synchronization
+- Automatic storage directory creation
+- Temporary in-memory log buffering before SD initialization
+- Automatic flushing of buffered logs after SD initialization
+- Complete QTH record structure:
+  - Start and stop positions
+  - UTC timestamps
+  - Maidenhead locators
+  - Altitude
+  - Duration
+  - Air-line distance
+
+### Changed
+- Refactored storage from a generic file API to a record-oriented API
+- QTH recording now automatically discards recordings shorter than the configured minimum duration
+- Refactored SD storage into a dedicated storage service
+- Simplified storage API using high-level record functions
+- Storage service now automatically manages:
+  - SD availability
+  - Log formatting
+  - Timestamp generation
+  - Automatic log buffering
+- Reworked boot sequence to support persistent logging
+- Improved GNSS clock integration with system logging
+
+### Removed
+- Generic public file manipulation API from the storage service
+
+### Internal
+- Added automatic `/RoverQTH` directory tree creation
+- Added dedicated storage layout:
+  - `/database`
+  - `/export`
+  - `/logs`
+  - `/qth`
+  - `/tmp`
+- Added centralized record formatting inside the storage service
+- Added automatic SD failure detection during writes
+- Improved separation between storage implementation and application logic
+
+---
+
 ## [1.4.0] - 2026-07-10
 
 ### Added

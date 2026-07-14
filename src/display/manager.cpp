@@ -24,10 +24,12 @@
 #include <MSP4021.h>
 #include "display/internal.h"
 #include "display/manager.h"
+#include "services/storage.h"
 #include "ui/settings/themes/defaults.h"
 
 namespace internal = display::internal;
 namespace settings = services::settings;
+namespace storage  = services::storage;
 namespace theme    = ui::settings::themes::defaults;
 
 SPIClass internal::TFT_SPI(FSPI);
@@ -74,6 +76,8 @@ bool display::TCalibrate() {
 
     _tft().setRotation(static_cast<uint8_t>(settings::getTFTRotation()));
     if(!settings::setTouchCalibration(normal, reversed)) { return false; }
+
+    storage::appendLogRecord("TOUCH_CALIBRATION_SAVED");
     return TLoad();
 }
 

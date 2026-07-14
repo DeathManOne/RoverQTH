@@ -160,7 +160,7 @@ bool qth::serializeJSONL(const QTHRecord& record, char* buffer, size_t size) {
                 "\"minimum\":%.1f,"
                 "\"maximum\":%.1f"
             "}"
-        "}\n",
+        "}",
         static_cast<unsigned long>(record.start.time),
         record.start.utc,
         record.start.latitude,
@@ -184,13 +184,19 @@ bool qth::serializeJSONL(const QTHRecord& record, char* buffer, size_t size) {
 }
 
 bool qth::saveCurrentRecord() {
-    if (!storage::isReady()) { return false; }
-
     QTHRecord record {};
-    if (!buildCurrentRecord(record))                    { return false; }
-    if (record.duration.seconds < MIN_DURATION_SECONDS) { return false; }
 
+    if (!buildCurrentRecord(record)) {
+        storage::appendErrorRecord("QTH_BUILD_FAILED");
+        return false;
+    }
+
+    if (record.duration.seconds < MIN_DURATION_SECONDS) { return false; }
     char json[1024];
-    if (!serializeJSONL(record, json, sizeof(json)))    { return false; }
+
+    if (!serializeJSONL(record, json, sizeof(json))) {
+        storage::appendErrorRecord("QTH_SERIALIZE_FAILED");
+        return false;
+    }
     return storage::appendQTHRecord(json);
 }

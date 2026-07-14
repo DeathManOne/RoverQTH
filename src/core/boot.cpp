@@ -57,6 +57,9 @@ namespace {
         uint64_t usedBytes  = 0;
 
         _sdOk = storage::readCardInfos(type, size, totalBytes, usedBytes);
+        if (!_sdOk) { storage::appendErrorRecord("SD_CARD_INFO_FAILED"); }
+        else { storage::appendLogRecord("SD_READY"); }
+
         dBoot::updateSD(&_sdOk);
     }
 
@@ -64,7 +67,12 @@ namespace {
         _gpsOk = gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
         dBoot::updateGPS(&_gpsOk);
 
-        if (_gpsOk) { return; }
+        if (_gpsOk) {
+            storage::appendLogRecord("GPS_READY");
+            return;
+        }
+        storage::appendErrorRecord("GPS_INIT_FAILED");
+
         while (true) {
             int x, y;
             if (display::TRead(x, y)) {
@@ -73,7 +81,10 @@ namespace {
                     _gpsOk = gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
 
                     dBoot::updateGPS(&_gpsOk);
-                    if (_gpsOk) { return; }
+                    if (_gpsOk) {
+                        storage::appendLogRecord("GPS_READY");
+                        return;
+                    }
                 }
             }
             delay(50);
@@ -95,15 +106,22 @@ namespace {
                 lastProgressAt = millis();
 
                 dBoot::updateGPSProgress(progress);
-                if (progress >= 100) { break; }
+                if (progress >= 100) {
+                    storage::appendLogRecord("GPS_ACQUISITION_COMPLETE");
+                    break;
+                }
                 continue;
             }
 
             if (progress == 0) { continue; }
             if ((millis() - lastProgressAt) >= STALL_TIMEOUT_MS) {
+                storage::appendErrorRecord("GPS_ACQUISITION_STALLED");
                 dBoot::updateGPS(nullptr);
 
                 _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+                if (!_gpsOk) { storage::appendErrorRecord("GPS_RESTART_FAILED"); }
+                else { storage::appendLogRecord("GPS_RESTARTED"); }
+
                 dBoot::updateGPS(&_gpsOk);
                 if (!_gpsOk) { _initGPS(gpsUART); }
 
