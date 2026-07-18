@@ -1,5 +1,5 @@
 /*
- * include/screens/menu.h
+ * include/services/wifi.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,27 +22,22 @@
  */
 
 #pragma once
-#include <MSP4021.h>
 
-namespace screens::menu {
-    enum class Item {
-        GENERAL,
-        DISPLAYER,
-        WIFI,
-        UPDATES,
-        STORAGE,
-        BATTERY,
-        ABOUT,
-        COUNT
-    };
-    Item current();
+#include <cstddef>
+#include <cstdint>
 
-    bool isEditing();
+namespace services::wifi {
+    bool begin();
+    bool isInitialized();
+    bool isConnected();
+    bool isConnecting();
 
-    void select(Item item);
-    void reset();
+    bool connect(const char* ssid, const char* password, uint32_t timeoutSec = 15);
 
-    void draw       (ST7796S::MSP4021 &tft);
-    void update     (ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+    void update();
+    void disconnect();
+
+
+    bool getSSID(char* buffer, size_t size);
+    int32_t getRSSI();
 }

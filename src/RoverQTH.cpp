@@ -36,6 +36,7 @@
 #include "services/settings.h"
 #include "services/storage.h"
 #include "services/update.h"
+#include "services/wifi.h"
 #include "ui/settings/gps.h"
 
 namespace boot        = core::boot;
@@ -49,6 +50,7 @@ namespace navigation  = services::navigation;
 namespace settings    = services::settings;
 namespace storage     = services::storage;
 namespace update      = services::update;
+namespace wifi        = services::wifi;
 namespace gpsSettings = ui::settings::gps;
 
 namespace {
@@ -94,6 +96,7 @@ void app::setup() {
     update::begin();
     navigation::begin();
 
+    if (!wifi::begin()) { storage::appendErrorRecord("WIFI_INIT_FAILED"); }
     state::begin();
     boot::run(_gpsUART, _sdSPI);
     manager::begin();
@@ -108,6 +111,8 @@ void app::setup() {
 }
 
 void app::loop() {
+    wifi::update();
+
     const uint32_t now = millis();
     if (now >= _nextBatteryRefresh) {
         battery::update();

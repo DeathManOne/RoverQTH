@@ -22,13 +22,16 @@
  */
 
 #pragma once
+
+#include <cstddef>
 #include <cstdint>
 
 namespace services::settings {
-    enum class Units          {METRIC, IMPERIAL};
-    enum class Theme          {DEFAULTS, NIGHT, HIGHS};
-    enum class TFTRotation    {NORMAL = 1, REVERSED = 3};
-    enum class CallsignSuffix {NONE, P, M, MM, AM};
+    enum class Units          : uint8_t {METRIC, IMPERIAL};
+    enum class Theme          : uint8_t {DEFAULTS, NIGHT, HIGHS};
+    enum class TFTRotation    : uint8_t {NORMAL = 1, REVERSED = 3};
+    enum class CallsignSuffix : uint8_t {NONE, P, M, MM, AM};
+    enum class WifiBootMode   : uint8_t {NEVER, ALWAYS, LAST_STATE};
 
     struct Calibration {
         bool swapXY     = false;
@@ -68,7 +71,7 @@ namespace services::settings {
     bool setBatteryRatioHigh(uint8_t ratio);
     bool resetBatteryRatioHigh();
 
-    bool getCallsign(char* buffer, unsigned int size);
+    bool getCallsign(char* buffer, size_t size);
     bool setCallsign(const char* callsign);
     bool resetCallsign();
 
@@ -76,7 +79,7 @@ namespace services::settings {
     bool setCallsignSuffix(CallsignSuffix callsignSuffix);
     bool resetCallsignSuffix();
 
-    bool getFullCallsign(char* buffer, unsigned int size);
+    bool getFullCallsign(char* buffer, size_t size);
 
     Theme getTheme();
     bool setTheme(Theme theme);
@@ -89,6 +92,25 @@ namespace services::settings {
     Units getUnits();
     bool setUnits(Units units);
     bool resetUnits();
+
+    bool getWifiSSID(char* buffer, size_t size);
+    bool setWifiSSID(const char* ssid);
+    bool resetWifiSSID();
+
+    bool getWifiPassword(char* buffer, size_t size);
+    bool setWifiPassword(const char* password);
+    bool resetWifiPassword();
+
+    WifiBootMode getWifiBootMode();
+    bool setWifiBootMode(WifiBootMode mode);
+    bool resetWifiBootMode();
+
+    bool getWifiLastEnabled();
+    bool setWifiLastEnabled(bool enabled);
+    bool resetWifiLastEnabled();
+
+    bool hasWifiCredentials();
+    bool shouldConnectWifiAtBoot();
 
     bool resetAll();
 }

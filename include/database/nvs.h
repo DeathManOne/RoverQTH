@@ -22,6 +22,7 @@
  */
 
 #pragma once
+#include <cstddef>
 #include <cstdint>
 
 namespace database::nvs {
@@ -55,7 +56,7 @@ namespace database::nvs {
     bool setBatteryRatioHigh(uint8_t ratio);
     bool resetBatteryRatioHigh();
 
-    bool getCallsign(char* buffer, unsigned int size);
+    bool getCallsign(char* buffer, size_t size);
     bool setCallsign(const char* callsign);
     bool resetCallsign();
 
@@ -74,4 +75,20 @@ namespace database::nvs {
     uint8_t getUnits();
     bool setUnits(uint8_t unit);
     bool resetUnits();
+
+    bool getWifiSSID(char* buffer, size_t size);
+    bool setWifiSSID(const char* ssid);
+    bool resetWifiSSID();
+
+    bool getWifiPassword(char* buffer, size_t size);
+    bool setWifiPassword(const char* password);
+    bool resetWifiPassword();
+
+    uint8_t getWifiBootMode();
+    bool setWifiBootMode(uint8_t mode);
+    bool resetWifiBootMode();
+
+    bool getWifiLastEnabled();
+    bool setWifiLastEnabled(bool enabled);
+    bool resetWifiLastEnabled();
 }

@@ -21,6 +21,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
 #include <Preferences.h>
 #include "database/nvs.h"
 
@@ -81,6 +82,17 @@ namespace {
     constexpr float DEFAULT_BATT_NOMINAL        = 3.70f;
     constexpr float DEFAULT_BATT_MAXIMAL        = 4.20f;
     constexpr uint8_t DEFAULT_BATT_RATIO_HIGH   = 50;
+
+    // WIFI
+    constexpr const char* KEY_WIFI_SSID         = "wifi_ssid";
+    constexpr const char* KEY_WIFI_PASSWORD     = "wifi_pass";
+    constexpr const char* KEY_WIFI_BOOT_MODE    = "wifi_boot";
+    constexpr const char* KEY_WIFI_LAST_ENABLED = "wifi_last";
+
+    constexpr const char* DEFAULT_WIFI_SSID     = "";
+    constexpr const char* DEFAULT_WIFI_PASSWORD = "";
+    constexpr uint8_t DEFAULT_WIFI_BOOT_MODE    = 0;
+    constexpr bool DEFAULT_WIFI_LAST_ENABLED    = false;
 }
 
 bool nvs::begin() {
@@ -274,7 +286,7 @@ bool nvs::resetBatteryRatioHigh() {
     return true;
 }
 
-bool nvs::getCallsign(char* buffer, unsigned int size) {
+bool nvs::getCallsign(char* buffer, size_t size) {
     if (!_ready && !begin())            { return false; }
     if (buffer == nullptr || size == 0) { return false; }
 
@@ -369,5 +381,95 @@ bool nvs::resetUnits() {
     if (!_ready && !begin())
         { return false; }
     _prefs.remove(KEY_UNITS);
+    return true;
+}
+
+bool nvs::getWifiSSID(char* buffer, size_t size) {
+    if (!_ready && !begin())  { return false; }
+    if (!buffer || size == 0) { return false; }
+
+    const String value = _prefs.getString(KEY_WIFI_SSID, DEFAULT_WIFI_SSID);
+    const int written  = std::snprintf(buffer, size, "%s", value.c_str());
+
+    return (written >= 0 && static_cast<size_t>(written) < size);
+}
+
+bool nvs::setWifiSSID(const char* ssid) {
+    if (!_ready && !begin()) { return false; }
+    if (!ssid)               { return false; }
+    return (_prefs.putString(KEY_WIFI_SSID, ssid) > 0);
+}
+
+bool nvs::resetWifiSSID() {
+    if (!_ready && !begin())
+        { return false; }
+    _prefs.remove(KEY_WIFI_SSID);
+    return true;
+}
+
+bool nvs::getWifiPassword(char* buffer, size_t size) {
+    if (!_ready && !begin())  { return false; }
+    if (!buffer || size == 0) { return false; }
+
+    const String value = _prefs.getString(KEY_WIFI_PASSWORD, DEFAULT_WIFI_PASSWORD);
+    const int written  = std::snprintf(buffer, size, "%s", value.c_str());
+
+    return (written >= 0 && static_cast<size_t>(written) < size);
+}
+
+bool nvs::setWifiPassword(const char* password) {
+    if (!_ready && !begin()) { return false; }
+    if (!password)           { return false; }
+
+    if (password[0] == '\0') {
+        _prefs.remove(KEY_WIFI_PASSWORD);
+        return true;
+    }
+    return (_prefs.putString(KEY_WIFI_PASSWORD, password) > 0);
+}
+
+bool nvs::resetWifiPassword() {
+    if (!_ready && !begin())
+        { return false; }
+    _prefs.remove(KEY_WIFI_PASSWORD);
+    return true;
+}
+
+uint8_t nvs::getWifiBootMode() {
+    if ( !_ready && !begin())
+        { return DEFAULT_WIFI_BOOT_MODE; }
+    return _prefs.getUChar(KEY_WIFI_BOOT_MODE, DEFAULT_WIFI_BOOT_MODE);
+}
+
+bool nvs::setWifiBootMode(uint8_t mode) {
+    if (!_ready && !begin())
+        { return false; }
+    return (_prefs.putUChar(KEY_WIFI_BOOT_MODE, mode) > 0);
+}
+
+bool nvs::resetWifiBootMode() {
+    if (!_ready && !begin())
+        { return false; }
+    _prefs.remove(KEY_WIFI_BOOT_MODE);
+    return true;
+}
+
+bool nvs::getWifiLastEnabled() {
+    if (!_ready && !begin())
+        { return DEFAULT_WIFI_LAST_ENABLED; }
+    return _prefs.getBool(KEY_WIFI_LAST_ENABLED, DEFAULT_WIFI_LAST_ENABLED);
+}
+
+bool nvs::setWifiLastEnabled(bool enabled) {
+    if (!_ready && !begin())
+        { return false; }
+    _prefs.putBool(KEY_WIFI_LAST_ENABLED, enabled);
+    return true;
+}
+
+bool nvs::resetWifiLastEnabled() {
+    if (!_ready && !begin())
+        { return false; }
+    _prefs.remove(KEY_WIFI_LAST_ENABLED);
     return true;
 }

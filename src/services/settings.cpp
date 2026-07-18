@@ -22,6 +22,8 @@
  */
 
 #include <cstdio>
+#include <cstring>
+
 #include "database/nvs.h"
 #include "services/settings.h"
 #include "services/storage.h"
@@ -140,11 +142,16 @@ bool settings::resetBatteryRatioHigh() {
     return _checkWrite(nvs::resetBatteryRatioHigh(), "BATTERY_RATIO_RESET_FAILED");
 }
 
-bool settings::getCallsign(char* buffer, unsigned int size) {
+bool settings::getCallsign(char* buffer, size_t size) {
     return nvs::getCallsign(buffer, size);
 }
 
 bool settings::setCallsign(const char* callsign) {
+    if (!callsign) { return false; }
+
+    const size_t length = std::strlen(callsign);
+    if (length == 0)
+        { return resetCallsign(); }
     return _checkWrite(nvs::setCallsign(callsign), "CALLSIGN_SAVE_FAILED");
 }
 
@@ -174,7 +181,7 @@ bool settings::resetCallsignSuffix() {
     return _checkWrite(nvs::resetCallsignSuffix(), "CALLSIGN_SUFFIX_RESET_FAILED");
 }
 
-bool settings::getFullCallsign(char* buffer, unsigned int size) {
+bool settings::getFullCallsign(char* buffer, size_t size) {
     if (buffer == nullptr || size == 0) { return false; }
 
     char callsign[32];
@@ -262,6 +269,101 @@ bool settings::resetUnits() {
     return _checkWrite(database::nvs::resetUnits(), "UNITS_RESET_FAILED");
 }
 
+bool settings::getWifiSSID(char* buffer, size_t size) {
+    return nvs::getWifiSSID(buffer, size);
+}
+
+bool settings::setWifiSSID(const char* ssid) {
+    if (!ssid) { return false; }
+
+    const size_t length = std::strlen(ssid);
+    if (length == 0)
+        { return resetWifiSSID(); }
+    return _checkWrite(nvs::setWifiSSID(ssid), "WIFI_SSID_SAVE_FAILED");
+}
+
+bool settings::resetWifiSSID() {
+    return _checkWrite(nvs::resetWifiSSID(), "WIFI_SSID_RESET_FAILED");
+}
+
+bool settings::getWifiPassword(char* buffer, size_t size) {
+    return nvs::getWifiPassword(buffer, size);
+}
+
+bool settings::setWifiPassword(const char* password) {
+    if (!password) { return false; }
+
+    const size_t length = std::strlen(password);
+    if (length == 0)
+        { return resetWifiPassword(); }
+    return _checkWrite(nvs::setWifiPassword(password), "WIFI_PASSWORD_SAVE_FAILED");
+}
+
+bool settings::resetWifiPassword() {
+    return _checkWrite(nvs::resetWifiPassword(), "WIFI_PASSWORD_RESET_FAILED");
+}
+
+settings::WifiBootMode settings::getWifiBootMode() {
+    const uint8_t value = nvs::getWifiBootMode();
+    switch (static_cast<WifiBootMode>(value)) {
+        case WifiBootMode::NEVER:
+        case WifiBootMode::ALWAYS:
+        case WifiBootMode::LAST_STATE:
+            return static_cast<WifiBootMode>(value);
+        default:
+            return WifiBootMode::NEVER;
+    }
+}
+
+bool settings::setWifiBootMode(WifiBootMode mode) {
+    switch (mode) {
+        case WifiBootMode::NEVER:
+        case WifiBootMode::ALWAYS:
+        case WifiBootMode::LAST_STATE:
+            break;
+        default:
+            return false;
+    }
+    return _checkWrite(nvs::setWifiBootMode(static_cast<uint8_t>(mode)), "WIFI_BOOT_MODE_SAVE_FAILED");
+}
+
+bool settings::resetWifiBootMode() {
+    return _checkWrite(nvs::resetWifiBootMode(), "WIFI_BOOT_MODE_RESET_FAILED");
+}
+
+bool settings::getWifiLastEnabled() {
+    return nvs::getWifiLastEnabled();
+}
+
+bool settings::setWifiLastEnabled(bool enabled) {
+    return _checkWrite(nvs::setWifiLastEnabled(enabled), "WIFI_LAST_STATE_SAVE_FAILED");
+}
+
+bool settings::resetWifiLastEnabled() {
+    return _checkWrite(nvs::resetWifiLastEnabled(), "WIFI_LAST_STATE_RESET_FAILED");
+}
+
+bool settings::hasWifiCredentials() {
+    char ssid[33];
+    if (!getWifiSSID(ssid, sizeof(ssid)))
+        { return false; }
+    return ssid[0] != '\0';
+}
+
+bool settings::shouldConnectWifiAtBoot() {
+    if (!hasWifiCredentials())
+        { return false; }
+    switch (getWifiBootMode()) {
+        case WifiBootMode::ALWAYS:
+            return true;
+        case WifiBootMode::LAST_STATE:
+            return getWifiLastEnabled();
+        case WifiBootMode::NEVER:
+        default:
+            return false;
+    }
+}
+
 bool settings::resetAll() {
     bool ok = true;
     ok = resetTouchCalibration()    && ok;
@@ -275,5 +377,9 @@ bool settings::resetAll() {
     ok = resetTheme()               && ok;
     ok = resetTFTRotation()         && ok;
     ok = resetUnits()               && ok;
+    ok = resetWifiSSID()            && ok;
+    ok = resetWifiPassword()        && ok;
+    ok = resetWifiBootMode()        && ok;
+    ok = resetWifiLastEnabled()     && ok;
     return ok;
 }

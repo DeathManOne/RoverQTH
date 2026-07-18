@@ -28,7 +28,7 @@
 #include "screens/menu/displayer.h"
 #include "screens/menu/general.h"
 #include "screens/menu/navigation.h"
-#include "screens/menu/network.h"
+#include "screens/menu/wifi.h"
 #include "screens/menu/page.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
@@ -39,7 +39,7 @@ using screens::menu::About;
 using screens::menu::Battery;
 using screens::menu::Displayer;
 using screens::menu::General;
-using screens::menu::Network;
+using screens::menu::Wifi;
 using screens::menu::Page;
 using screens::menu::Storage;
 using screens::menu::Updates;
@@ -55,7 +55,7 @@ namespace {
 
     General _general;
     Displayer _displayer;
-    Network _network;
+    Wifi _wifi;
     Updates _updates;
     Storage _storage;
     Battery _battery;
@@ -65,7 +65,7 @@ namespace {
         switch (item) {
             case menu::Item::GENERAL:   return _general;
             case menu::Item::DISPLAYER: return _displayer;
-            case menu::Item::NETWORK:   return _network;
+            case menu::Item::WIFI:      return _wifi;
             case menu::Item::UPDATES:   return _updates;
             case menu::Item::STORAGE:   return _storage;
             case menu::Item::BATTERY:   return _battery;
@@ -91,7 +91,7 @@ void menu::reset() {
 
     _general.reset();
     _displayer.reset();
-    _network.reset();
+    _wifi.reset();
     _updates.reset();
     _storage.reset();
     _battery.reset();

@@ -55,7 +55,7 @@ namespace {
     Row rows[] = {
         _makeRow(menu::Item::GENERAL,   "General"),
         _makeRow(menu::Item::DISPLAYER, "Display"),
-        _makeRow(menu::Item::NETWORK,   "Network"),
+        _makeRow(menu::Item::WIFI,      "WiFi"),
         _makeRow(menu::Item::UPDATES,   "Updates"),
         _makeRow(menu::Item::STORAGE,   "Storage"),
         _makeRow(menu::Item::BATTERY,   "Battery"),
