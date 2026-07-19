@@ -93,10 +93,10 @@ void app::setup() {
         TFT_SCREEN_RST, TFT_WIDTH,      TFT_HEIGHT
     );
 
-    update::begin();
     navigation::begin();
-
     if (!wifi::begin()) { storage::appendErrorRecord("WIFI_INIT_FAILED"); }
+
+    update::begin();
     state::begin();
     boot::run(_gpsUART, _sdSPI);
     manager::begin();
@@ -113,10 +113,12 @@ void app::setup() {
 void app::loop() {
     wifi::update();
 
-    const uint32_t now = millis();
+    const uint32_t now    = millis();
+    const bool updateBusy = update::isBusy();
+
     if (now >= _nextBatteryRefresh) {
         battery::update();
-        if (power::shouldShutdown())
+        if (power::shouldShutdown() && !updateBusy)
             { power::shutdown(); }
         _nextBatteryRefresh = now + BATTERY_PERIOD_MS;
     }

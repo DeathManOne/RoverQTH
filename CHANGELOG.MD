@@ -7,6 +7,75 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.6.0] - 2026-07-19
+
+### Added
+- Operational WiFi connectivity for online services
+- Complete OTA firmware update system
+- Remote firmware manifest retrieval
+- Firmware version checking from the Updates settings page
+- Automatic comparison between installed and available firmware versions
+- Interactive firmware update actions:
+  - Check for updates
+  - Download and install available firmware
+- Real-time OTA status display:
+  - Checking
+  - Up to date
+  - Update available
+  - Starting
+  - Downloading
+  - Verifying
+  - Installing
+  - Restarting
+  - Error
+- OTA download progress display
+- SHA-256 firmware integrity verification
+- Firmware size validation before OTA installation
+- Automatic restart after a successful firmware update
+- Detailed OTA error reporting for:
+  - WiFi connection failures
+  - Unavailable manifest
+  - Invalid manifest
+  - Unavailable firmware
+  - Invalid firmware size
+  - Interrupted downloads
+  - SHA-256 mismatch
+  - OTA partition errors
+  - Firmware installation failures
+
+### Changed
+- Reworked the Updates settings page to display:
+  - Installed firmware version
+  - Available firmware version
+  - Firmware update status
+  - OTA download progress
+- Firmware update actions are now dynamically enabled according to the OTA state
+- Firmware checks and downloads now run asynchronously without blocking the main application
+- Automatic power shutdown is now postponed while an OTA operation is active
+- Firmware and manifest download URLs are now configured through dedicated PlatformIO build flags
+
+### Fixed
+- Prevented multiple OTA tasks from being launched simultaneously
+- Prevented firmware installation when no update is available
+- Prevented incomplete or corrupted firmware downloads from being installed
+- Prevented automatic deep sleep from interrupting an active OTA update
+
+### Internal
+- Added dedicated `services::update` firmware update service
+- Added FreeRTOS background tasks for update checking and firmware installation
+- Added centralized OTA status, progress and error management
+- Added HTTPS streaming using a fixed-size RAM buffer
+- Added firmware manifest parsing and validation
+- Added OTA partition streaming through the ESP32 `Update` API
+- Added configurable build flags:
+  - `DL_FIRMWARE`
+  - `DL_FIRMWARE_MANIFEST`
+- Added dedicated OTA event and error logging
+- Prepared the Updates page architecture for future SOTA and POTA database updates
+- Added asynchronous OTA workflow based on FreeRTOS tasks
+
+---
+
 ## [1.5.0] - 2026-07-14
 
 ### Added

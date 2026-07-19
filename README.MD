@@ -53,6 +53,7 @@ It also provides persistent QTH session recording and onboard event logging to s
 * Settings menu
 * Modular settings page framework
 * Network configuration page (WiFi)
+* Operational WiFi connectivity
 * Persistent configuration storage
 * SD card initialization
 * Persistent SD card storage
@@ -63,6 +64,8 @@ It also provides persistent QTH session recording and onboard event logging to s
 * Battery monitoring
 * Battery profile configuration
 * GNSS-synchronized UTC clock
+* OTA firmware updates
+* Online firmware version checking
 
 ### Power Management
 
@@ -107,7 +110,7 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 │   └── error.log
 ├── qth/
 │   └── QTH.jsonl
-└── tmp/
+└── tmp/     ← temporary files/downloads
 ```
 
 ### Logging
@@ -118,6 +121,7 @@ Two log files are automatically maintained.
   * System events
   * Boot sequence
   * QTH recording events
+  * OTA update events
 
 * `error.log`
   * Initialization failures
@@ -130,6 +134,24 @@ Logs are automatically timestamped using:
 * ISO 8601 UTC timestamps after GNSS synchronization
 
 ---
+
+## OTA Firmware Updates
+
+RoverQTH supports secure over-the-air firmware updates directly from the Settings menu.
+Firmware updates are performed directly to the OTA partition using secure HTTPS streaming and do not require temporary firmware storage on the SD card.
+
+The OTA system provides:
+
+* Automatic firmware version checking
+* Firmware manifest validation
+* Secure HTTPS downloads
+* SHA-256 firmware integrity verification
+* Download progress display
+* Automatic installation
+* Automatic reboot after successful update
+* Detailed error reporting
+
+Firmware updates are performed asynchronously without blocking the user interface.
 
 ## Hardware Requirements
 
@@ -231,6 +253,10 @@ Repository:
 
 * https://github.com/DeathManOne/SDCard.git#2.0.0
 
+### OTA
+
+Uses the built-in ESP32 Arduino Core Update library.
+
 ---
 
 ## Installation
@@ -255,6 +281,9 @@ The project uses compile-time configuration through PlatformIO build flags.
 Example configuration:
 
 ```ini
+-D DL_FIRMWARE="https://github.com/DeathManOne/RoverQTH/releases/latest/download/firmware.bin"
+-D DL_FIRMWARE_MANIFEST="https://github.com/DeathManOne/RoverQTH/releases/latest/download/update.json"
+
 -D GPS_RX=2
 -D GPS_TX=3
 -D GPS_BAUD=38400
@@ -299,9 +328,9 @@ void loop() {
 
 ---
 
-## Current Development Status
+## Roadmap
 
-Implemented:
+Implemented features:
 
 * GNSS positioning
 * Maidenhead locator display
@@ -324,23 +353,24 @@ Implemented:
 * Dynamic battery low/critical thresholds
 * GNSS UTC clock synchronization
 * Network configuration page (WiFi)
+* Operational WiFi connectivity
+* OTA firmware updates
+* Online firmware update system
 * Persistent SD storage
 * Persistent QTH session recording
 * JSONL export format
 * Automatic SD directory management
 * Persistent system logging with automatic timestamps
 
-Not yet implemented:
+Planned features:
 
-* WiFi connectivity
-* OTA firmware updates
 * SOTA database support
 * POTA database support
-* Online update system
+* OTA database updates (SOTA / POTA)
 * Export utilities
 * SOTA navigation
 * Storage actions (export, clear logs)
-* GNSS UTC time display
+* GNSS UTC time display on header
 
 ---
 

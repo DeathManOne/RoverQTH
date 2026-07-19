@@ -5,3 +5,4 @@
 src/main.ino
 lib
 *.zip
+update.json

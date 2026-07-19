@@ -23,13 +23,36 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+
 namespace services::update {
+    enum class Status : uint8_t {
+        IDLE,
+        CHECKING,
+        UP_TO_DATE,
+        AVAILABLE,
+        DOWNLOADING,
+        VERIFYING,
+        INSTALLING,
+        SUCCESS,
+        ERROR
+    };
+
     bool begin();
 
     bool checkUpdate();
     bool startUpdate();
 
     bool isUpdating();
+    bool isBusy();
+    bool isAvailable();
 
     int progress();
+    Status status();
+
+    const char* currentVersion();
+
+    bool getLatestVersion(char* buffer, size_t size);
+    bool getError(char* buffer, size_t size);
 }
