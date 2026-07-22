@@ -1,8 +1,5 @@
 .pio
 .vscode
 .DS_Store
-*.bin
+.release
 src/main.ino
-lib
-*.zip
-update.json

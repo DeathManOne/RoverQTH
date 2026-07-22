@@ -63,12 +63,14 @@ namespace {
     constexpr const char* KEY_THEME             = "theme";
     constexpr const char* KEY_TFT_ROTATION      = "tft_rotation";
     constexpr const char* KEY_UNITS             = "units";
+    constexpr const char* KEY_COORDINATE_FORMAT = "coord_format";
 
     constexpr const char* DEFAULT_CALLSIGN      = "SWL";
     constexpr uint8_t DEFAULT_CALLSIGN_SUFFIX   = 0;
     constexpr uint8_t DEFAULT_THEME             = 0;
     constexpr uint8_t DEFAULT_TFT_ROTATION      = 1;
     constexpr uint8_t DEFAULT_UNITS             = 0;
+    constexpr uint8_t DEFAULT_COORDINATE_FORMAT = 1;
 
     // BATTERY
     constexpr const char* KEY_BATT_CAPACITY     = "batt_cap";
@@ -381,6 +383,25 @@ bool nvs::resetUnits() {
     if (!_ready && !begin())
         { return false; }
     _prefs.remove(KEY_UNITS);
+    return true;
+}
+
+uint8_t nvs::getCoordinateFormat() {
+    if (!_ready && !begin())
+        { return DEFAULT_COORDINATE_FORMAT; }
+    return _prefs.getUChar(KEY_COORDINATE_FORMAT, DEFAULT_COORDINATE_FORMAT);
+}
+
+bool nvs::setCoordinateFormat(uint8_t format) {
+    if (!_ready && !begin())
+        { return false; }
+    return _prefs.putUChar(KEY_COORDINATE_FORMAT, format) > 0;
+}
+
+bool nvs::resetCoordinateFormat() {
+    if (!_ready && !begin())
+        { return false; }
+    _prefs.remove(KEY_COORDINATE_FORMAT);
     return true;
 }
 

@@ -76,6 +76,10 @@ namespace database::nvs {
     bool setUnits(uint8_t unit);
     bool resetUnits();
 
+    uint8_t getCoordinateFormat();
+    bool setCoordinateFormat(uint8_t format);
+    bool resetCoordinateFormat();
+
     bool getWifiSSID(char* buffer, size_t size);
     bool setWifiSSID(const char* ssid);
     bool resetWifiSSID();

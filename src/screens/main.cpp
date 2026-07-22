@@ -77,6 +77,21 @@ namespace {
         }
         std::snprintf(buffer, size, "%.0f m", meters);
     }
+
+    void _getFormattedPosition(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
+        switch (settings::getCoordinateFormat()) {
+            case settings::CoordinateFormat::DD:
+                gps::getDD(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize);
+                break;
+            case settings::CoordinateFormat::DMS:
+                gps::getDMS(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize);
+                break;
+            case settings::CoordinateFormat::DDM:
+            default:
+                gps::getDDM(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize);
+                break;
+        }
+    }
 }
 
 void main::preload() {
@@ -110,10 +125,10 @@ void main::preloadGPS() {
 
     gps::getDate(date, sizeof(date));
     gps::getTime(time, sizeof(time));
-    gps::getDDM(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
+    _getFormattedPosition(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
 
     if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
     else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }
@@ -224,10 +239,10 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
 
     gps::getDate(date, sizeof(date));
     gps::getTime(time, sizeof(time));
-    gps::getDDM(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
+    _getFormattedPosition(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
 
     if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
     else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }

@@ -58,7 +58,8 @@ const char* Displayer::_rotationToText(settings::TFTRotation rotation) {
 
 void Displayer::_actionRotation(ST7796S::MSP4021 &tft) {
     const settings::TFTRotation rotation = _nextRotation(settings::getTFTRotation());
-    settings::setTFTRotation(rotation);
+    if (!settings::setTFTRotation(rotation)) { return; }
+
     tft.setRotation(static_cast<uint8_t>(rotation));
     display::TLoad();
     display::clearScreen();
@@ -66,9 +67,8 @@ void Displayer::_actionRotation(ST7796S::MSP4021 &tft) {
 }
 
 void Displayer::_actionCalibration(ST7796S::MSP4021 &tft) {
-    settings::resetTouchCalibration();
-    while (!display::TCalibrate())
-        { delay(10); }
+    if (!settings::resetTouchCalibration()) { return; }
+    while (!display::TCalibrate())          { delay(10); }
     display::clearScreen();
     menu::draw(tft);
 }

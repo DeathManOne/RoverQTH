@@ -1,11 +1,25 @@
-# RoverQTH
+<p align="center">
+  <img src="docs/images/RoverQTH.png" width="260" alt="RoverQTH Logo">
+</p>
 
-**Track your QSO - anywhere**
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/DeathManOne/RoverQTH" alt="Latest release">
+  <img src="https://img.shields.io/github/release-date/DeathManOne/RoverQTH" alt="Release date">
+  <img src="https://img.shields.io/github/last-commit/DeathManOne/RoverQTH" alt="Last commit">
+  <img src="https://img.shields.io/github/languages/top/DeathManOne/RoverQTH" alt="Primary language">
+  <img src="https://img.shields.io/badge/Platform-ESP32-blue" alt="ESP32 platform">
+  <img src="https://img.shields.io/badge/Framework-Arduino%20Core-blue" alt="Arduino Core framework">
+  <img src="https://img.shields.io/badge/OTA-Ready-success" alt="OTA ready">
+  <img src="https://img.shields.io/github/license/DeathManOne/RoverQTH" alt="Project license">
+</p>
 
-RoverQTH is an autonomous GNSS assistant designed for amateur radio rover operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GPS information and Maidenhead locator data, allowing operators to quickly determine their current operating position in the field.
+<p align="center">
+  <strong>GNSS Assistant for Portable & Mobile Amateur Radio</strong>
+</p>
 
-The project is designed to run on compact portable hardware using a u-blox GNSS receiver and a 4-inch ST7796S touchscreen display (clone).
-It also provides persistent QTH session recording and onboard event logging to simplify post-operation analysis and future desktop software integration.
+RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator and operating information, allowing operators to accurately determine their current operating position in the field.
+
+The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver and a 4-inch ST7796S touchscreen. It also provides persistent QTH session recording and onboard event logging, simplifying post-operation analysis and laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
 
 ---
 

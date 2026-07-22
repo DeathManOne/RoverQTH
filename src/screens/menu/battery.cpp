@@ -49,7 +49,8 @@ const char* Battery::_capacityToText(uint32_t value) {
 
 void Battery::_actionCapacity(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const uint32_t capacity = _nextCapacity(settings::getBatteryCapacity());
-    settings::setBatteryCapacity(capacity);
+    if (!settings::setBatteryCapacity(capacity)) { return; }
+
     field.value = _capacityToText(capacity);
     _updateField(tft, field);
 }
@@ -68,21 +69,24 @@ const char* Battery::_voltageToText(float voltage, char* buffer, size_t size) {
 
 void Battery::_actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const float minimal = _nextVoltage(settings::getBatteryMinimal());
-    settings::setBatteryMinimal(minimal);
+    if (!settings::setBatteryMinimal(minimal)) { return; }
+
     field.value = _voltageToText(minimal, _minimalValue, sizeof(_minimalValue));
     _updateField(tft, field);
 }
 
 void Battery::_actionNominal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const float nominal = _nextVoltage(settings::getBatteryNominal());
-    settings::setBatteryNominal(nominal);
+    if (!settings::setBatteryNominal(nominal)) { return; }
+
     field.value = _voltageToText(nominal, _nominalValue, sizeof(_nominalValue));
     _updateField(tft, field);
 }
 
 void Battery::_actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const float maximal = _nextVoltage(settings::getBatteryMaximal());
-    settings::setBatteryMaximal(maximal);
+    if (!settings::setBatteryMaximal(maximal)) { return; }
+
     field.value = _voltageToText(maximal, _maximalValue, sizeof(_maximalValue));
     _updateField(tft, field);
 }
@@ -111,7 +115,8 @@ void Battery::_actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field) {
         { value = _nextRatioHigh(value); }
     else { value = _previousRatioHigh(value); }
 
-    settings::setBatteryRatioHigh(value);
+    if (!settings::setBatteryRatioHigh(value)) { return; }
+
     _ratioHighField.value = _ratioToText(value,       _ratioHighValue, sizeof(_ratioHighValue));
     _ratioLowField.value  = _ratioToText(100 - value, _ratioLowValue,  sizeof(_ratioLowValue));
     _updateField(tft, _ratioHighField);

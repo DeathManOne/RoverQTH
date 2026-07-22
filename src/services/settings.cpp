@@ -269,6 +269,27 @@ bool settings::resetUnits() {
     return _checkWrite(database::nvs::resetUnits(), "UNITS_RESET_FAILED");
 }
 
+settings::CoordinateFormat settings::getCoordinateFormat() {
+    const uint8_t value = nvs::getCoordinateFormat();
+    switch (static_cast<CoordinateFormat>(value)) {
+        case CoordinateFormat::DD:
+        case CoordinateFormat::DDM:
+        case CoordinateFormat::DMS:
+            return static_cast<CoordinateFormat>(value);
+
+        default:
+            return CoordinateFormat::DDM;
+    }
+}
+
+bool settings::setCoordinateFormat(CoordinateFormat format) {
+    return _checkWrite(nvs::setCoordinateFormat(static_cast<uint8_t>(format)), "COORDINATE_FORMAT_SAVE_FAILED");
+}
+
+bool settings::resetCoordinateFormat() {
+    return _checkWrite(nvs::resetCoordinateFormat(), "COORDINATE_FORMAT_RESET_FAILED");
+}
+
 bool settings::getWifiSSID(char* buffer, size_t size) {
     return nvs::getWifiSSID(buffer, size);
 }
@@ -377,6 +398,7 @@ bool settings::resetAll() {
     ok = resetTheme()               && ok;
     ok = resetTFTRotation()         && ok;
     ok = resetUnits()               && ok;
+    ok = resetCoordinateFormat()    && ok;
     ok = resetWifiSSID()            && ok;
     ok = resetWifiPassword()        && ok;
     ok = resetWifiBootMode()        && ok;

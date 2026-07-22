@@ -27,11 +27,12 @@
 #include <cstdint>
 
 namespace services::settings {
-    enum class Units          : uint8_t {METRIC, IMPERIAL};
-    enum class Theme          : uint8_t {DEFAULTS, NIGHT, HIGHS};
-    enum class TFTRotation    : uint8_t {NORMAL = 1, REVERSED = 3};
-    enum class CallsignSuffix : uint8_t {NONE, P, M, MM, AM};
-    enum class WifiBootMode   : uint8_t {NEVER, ALWAYS, LAST_STATE};
+    enum class Units            : uint8_t {METRIC, IMPERIAL};
+    enum class Theme            : uint8_t {DEFAULTS, NIGHT, HIGHS};
+    enum class TFTRotation      : uint8_t {NORMAL = 1, REVERSED = 3};
+    enum class CallsignSuffix   : uint8_t {NONE, P, M, MM, AM};
+    enum class CoordinateFormat : uint8_t {DD, DDM, DMS};
+    enum class WifiBootMode     : uint8_t {NEVER, ALWAYS, LAST_STATE};
 
     struct Calibration {
         bool swapXY     = false;
@@ -92,6 +93,10 @@ namespace services::settings {
     Units getUnits();
     bool setUnits(Units units);
     bool resetUnits();
+
+    CoordinateFormat getCoordinateFormat();
+    bool setCoordinateFormat(CoordinateFormat format);
+    bool resetCoordinateFormat();
 
     bool getWifiSSID(char* buffer, size_t size);
     bool setWifiSSID(const char* ssid);

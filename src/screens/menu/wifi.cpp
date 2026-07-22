@@ -95,9 +95,8 @@ void Wifi::_actionBootMode(ST7796S::MSP4021 &tft) {
             nextMode = settings::WifiBootMode::NEVER;
             break;
     }
+    if (!settings::setWifiBootMode(nextMode)) { return; }
 
-    if (!settings::setWifiBootMode(nextMode))
-        { return; }
     _wifiBootModeField.value = _bootModeToText(nextMode);
     _updateField(tft, _wifiBootModeField);
 }
@@ -179,8 +178,7 @@ void Wifi::draw(ST7796S::MSP4021 &tft) {
 }
 
 void Wifi::update(ST7796S::MSP4021 &tft) {
-    if (_mode == Mode::KEYBOARD)
-        { return; }
+    if (_mode == Mode::KEYBOARD) { return; }
     _updateConnectionFields(tft);
 }
 
