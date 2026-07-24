@@ -96,7 +96,7 @@ namespace services::navigation {
     double markDistanceKm();
     double markBearingDeg();
 
-    void formatDistance(double km,  char* buffer, size_t size);
+    void formatDistance(const double km, char* const buffer, const size_t size);
     void formatBearing (double deg, char* buffer, size_t size);
 
     void setSOTA(const char* code, double latitude, double longitude, int points, int altitude);

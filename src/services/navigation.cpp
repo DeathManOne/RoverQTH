@@ -30,11 +30,15 @@
 #include "services/navigation.h"
 #include "services/settings.h"
 #include "utilities/clock.h"
+#include "utilities/locator.h"
+#include "utilities/units.h"
 
 namespace gps        = services::gps;
 namespace navigation = services::navigation;
 namespace settings   = services::settings;
-namespace uClock      = utilities::clock;
+namespace uClock     = utilities::clock;
+namespace locator    = utilities::locator;
+namespace units      = utilities::units;
 
 namespace {
     //constexpr double PI = 3.14159265358979323846;
@@ -157,7 +161,8 @@ void navigation::getMarkStartLocator(char* buffer, size_t size) {
         _copyText(buffer, size, "---");
         return;
     }
-    gps::decimalToGridLocator(_markSnapshot.start.latitude, _markSnapshot.start.longitude, buffer, size);
+    if (!locator::fromCoordinates(_markSnapshot.start.latitude, _markSnapshot.start.longitude, buffer, size))
+        { _copyText(buffer, size, "---"); }
 }
 
 void navigation::getMarkEndLocator(char* buffer, size_t size) {
@@ -165,7 +170,8 @@ void navigation::getMarkEndLocator(char* buffer, size_t size) {
         _copyText(buffer, size, "---");
         return;
     }
-    gps::decimalToGridLocator(_markSnapshot.end.latitude, _markSnapshot.end.longitude, buffer, size);
+    if (!locator::fromCoordinates(_markSnapshot.end.latitude, _markSnapshot.end.longitude, buffer, size))
+        { _copyText(buffer, size, "---"); }
 }
 
 void navigation::updateGPSFix(bool fixValid) {
@@ -251,22 +257,33 @@ double navigation::markBearingDeg() {
     return bearingDeg(_current, _mark);
 }
 
-void navigation::formatDistance(double km, char* buffer, size_t size) {
-    if (!buffer || size == 0) { return; }
+void navigation::formatDistance(const double km, char* const buffer, const size_t size) {
+    if (buffer == nullptr || size == 0) { return; }
     if (km < 0.0) {
         std::snprintf(buffer, size, "--");
         return;
     }
-
     if (settings::getUnits() == settings::Units::IMPERIAL) {
-        const double miles = km * 0.621371;
-        if (miles < 0.1) { std::snprintf(buffer, size, "%.0f ft", miles * 5280.0); }
-        else             { std::snprintf(buffer, size, "%.1f mi", miles); }
-    } else {
-        if      (km < 1.0)  { std::snprintf(buffer, size, "%.0f m", km * 1000.0); }
-        else if (km < 10.0) { std::snprintf(buffer, size, "%.2f km", km); }
-        else                { std::snprintf(buffer, size, "%.1f km", km); }
+        const double miles = units::kilometersToMiles(km);
+
+        if (miles < 0.1) {
+            const double feet = units::metersToFeet(units::kilometersToMeters(km));
+            std::snprintf(buffer, size, "%.0f ft", feet);
+            return;
+        }
+
+        std::snprintf(buffer, size, "%.1f mi", miles);
+        return;
     }
+    if (km < 1.0) {
+        std::snprintf(buffer, size, "%.0f m", units::kilometersToMeters(km));
+        return;
+    }
+    if (km < 10.0) {
+        std::snprintf(buffer, size, "%.2f km", km);
+        return;
+    }
+    std::snprintf(buffer, size, "%.1f km", km);
 }
 
 void navigation::formatBearing(double deg, char* buffer, size_t size) {

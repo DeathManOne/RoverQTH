@@ -32,23 +32,34 @@
 #include "ui/mockup/buttons.h"
 #include "ui/settings/themes/defaults.h"
 #include "utilities/clock.h"
+#include "utilities/coordinates.h"
+#include "utilities/locator.h"
+#include "utilities/units.h"
 
-namespace main       = screens::main;
-namespace datas      = screens::main::datas;
-namespace locator    = screens::main::locator;
-namespace title      = screens::main::title;
-namespace battery    = services::battery;
-namespace gps        = services::gps;
-namespace navigation = services::navigation;
-namespace settings   = services::settings;
-namespace buttons    = ui::mockup::buttons;
-namespace theme      = ui::settings::themes::defaults;
-namespace uClock     = utilities::clock;
+namespace main        = screens::main;
+namespace datas       = screens::main::datas;
+namespace locator     = screens::main::locator;
+namespace title       = screens::main::title;
+namespace battery     = services::battery;
+namespace gps         = services::gps;
+namespace navigation  = services::navigation;
+namespace settings    = services::settings;
+namespace buttons     = ui::mockup::buttons;
+namespace theme       = ui::settings::themes::defaults;
+namespace uClock      = utilities::clock;
+namespace coordinates = utilities::coordinates;
+namespace uLocator    = utilities::locator;
+namespace units       = utilities::units;
 
 namespace {
-    void _formatSpeed   (double kmh,       char* buffer, size_t size);
-    void _formatAltitude(double meters,    char* buffer, size_t size);
+    void _formatSpeed   (const double kmh,    char* const buffer, const size_t size);
+    void _formatAltitude(const double meters, char* const buffer, const size_t size);
     void _formatDuration(uint32_t seconds, char* buffer, size_t size);
+    void _getFormattedPosition(
+        char* const latitude,  const size_t latitudeSize,
+        char* const longitude, const size_t longitudeSize,
+        char* const qth,       const size_t qthSize
+    );
 
     void _formatDuration(uint32_t seconds, char* buffer, size_t size) {
         const uint32_t hours = seconds / 3600;
@@ -64,35 +75,52 @@ namespace {
         snprintf(buffer, size, "%lum %02lus", minutes, seconds);
     }
 
-    void _formatSpeed(double kmh, char* buffer, size_t size) {
+    void _formatSpeed(const double kmh, char* const buffer, const size_t size) {
         if (settings::getUnits() == settings::Units::IMPERIAL) {
-            std::snprintf(buffer, size, "%.1f mph", kmh * 0.621371);
+            std::snprintf(buffer, size, "%.1f mph", units::kilometersPerHourToMilesPerHour(kmh));
             return;
         }
         std::snprintf(buffer, size, "%.1f km/h", kmh);
     }
 
-    void _formatAltitude(double meters, char* buffer, size_t size) {
+    void _formatAltitude(const double meters, char* const buffer, const size_t size) {
         if (settings::getUnits() == settings::Units::IMPERIAL) {
-            std::snprintf(buffer, size, "%.0f ft", meters * 3.28084);
+            std::snprintf(buffer, size, "%.0f ft", units::metersToFeet(meters));
             return;
         }
         std::snprintf(buffer, size, "%.0f m", meters);
     }
 
-    void _getFormattedPosition(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize) {
+    void _getFormattedPosition(
+        char* const latitude,  const size_t latitudeSize,
+        char* const longitude, const size_t longitudeSize,
+        char* const qth,       const size_t qthSize
+    ) {
+        double rawLatitude  = 0.0;
+        double rawLongitude = 0.0;
+        bool latitudeOk     = false;
+        bool longitudeOk    = false;
+        gps::getPosition(rawLatitude, rawLongitude);
+
         switch (settings::getCoordinateFormat()) {
             case settings::CoordinateFormat::DD:
-                gps::getDD(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize);
+                latitudeOk  = coordinates::formatDD(rawLatitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
+                longitudeOk = coordinates::formatDD(rawLongitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
                 break;
             case settings::CoordinateFormat::DMS:
-                gps::getDMS(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize);
+                latitudeOk  = coordinates::formatDMS(rawLatitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
+                longitudeOk = coordinates::formatDMS(rawLongitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
                 break;
             case settings::CoordinateFormat::DDM:
             default:
-                gps::getDDM(latitude, latitudeSize, longitude, longitudeSize, qth, qthSize);
+                latitudeOk  = coordinates::formatDDM(rawLatitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
+                longitudeOk = coordinates::formatDDM(rawLongitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
                 break;
         }
+
+        if (!latitudeOk)  { std::snprintf(latitude, latitudeSize, "--"); }
+        if (!longitudeOk) { std::snprintf(longitude, longitudeSize, "--"); }
+        if (!uLocator::fromCoordinates(rawLatitude, rawLongitude, qth, qthSize)) { std::snprintf(qth, qthSize, "--"); }
     }
 }
 

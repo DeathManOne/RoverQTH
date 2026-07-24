@@ -42,15 +42,4 @@ namespace services::gps {
     void getPrecision(double &MASL, double &HDG, double &speed);
     void getDOP(double &HDOP, double &VDOP, double &PDOP);
     void getPosition(double &latitude, double &longitude);
-
-    void getDD (char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
-    void getDMS(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
-    void getDDM(char* latitude, size_t latitudeSize, char* longitude, size_t longitudeSize, char* qth, size_t qthSize);
-
-    void decimalToDD (const double value, const bool isLatitude, char* buffer, size_t size);
-    void decimalToDDM(const double value, const bool isLatitude, char* buffer, size_t size);
-    void decimalToDMS(const double value, const bool isLatitude, char* buffer, size_t size);
-    void decimalToGridLocator(const double latitude, const double longitude, char* buffer, size_t size);
-
-    char getHemisphere(const double value, const bool isLatitude);
 }

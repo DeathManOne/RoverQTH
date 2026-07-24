@@ -25,20 +25,19 @@
 #include <cstdio>
 #include <ctime>
 
-#include "services/gps.h"
 #include "services/navigation.h"
 #include "services/qth.h"
 #include "services/storage.h"
+#include "utilities/locator.h"
+#include "utilities/units.h"
 
-namespace gps        = services::gps;
 namespace navigation = services::navigation;
 namespace qth        = services::qth;
 namespace storage    = services::storage;
+namespace locator    = utilities::locator;
+namespace units      = utilities::units;
 
 namespace {
-    bool _formatUTC(uint32_t epoch, char* buffer, size_t size);
-    bool _formatDuration(uint32_t seconds, char* buffer, size_t size);
-
     bool _formatUTC(uint32_t epoch, char* buffer, size_t size) {
         if (!buffer || size < 21 || epoch == 0) { return false; }
 
@@ -92,11 +91,8 @@ bool qth::buildCurrentRecord(QTHRecord& record) {
 
     if (!_formatUTC(record.start.time, record.start.utc, sizeof(record.start.utc)))
         { return false; }
-    gps::decimalToGridLocator(
-        record.start.latitude, record.start.longitude,
-        record.start.locator,  sizeof(record.start.locator)
-    );
-
+    if (!locator::fromCoordinates(record.start.latitude, record.start.longitude, record.start.locator, sizeof(record.start.locator)))
+        { return false; }
     record.stop.time      = snapshot.stopUTC;
     record.stop.latitude  = snapshot.end.latitude;
     record.stop.longitude = snapshot.end.longitude;
@@ -104,17 +100,14 @@ bool qth::buildCurrentRecord(QTHRecord& record) {
 
     if (!_formatUTC(record.stop.time, record.stop.utc, sizeof(record.stop.utc)))
         { return false; }
-    gps::decimalToGridLocator(
-        record.stop.latitude, record.stop.longitude,
-        record.stop.locator,  sizeof(record.stop.locator)
-    );
-
+    if (!locator::fromCoordinates(record.stop.latitude, record.stop.longitude, record.stop.locator, sizeof(record.stop.locator)))
+        { return false; }
     record.duration.seconds = navigation::markDurationSeconds();
 
     if (!_formatDuration(record.duration.seconds, record.duration.hms, sizeof(record.duration.hms)))
         { return false; }
     record.distance.airLineKm      = navigation::markTotalDistanceKm();
-    record.distance.airLineMeters  = static_cast<uint32_t>(std::lround(record.distance.airLineKm * 1000.0));
+    record.distance.airLineMeters  = static_cast<uint32_t>(std::lround(units::kilometersToMeters(record.distance.airLineKm)));
     record.minimumAltitude         = snapshot.minAltitude;
     record.maximumAltitude         = snapshot.maxAltitude;
     return true;
