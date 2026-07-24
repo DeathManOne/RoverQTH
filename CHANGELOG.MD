@@ -7,6 +7,30 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.6.1] - 2026-07-24
+
+### Added
+
+- Monotonic UTC clock synchronization
+
+### Changed
+
+- Replaced the header uptime with a GNSS-synchronized UTC clock
+- Refactored clock management into the new `utilities::clock` module
+- Centralized and secured UTC time synchronization
+- Header time now continues running between GNSS updates
+
+### Internal
+
+- Introduced centralized `utilities::clock` service
+- UTC date/time formatting helpers
+- UTC epoch conversion utilities
+- Moved clock-related helpers from services into `utilities::clock`
+- Simplified UTC time handling across the project
+- Improved clock synchronization reliability and consistency
+
+---
+
 ## [1.6.0] - 2026-07-19
 
 ### Added

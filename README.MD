@@ -28,8 +28,8 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 ### GNSS Positioning
 
 * u-blox GNSS receiver support
-* Automatic GPS acquisition during startup
-* GPS acquisition progress indicator
+* Automatic GNSS acquisition during startup
+* GNSS acquisition progress indicator
 * Automatic acquisition recovery on timeout
 * Real-time position updates
 
@@ -39,7 +39,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * Large locator display optimized for field use
 * Automatic locator updates from GNSS position
 
-### GPS Information Display
+### GNSS Information Display
 
 * Latitude
 * Longitude
@@ -77,7 +77,8 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * Error logging
 * Battery monitoring
 * Battery profile configuration
-* GNSS-synchronized UTC clock
+* GNSS-synchronized UTC system clock
+* Real-time UTC header clock
 * OTA firmware updates
 * Online firmware version checking
 
@@ -145,7 +146,7 @@ Two log files are automatically maintained.
 Logs are automatically timestamped using:
 
 * Boot-relative timestamps before GNSS synchronization
-* ISO 8601 UTC timestamps after GNSS synchronization
+* ISO 8601 UTC timestamps maintained by the synchronized system clock
 
 ---
 
@@ -175,7 +176,7 @@ Firmware updates are performed asynchronously without blocking the user interfac
 
 ### Supported GNSS Module
 
-* u-blox GNSS receiver
+* u-blox M8 compatible receiver
 
 ### Supported Display
 
@@ -348,7 +349,7 @@ Implemented features:
 
 * GNSS positioning
 * Maidenhead locator display
-* GPS information display
+* GNSS information display
 * Touchscreen interface
 * Persistent touchscreen calibration
 * Dual calibration profiles (NORMAL / REVERSED)
@@ -384,7 +385,7 @@ Planned features:
 * Export utilities
 * SOTA navigation
 * Storage actions (export, clear logs)
-* GNSS UTC time display on header
+* Power button / Deep sleep
 
 ---
 
