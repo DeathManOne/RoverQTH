@@ -25,7 +25,6 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
-#include <esp_timer.h>
 
 #include "services/battery.h"
 #include "screens/main/title.h"
@@ -109,9 +108,6 @@ namespace {
         _drawText(tft, field);
     }
 }
-
-uint64_t title::uptimeSeconds() { return esp_timer_get_time() / 1000000ULL; }
-
 void title::setCallsign(const char* value) { _setField(_callsign, value); }
 void title::setDate    (const char* value) { _setField(_date,     value); }
 void title::setTime    (const char* value) { _setField(_time,     value); }
@@ -121,18 +117,6 @@ void title::updateCallsign(ST7796S::MSP4021 &tft, const char* value) { _updateFi
 void title::updateDate    (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _date,     value); }
 void title::updateTime    (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _time,     value); }
 void title::updateBattery (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _battery,  value); }
-
-void title::getUptime(char* buffer, size_t size) {
-    uint64_t sec = uptimeSeconds();
-
-    const uint64_t hours = sec / 3600;
-    sec %= 3600;
-
-    const uint64_t minutes = sec / 60;
-    sec %= 60;
-
-    snprintf(buffer, size, "%03llu : %02llu : %02llu", hours, minutes, sec);
-}
 
 void title::getBatteryLevel(char* buffer, size_t size) {
     if (battery::isPresent())

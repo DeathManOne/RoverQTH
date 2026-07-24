@@ -1,5 +1,5 @@
 /*
- * src/services/clock.cpp
+ * include/utilities/clock.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,34 +21,20 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <Arduino.h>
-#include "services/clock.h"
+#pragma once
 
-namespace sclock = services::clock;
+#include <cstddef>
+#include <cstdint>
 
-namespace {
-    bool _synced         = false;
-    uint32_t _syncMillis = 0;
-    uint32_t _syncEpoch  = 0;
-}
+namespace utilities::clock {
+    uint32_t toEpochUTC(int year, int month, int day, int hour, int minute, int second);
 
-bool sclock::isSynced() { return _synced; }
+    void sync(const uint32_t utcEpoch);
+    bool isSynced();
 
-void sclock::sync(uint32_t utcEpoch) {
-    if (_synced || utcEpoch == 0)
-        { return; }
-    _syncEpoch  = utcEpoch;
-    _syncMillis = millis();
-    _synced     = true;
-}
+    uint32_t now();
+    void getDate(char* buffer, size_t size);
+    void getTime(char* buffer, size_t size, bool withSecond = true);
 
-uint32_t sclock::now() {
-    if (!_synced) { return 0; }
-    return _syncEpoch + ((millis() - _syncMillis) / 1000);
-}
-
-void sclock::reset() {
-    _synced      = false;
-    _syncMillis  = 0;
-    _syncEpoch   = 0;
+    void reset();
 }

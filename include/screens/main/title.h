@@ -25,9 +25,6 @@
 #include <MSP4021.h>
 
 namespace screens::main::title {
-    uint64_t uptimeSeconds();
-
-    void getUptime      (char* buffer, size_t size);
     void getBatteryLevel(char* buffer, size_t size);
 
     void setCallsign(const char* value);

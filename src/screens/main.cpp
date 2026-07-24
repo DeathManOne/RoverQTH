@@ -31,6 +31,7 @@
 #include "services/settings.h"
 #include "ui/mockup/buttons.h"
 #include "ui/settings/themes/defaults.h"
+#include "utilities/clock.h"
 
 namespace main       = screens::main;
 namespace datas      = screens::main::datas;
@@ -42,6 +43,7 @@ namespace navigation = services::navigation;
 namespace settings   = services::settings;
 namespace buttons    = ui::mockup::buttons;
 namespace theme      = ui::settings::themes::defaults;
+namespace uClock     = utilities::clock;
 
 namespace {
     void _formatSpeed   (double kmh,       char* buffer, size_t size);
@@ -111,20 +113,19 @@ void main::preloadGPS() {
 
     char date[16];
     char time[16];
+    char gpsTime[16];
     char latitude[32];
     char longitude[32];
     char qth[32];
     char speedBuffer[16];
     char hdgBuffer[16];
     char aslBuffer[16];
-    char uptime[16];
     char gpsStatus[32];
-
     char callsign[32];
-    title::getUptime(uptime, sizeof(uptime));
 
-    gps::getDate(date, sizeof(date));
-    gps::getTime(time, sizeof(time));
+    uClock::getDate(date, sizeof(date));
+    uClock::getTime(time, sizeof(time));
+    gps::getTime(gpsTime, sizeof(gpsTime));
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
@@ -144,7 +145,7 @@ void main::preloadGPS() {
         { strcpy(callsign, "ERROR"); }
     title::setCallsign   (callsign);
     title::setDate       (date);
-    title::setTime       (uptime);
+    title::setTime       (time);
     //title::setBattery  ("");
 
     datas::setLatitude   (latitude);
@@ -152,7 +153,7 @@ void main::preloadGPS() {
     datas::setSpeed      (speedBuffer);
     datas::setHeading    (hdgBuffer);
     datas::setASL        (aslBuffer);
-    datas::setUpdate     (time);
+    datas::setUpdate     (gpsTime);
 
     //locator::setStatusTop  ("");
     locator::setLocator      (qth);
@@ -226,19 +227,18 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
 
     char date[16];
     char time[16];
+    char gpsTime[16];
     char latitude[32];
     char longitude[32];
     char qth[32];
     char speedBuffer[16];
     char hdgBuffer[16];
     char aslBuffer[16];
-    char uptime[16];
     char gpsStatus[32];
 
-    title::getUptime(uptime, sizeof(uptime));
-
-    gps::getDate(date, sizeof(date));
-    gps::getTime(time, sizeof(time));
+    uClock::getDate(date, sizeof(date));
+    uClock::getTime(time, sizeof(time));
+    gps::getTime(gpsTime, sizeof(gpsTime));
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
@@ -255,13 +255,13 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     );
 
     title::updateDate     (tft, date);
-    title::updateTime     (tft, uptime);
+    title::updateTime     (tft, time);
     datas::updateLatitude (tft, latitude);
     datas::updateLongitude(tft, longitude);
     datas::updateSpeed    (tft, speedBuffer);
     datas::updateHeading  (tft, hdgBuffer);
     datas::updateASL      (tft, aslBuffer);
-    datas::updateUpdate   (tft, time);
+    datas::updateUpdate   (tft, gpsTime);
     locator::updateLocator(tft, qth);
 
     locator::updateStatusBottom(tft, gpsStatus);

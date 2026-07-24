@@ -34,6 +34,7 @@
 #include "screens/menu/updates.h"
 #include "services/gps.h"
 #include "ui/mockup/buttons.h"
+#include "utilities/clock.h"
 
 using screens::menu::About;
 using screens::menu::Battery;
@@ -49,6 +50,7 @@ namespace menu       = screens::menu;
 namespace navigation = screens::menu::navigation;
 namespace gps        = services::gps;
 namespace buttons    = ui::mockup::buttons;
+namespace uClock     = utilities::clock;
 
 namespace {
     menu::Item _currentItem = menu::Item::GENERAL;
@@ -109,14 +111,14 @@ void menu::update(ST7796S::MSP4021 &tft) {
     if (isEditing()) { return; }
 
     char date[16];
-    char uptime[16];
+    char time[16];
     char battery[8];
 
-    gps::getDate(date, sizeof(date));
-    title::getUptime(uptime, sizeof(uptime));
+    uClock::getDate(date, sizeof(date));
+    uClock::getTime(time, sizeof(time));
     title::getBatteryLevel(battery, sizeof(battery));
     title::updateDate(tft, date);
-    title::updateTime(tft, uptime);
+    title::updateTime(tft, time);
     title::updateBattery(tft, battery);
 
     _currentPage().update(tft);

@@ -26,13 +26,13 @@
 #include <cstdio>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
-#include "services/clock.h"
 #include "services/gps.h"
 #include "ui/settings/gps.h"
+#include "utilities/clock.h"
 
-namespace sclock   = services::clock;
 namespace gps      = services::gps;
 namespace settings = ui::settings::gps;
+namespace uClock    = utilities::clock;
 
 namespace {
     SFE_UBLOX_GNSS *_gps = nullptr;
@@ -52,6 +52,7 @@ namespace {
     int _timeHour        = 0;
     int _timeMinute      = 0;
     int _timeSecond      = 0;
+    bool _timeValid      = false;
 
     bool _readCache();
     void _getCoordinates(
@@ -60,8 +61,6 @@ namespace {
         char* qth,       size_t qthSize,
         void (*formatter)(double, bool, char*, size_t)
     );
-    int64_t _daysFromCivil(int year, unsigned month, unsigned day);
-    uint32_t _toEpochUTC(int year, int month, int day, int hour, int minute, int second);
 
     void _getCoordinates(
         char* latitude,  size_t latitudeSize,
@@ -99,44 +98,17 @@ namespace {
             _timeHour   = _gps->getHour();
             _timeMinute = _gps->getMinute();
             _timeSecond = _gps->getSecond();
+            _timeValid  = true;
         }
 
         if (_gps->getDateValid() && _gps->getTimeValid()) {
-            const uint32_t utcEpoch = _toEpochUTC(
+            const uint32_t utcEpoch = uClock::toEpochUTC(
                 _dateYear, _dateMonth, _dateDay,
                 _timeHour, _timeMinute, _timeSecond
             );
-            if (utcEpoch != 0) { sclock::sync(utcEpoch); }
+            if (utcEpoch != 0) { uClock::sync(utcEpoch); }
         }
         return true;
-    }
-
-    int64_t _daysFromCivil(int year, unsigned month, unsigned day) {
-        year -= month <= 2;
-
-        const int era            = (year >= 0 ? year : year - 399) / 400;
-        const unsigned yearOfEra = static_cast<unsigned>(year - era * 400);
-        const unsigned dayOfYear = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
-        const unsigned dayOfEra  = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
-
-        return (static_cast<int64_t>(era) * 146097 + static_cast<int64_t>(dayOfEra) - 719468);
-    }
-
-    uint32_t _toEpochUTC(int year, int month, int day, int hour, int minute, int second) {
-        if (year   < 1970 ||
-            month  < 1    || month > 12  ||
-            day    < 1    || day   > 31  ||
-            hour   < 0    || hour  > 23  ||
-            minute < 0    || minute > 59 ||
-            second < 0    || second > 60
-        ) { return 0; }
-
-        const int64_t days  = _daysFromCivil(year, static_cast<unsigned>(month), static_cast<unsigned>(day));
-        const int64_t epoch = days * 86400LL + hour * 3600LL + minute * 60LL + second;
-
-        if (epoch <= 0 || epoch > UINT32_MAX)
-            { return 0; }
-        return static_cast<uint32_t>(epoch);
     }
 }
 
@@ -186,11 +158,15 @@ bool gps::restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBa
         _gps = nullptr;
     }
 
-    _satFix   = 0;
-    _satCount = 0;
-    _hdop     = 0.0;
-    _vdop     = 0.0;
-    _pdop     = 0.0;
+    _satFix     = 0;
+    _satCount   = 0;
+    _hdop       = 0.0;
+    _vdop       = 0.0;
+    _pdop       = 0.0;
+    _timeHour   = 0;
+    _timeMinute = 0;
+    _timeSecond = 0;
+    _timeValid  = false;
     return begin(uart, rx, tx, finalBaud, timeout);
 }
 
@@ -214,15 +190,13 @@ bool gps::poll() {
     return _readCache();
 }
 
-void gps::getDate(char* buffer, size_t size) {
-    snprintf(
-        buffer, size,
-        "%04d %02d %02d",
-        _dateYear, _dateMonth, _dateDay
-    );
-}
-
 void gps::getTime(char* buffer, size_t size, bool withSecond) {
+    if (buffer == nullptr || size == 0) { return; }
+    if (!_timeValid) {
+        snprintf(buffer, size, withSecond ? "-- : -- : --" : "-- : --");
+        return;
+    }
+
     if (withSecond) {
         snprintf(
             buffer, size,

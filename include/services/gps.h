@@ -33,7 +33,6 @@ namespace services::gps {
     bool update (uint32_t timeoutMs = 10);
     bool poll();
 
-    void getDate(char* buffer, size_t size);
     void getTime(char* buffer, size_t size, bool withSecond = true);
     uint8_t getAcquisitionProgress();
     const char* headingToCardinal(const double heading);

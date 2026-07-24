@@ -23,11 +23,11 @@
 
 #include <cstdio>
 #include <ctime>
-#include "services/clock.h"
 #include "services/storage.h"
+#include "utilities/clock.h"
 
-namespace sclock  = services::clock;
 namespace storage = services::storage;
+namespace uClock   = utilities::clock;
 
 namespace {
     constexpr size_t MAX_LOGS_WAITING   = 20;
@@ -75,8 +75,8 @@ namespace {
         if (!data || data[0] == '\0' || !buffer || size == 0) { return false; }
 
         int written = 0;
-        if (sclock::isSynced()) {
-            const time_t rawTime = static_cast<time_t>(sclock::now());
+        if (uClock::isSynced()) {
+            const time_t rawTime = static_cast<time_t>(uClock::now());
 
             struct tm utcTime {};
             if (!gmtime_r(&rawTime, &utcTime)) { return false; }

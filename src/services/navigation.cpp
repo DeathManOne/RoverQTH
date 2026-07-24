@@ -26,15 +26,15 @@
 #include <cstdio>
 #include <cstring>
 
-#include "services/clock.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
+#include "utilities/clock.h"
 
-namespace sclock     = services::clock;
 namespace gps        = services::gps;
 namespace navigation = services::navigation;
 namespace settings   = services::settings;
+namespace uClock      = utilities::clock;
 
 namespace {
     //constexpr double PI = 3.14159265358979323846;
@@ -77,12 +77,12 @@ void navigation::begin() {
 }
 
 bool navigation::startMark() {
-    if (!_hasCurrent || !_currentFixValid || !sclock::isSynced())
+    if (!_hasCurrent || !_currentFixValid || !uClock::isSynced())
         { return false; }
     _markSnapshot = {};
     _markSnapshot.start              = _current;
     _markSnapshot.end                = {};
-    _markSnapshot.startUTC           = sclock::now();
+    _markSnapshot.startUTC           = uClock::now();
     _markSnapshot.stopUTC            = 0;
     _markSnapshot.startedAtMillis    = millis();
     _markSnapshot.stoppedAtMillis    = 0;
@@ -97,10 +97,10 @@ bool navigation::startMark() {
 }
 
 bool navigation::stopMark() {
-    if (_markState != MarkState::RECORDING || !_hasCurrent || !_currentFixValid || !sclock::isSynced())
+    if (_markState != MarkState::RECORDING || !_hasCurrent || !_currentFixValid || !uClock::isSynced())
         { return false; }
     _markSnapshot.end             = _current;
-    _markSnapshot.stopUTC         = sclock::now();
+    _markSnapshot.stopUTC         = uClock::now();
     _markSnapshot.stoppedAtMillis = millis();
     _markSnapshot.hasEnd          = true;
 
