@@ -49,6 +49,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * Fix status
 * Satellite count
 * HDOP precision indicator
+* UTC clock
 
 ### Touchscreen Interface
 
@@ -157,10 +158,10 @@ Firmware updates are performed directly to the OTA partition using secure HTTPS 
 
 The OTA system provides:
 
-* Automatic firmware version checking
+* Automatic firmware version comparison
 * Firmware manifest validation
 * Secure HTTPS downloads
-* SHA-256 firmware integrity verification
+* SHA-256 firmware integrity verification using the shared hash utilities
 * Download progress display
 * Automatic installation
 * Automatic reboot after successful update

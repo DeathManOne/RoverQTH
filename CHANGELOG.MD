@@ -7,6 +7,43 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.6.2] - 2026-07-25
+
+### Added
+
+- Dedicated `utilities` layer for reusable project components
+- Version comparison utilities
+- Formatting utilities
+- Distance calculation utilities
+- Unit conversion utilities
+- SHA-256 utilities
+- Coordinate utilities
+- Maidenhead locator utilities
+
+### Changed
+
+- Replaced the header uptime with a GNSS-synchronized UTC clock
+- Refactored clock management into the new `utilities::clock` module
+- Refactored coordinate conversions into `utilities::coordinates`
+- Refactored Maidenhead locator computations into `utilities::locator`
+- Refactored unit conversions into `utilities::units`
+- Refactored distance and bearing calculations into `utilities::distance`
+- Refactored shared formatting helpers into `utilities::format`
+- Refactored SHA-256 handling into `utilities::hash`
+- Refactored version parsing and comparison into `utilities::version`
+- Centralized and secured UTC time synchronization
+- Header time now continues running between GNSS updates
+- OTA firmware verification and version handling now use the new `utilities` layer
+
+### Internal
+
+- Simplified shared logic across services, screens and utilities
+- Reduced duplicated helper functions throughout the project
+- Improved separation of responsibilities between utilities and application services
+- Improved overall maintainability and code organization
+
+---
+
 ## [1.6.1] - 2026-07-24
 
 ### Added
