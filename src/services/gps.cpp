@@ -21,7 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
@@ -217,21 +216,6 @@ uint8_t gps::getAcquisitionProgress() {
     if (fix >= 3 && sat >= settings::SAT_MIN_FIX && goodHDOP)
         { progress = 100; }
     return (progress >= 100) ? 100 : progress;
-}
-
-const char* gps::headingToCardinal(const double heading) {
-    if (isnan(heading)) { return ""; }
-
-    static constexpr const char* directions[] = {
-        "N", "NE",
-        "E", "SE",
-        "S", "SW",
-        "W", "NW"
-    };
-
-    const double normalized = fmod((heading + 22.5), 360.0);
-    const int index         = static_cast<int>(normalized / 45.0) % 8;
-    return directions[index];
 }
 
 double gps::getAltitude() { return _masl; }

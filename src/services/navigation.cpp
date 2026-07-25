@@ -22,35 +22,27 @@
  */
 
 #include <Arduino.h>
-#include <cmath>
 #include <cstdio>
 #include <cstring>
 
 #include "services/gps.h"
 #include "services/navigation.h"
-#include "services/settings.h"
 #include "utilities/clock.h"
+#include "utilities/distance.h"
 #include "utilities/locator.h"
-#include "utilities/units.h"
 
 namespace gps        = services::gps;
 namespace navigation = services::navigation;
-namespace settings   = services::settings;
 namespace uClock     = utilities::clock;
+namespace distance   = utilities::distance;
 namespace locator    = utilities::locator;
-namespace units      = utilities::units;
 
 namespace {
-    //constexpr double PI = 3.14159265358979323846;
-    constexpr double EARTH_RADIUS_KM = 6371.0;
-
     bool _hasCurrent      = false;
     bool _hasMark         = false;
     bool _hasSOTA         = false;
     bool _currentFixValid = false;
 
-    double _toRad(double deg);
-    double _toDeg(double rad);
     void _copyText(char* dest, size_t size, const char* src);
 
     navigation::Coordinate _current {};
@@ -58,9 +50,6 @@ namespace {
     navigation::SOTATarget _sota {};
     navigation::MarkState _markState = navigation::MarkState::IDLE;
     navigation::MarkSnapshot _markSnapshot {};
-
-    double _toRad(double deg) { return deg * PI / 180.0; }
-    double _toDeg(double rad) { return rad * 180.0 / PI; }
 
     void _copyText(char* dest, size_t size, const char* src) {
         if (!dest || size == 0) { return; }
@@ -133,8 +122,11 @@ navigation::Coordinate navigation::markEndPosition()       { return _markSnapsho
 const navigation::MarkSnapshot& navigation::markSnapshot() { return _markSnapshot; }
 
 double navigation::markTotalDistanceKm() {
-    if (!_markSnapshot.hasEnd) { return -1.0; }
-    return distanceKm(_markSnapshot.start, _markSnapshot.end);
+    if (!_markSnapshot.hasEnd)
+        { return -1.0; }
+    return distance::betweenKilometers(
+        _markSnapshot.start.latitude, _markSnapshot.start.longitude,
+        _markSnapshot.end.latitude,   _markSnapshot.end.longitude);
 }
 
 double navigation::markCurrentDistanceKm() {
@@ -143,7 +135,10 @@ double navigation::markCurrentDistanceKm() {
         const double km = markTotalDistanceKm();
         return (km <= 0.0) ? -1.0 : km;
     }
-    return distanceKm(_current, _markSnapshot.start);
+    return distance::betweenKilometers(
+        _current.latitude,            _current.longitude,
+        _markSnapshot.start.latitude, _markSnapshot.start.longitude
+    );
 }
 
 double navigation::markCurrentBearingDeg() {
@@ -151,9 +146,15 @@ double navigation::markCurrentBearingDeg() {
     if (_markState == MarkState::READY_TO_SAVE) {
         const double km = markTotalDistanceKm();
         if (km <= 0.0) { return -1.0; }
-        return bearingDeg(_markSnapshot.start, _markSnapshot.end);
+        return distance::bearingDegrees(
+            _markSnapshot.start.latitude, _markSnapshot.start.longitude,
+            _markSnapshot.end.latitude,   _markSnapshot.end.longitude
+        );
     }
-    return bearingDeg(_current, _markSnapshot.start);
+    return distance::bearingDegrees(
+        _current.latitude,            _current.longitude,
+        _markSnapshot.start.latitude, _markSnapshot.start.longitude
+    );
 }
 
 void navigation::getMarkStartLocator(char* buffer, size_t size) {
@@ -195,35 +196,6 @@ void navigation::updateGPSFix(bool fixValid) {
 bool navigation::hasCurrentPosition()                { return _hasCurrent; }
 navigation::Coordinate navigation::currentPosition() { return _current; }
 
-double navigation::distanceKm(const Coordinate &from, const Coordinate &to) {
-    const double lat1 = _toRad(from.latitude);
-    const double lat2 = _toRad(to.latitude);
-    const double dLat = _toRad(to.latitude - from.latitude);
-    const double dLon = _toRad(to.longitude - from.longitude);
-
-    const double a =
-        std::sin(dLat / 2.0) * std::sin(dLat / 2.0) +
-        std::cos(lat1)       * std::cos(lat2)       *
-        std::sin(dLon / 2.0) * std::sin(dLon / 2.0);
-    const double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
-    return EARTH_RADIUS_KM * c;
-}
-
-double navigation::bearingDeg(const Coordinate &from, const Coordinate &to) {
-    const double lat1 = _toRad(from.latitude);
-    const double lat2 = _toRad(to.latitude);
-    const double dLon = _toRad(to.longitude - from.longitude);
-
-    const double y = std::sin(dLon) * std::cos(lat2);
-    const double x =
-        std::cos(lat1) * std::sin(lat2) -
-        std::sin(lat1) * std::cos(lat2) * std::cos(dLon);
-    double bearing = _toDeg(std::atan2(y, x));
-
-    if (bearing < 0.0) { bearing += 360.0; }
-    return bearing;
-}
-
 void navigation::setMark(double latitude, double longitude) {
     _mark.latitude  = latitude;
     _mark.longitude = longitude;
@@ -248,51 +220,21 @@ bool navigation::hasMark()                        { return _hasMark; }
 navigation::Coordinate navigation::markPosition() { return _mark; }
 
 double navigation::markDistanceKm() {
-    if (!_hasCurrent || !_hasMark) { return -1.0; }
-    return distanceKm(_current, _mark);
+    if (!_hasCurrent || !_hasMark)
+        { return -1.0; }
+    return distance::betweenKilometers(
+        _current.latitude, _current.longitude,
+        _mark.latitude,    _mark.longitude
+    );
 }
 
 double navigation::markBearingDeg() {
-    if (!_hasCurrent || !_hasMark) { return -1.0; }
-    return bearingDeg(_current, _mark);
-}
-
-void navigation::formatDistance(const double km, char* const buffer, const size_t size) {
-    if (buffer == nullptr || size == 0) { return; }
-    if (km < 0.0) {
-        std::snprintf(buffer, size, "--");
-        return;
-    }
-    if (settings::getUnits() == settings::Units::IMPERIAL) {
-        const double miles = units::kilometersToMiles(km);
-
-        if (miles < 0.1) {
-            const double feet = units::metersToFeet(units::kilometersToMeters(km));
-            std::snprintf(buffer, size, "%.0f ft", feet);
-            return;
-        }
-
-        std::snprintf(buffer, size, "%.1f mi", miles);
-        return;
-    }
-    if (km < 1.0) {
-        std::snprintf(buffer, size, "%.0f m", units::kilometersToMeters(km));
-        return;
-    }
-    if (km < 10.0) {
-        std::snprintf(buffer, size, "%.2f km", km);
-        return;
-    }
-    std::snprintf(buffer, size, "%.1f km", km);
-}
-
-void navigation::formatBearing(double deg, char* buffer, size_t size) {
-    if (!buffer || size == 0)  { return; }
-    if (deg < 0.0) {
-        std::snprintf(buffer, size, "--");
-        return;
-    }
-    std::snprintf(buffer, size, "%.0f°", deg);
+    if (!_hasCurrent || !_hasMark)
+        { return -1.0; }
+    return distance::bearingDegrees(
+        _current.latitude, _current.longitude,
+        _mark.latitude,    _mark.longitude
+    );
 }
 
 void navigation::setSOTA(const char* code, double latitude, double longitude, int points, int altitude) {
@@ -312,13 +254,21 @@ void navigation::clearSOTA() {
 bool navigation::hasSOTA() { return _hasSOTA; }
 
 double navigation::sotaDistanceKm() {
-    if (!_hasCurrent || !_hasSOTA) { return -1.0; }
-    return distanceKm(_current, _sota.coordinate);
+    if (!_hasCurrent || !_hasSOTA)
+        { return -1.0; }
+    return distance::betweenKilometers(
+        _current.latitude,         _current.longitude,
+        _sota.coordinate.latitude, _sota.coordinate.longitude
+    );
 }
 
 double navigation::sotaBearingDeg() {
-    if (!_hasCurrent || !_hasSOTA) { return -1.0; }
-    return bearingDeg(_current, _sota.coordinate);
+    if (!_hasCurrent || !_hasSOTA)
+        { return -1.0; }
+    return distance::bearingDegrees(
+        _current.latitude,         _current.longitude,
+        _sota.coordinate.latitude, _sota.coordinate.longitude
+    );
 }
 
 void navigation::getSOTACode(char* buffer, size_t size) { _copyText(buffer, size, _hasSOTA ? _sota.code : "--"); }

@@ -58,18 +58,15 @@ namespace screens::menu {
             };
 
             static uint32_t _nextCapacity(uint32_t value);
-            const char* _capacityToText(uint32_t value);
             void _actionCapacity(ST7796S::MSP4021 &tft, Field<_Action> &field);
 
             static float _nextVoltage(float voltage);
-            static const char* _voltageToText(float voltage, char* buffer, size_t size);
             void _actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field);
             void _actionNominal(ST7796S::MSP4021 &tft, Field<_Action> &field);
             void _actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field);
 
             static uint8_t _nextRatioHigh(uint8_t value);
             static uint8_t _previousRatioHigh(uint8_t value);
-            static const char* _ratioToText(uint8_t value, char* buffer, size_t size);
             void _actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field);
     };
 }

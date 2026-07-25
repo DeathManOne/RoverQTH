@@ -30,11 +30,13 @@
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
 #include "ui/widgets/buttons.h"
+#include "utilities/format.h"
 
 namespace boot    = screens::boot;
 namespace mockup  = ui::settings::mockup;
 namespace theme   = ui::settings::themes::defaults;
 namespace buttons = ui::widgets::buttons;
+namespace format  = utilities::format;
 
 namespace {
     uint8_t _gpsProgress = 0;
@@ -147,7 +149,7 @@ namespace {
         );
 
         char text[TEXT_SIZE];
-        snprintf(text, TEXT_SIZE, "%u %%", value);
+        format::percentage(value, text, sizeof(text));
 
         tft.setFont(ST7796S::DejaVuSans_Bold_18);
         tft.setTextColor(theme::WHITE);

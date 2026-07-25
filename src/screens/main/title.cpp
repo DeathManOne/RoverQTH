@@ -21,7 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
@@ -32,12 +31,14 @@
 #include "ui/mockup/header.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
+#include "utilities/format.h"
 
 namespace battery = services::battery;
 namespace title   = screens::main::title;
 namespace header  = ui::mockup::header;
 namespace mockup  = ui::settings::mockup;
 namespace theme   = ui::settings::themes::defaults;
+namespace format  = utilities::format;
 
 namespace {
     constexpr size_t VALUE_SIZE = 32;
@@ -118,10 +119,12 @@ void title::updateDate    (ST7796S::MSP4021 &tft, const char* value) { _updateFi
 void title::updateTime    (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _time,     value); }
 void title::updateBattery (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _battery,  value); }
 
-void title::getBatteryLevel(char* buffer, size_t size) {
-    if (battery::isPresent())
-        { snprintf(buffer, size, "%u %%", battery::getPercent()); }
-    else { snprintf(buffer, size, "N/A"); }
+void title::getBatteryLevel(char* const buffer, const size_t size) {
+    if (battery::isPresent()) {
+        format::percentage(battery::getPercent(), buffer, size);
+        return;
+    }
+    std::snprintf(buffer, size, "N/A");
 }
 
 void title::draw(ST7796S::MSP4021 &tft) {

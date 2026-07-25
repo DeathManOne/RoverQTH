@@ -35,7 +35,6 @@ namespace services::gps {
 
     void getTime(char* buffer, size_t size, bool withSecond = true);
     uint8_t getAcquisitionProgress();
-    const char* headingToCardinal(const double heading);
 
     double getAltitude();
     void getSat(int &fix, int &count);

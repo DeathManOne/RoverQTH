@@ -33,8 +33,8 @@
 #include "ui/settings/themes/defaults.h"
 #include "utilities/clock.h"
 #include "utilities/coordinates.h"
+#include "utilities/format.h"
 #include "utilities/locator.h"
-#include "utilities/units.h"
 
 namespace main        = screens::main;
 namespace datas       = screens::main::datas;
@@ -48,49 +48,10 @@ namespace buttons     = ui::mockup::buttons;
 namespace theme       = ui::settings::themes::defaults;
 namespace uClock      = utilities::clock;
 namespace coordinates = utilities::coordinates;
+namespace format      = utilities::format;
 namespace uLocator    = utilities::locator;
-namespace units       = utilities::units;
 
 namespace {
-    void _formatSpeed   (const double kmh,    char* const buffer, const size_t size);
-    void _formatAltitude(const double meters, char* const buffer, const size_t size);
-    void _formatDuration(uint32_t seconds, char* buffer, size_t size);
-    void _getFormattedPosition(
-        char* const latitude,  const size_t latitudeSize,
-        char* const longitude, const size_t longitudeSize,
-        char* const qth,       const size_t qthSize
-    );
-
-    void _formatDuration(uint32_t seconds, char* buffer, size_t size) {
-        const uint32_t hours = seconds / 3600;
-        seconds %= 3600;
-
-        const uint32_t minutes = seconds / 60;
-        seconds %= 60;
-
-        if (hours > 0) {
-            snprintf(buffer, size, "%luh %02lum", hours, minutes);
-            return;
-        }
-        snprintf(buffer, size, "%lum %02lus", minutes, seconds);
-    }
-
-    void _formatSpeed(const double kmh, char* const buffer, const size_t size) {
-        if (settings::getUnits() == settings::Units::IMPERIAL) {
-            std::snprintf(buffer, size, "%.1f mph", units::kilometersPerHourToMilesPerHour(kmh));
-            return;
-        }
-        std::snprintf(buffer, size, "%.1f km/h", kmh);
-    }
-
-    void _formatAltitude(const double meters, char* const buffer, const size_t size) {
-        if (settings::getUnits() == settings::Units::IMPERIAL) {
-            std::snprintf(buffer, size, "%.0f ft", units::metersToFeet(meters));
-            return;
-        }
-        std::snprintf(buffer, size, "%.0f m", meters);
-    }
-
     void _getFormattedPosition(
         char* const latitude,  const size_t latitudeSize,
         char* const longitude, const size_t longitudeSize,
@@ -136,6 +97,8 @@ void main::preload() {
 }
 
 void main::preloadGPS() {
+    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+
     double masl, hdg, speed, hdop, vdop, pdop;
     int satFix, satCount;
 
@@ -159,11 +122,9 @@ void main::preloadGPS() {
     gps::getSat(satFix, satCount);
     _getFormattedPosition(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
 
-    if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
-    else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }
-
-    _formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
-    _formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
+    format::heading (hdg,   hdgBuffer,             sizeof(hdgBuffer));
+    format::speed   (speed, imperial, speedBuffer, sizeof(speedBuffer));
+    format::altitude(masl,  imperial, aslBuffer,   sizeof(aslBuffer));
     snprintf(
         gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
         satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
@@ -189,6 +150,8 @@ void main::preloadGPS() {
 }
 
 void main::preloadSOTA() {
+    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+
     if (!navigation::hasSOTA()) {
         locator::setSOTABearing("---");
         locator::setSOTADistance("---");
@@ -204,12 +167,12 @@ void main::preloadSOTA() {
     char altitude[16];
     char code[24];
 
-    navigation::formatDistance(navigation::sotaDistanceKm(), distance, sizeof(distance));
-    navigation::formatBearing(navigation::sotaBearingDeg(), bearing, sizeof(bearing));
+    format::altitude(navigation::getSOTAAltitude(), imperial, altitude, sizeof(altitude));
+    format::distance(navigation::sotaDistanceKm(),  imperial, distance, sizeof(distance));
+    format::bearing (navigation::sotaBearingDeg(),  bearing,            sizeof(bearing));
     navigation::getSOTACode(code, sizeof(code));
 
     snprintf(points, sizeof(points), "%d (+1)", navigation::getSOTAPoints());
-    _formatAltitude(navigation::getSOTAAltitude(), altitude, sizeof(altitude));
 
     locator::setSOTABearing(bearing);
     locator::setSOTADistance(distance);
@@ -219,6 +182,8 @@ void main::preloadSOTA() {
 }
 
 void main::preloadMARK() {
+    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+
     if (!services::navigation::hasMark()) {
         locator::setMarkLocator("---");
         locator::setMarkBearing("---");
@@ -232,10 +197,10 @@ void main::preloadMARK() {
     char bearing[16];
     char timer[16];
 
+    format::distance       (navigation::markCurrentDistanceKm(), imperial, distance, sizeof(distance));
+    format::bearing        (navigation::markCurrentBearingDeg(), bearing,            sizeof(bearing));
+    format::durationCompact(navigation::markElapsedSeconds(),    timer,              sizeof(timer));
     navigation::getMarkStartLocator(locator, sizeof(locator));
-    navigation::formatDistance(navigation::markCurrentDistanceKm(), distance, sizeof(distance));
-    navigation::formatBearing(navigation::markCurrentBearingDeg(), bearing, sizeof(bearing));
-    _formatDuration(navigation::markElapsedSeconds(), timer, sizeof(timer));
 
     locator::setMarkLocator(locator);
     locator::setMarkBearing(bearing);
@@ -244,6 +209,7 @@ void main::preloadMARK() {
 }
 
 void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
+    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
     nextRefreshIn = 1000;
 
     char battery[8] = {};
@@ -272,11 +238,9 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     gps::getSat(satFix, satCount);
     _getFormattedPosition(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
 
-    if (isnan(hdg)) { snprintf(hdgBuffer, sizeof(hdgBuffer), ""); }
-    else { snprintf(hdgBuffer, sizeof(hdgBuffer), "%.0f° %s", hdg, gps::headingToCardinal(hdg)); }
-
-    _formatSpeed(speed, speedBuffer, sizeof(speedBuffer));
-    _formatAltitude(masl, aslBuffer, sizeof(aslBuffer));
+    format::heading (hdg,   hdgBuffer,             sizeof(hdgBuffer));
+    format::speed   (speed, imperial, speedBuffer, sizeof(speedBuffer));
+    format::altitude(masl,  imperial, aslBuffer,   sizeof(aslBuffer));
     snprintf(
         gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
         satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
@@ -297,8 +261,11 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
 }
 
 void main::updateMARK(ST7796S::MSP4021 &tft) {
+    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+
     if (!navigation::hasMark() ||
-    (navigation::markState() == navigation::MarkState::READY_TO_SAVE && navigation::markTotalDistanceKm() <= 0.0)) {
+        (navigation::markState() == navigation::MarkState::READY_TO_SAVE && navigation::markTotalDistanceKm() <= 0.0)
+    ) {
         locator::updateMarkLocator(tft, "---");
         locator::updateMarkBearing(tft, "---");
         locator::updateMarkDistance(tft, "---");
@@ -311,10 +278,10 @@ void main::updateMARK(ST7796S::MSP4021 &tft) {
     char bearing[16];
     char timer[16];
 
+    format::distance       (navigation::markCurrentDistanceKm(), imperial, distance, sizeof(distance));
+    format::bearing        (navigation::markCurrentBearingDeg(), bearing,            sizeof(bearing));
+    format::durationCompact(navigation::markElapsedSeconds(),    timer,              sizeof(timer));
     navigation::getMarkStartLocator(locator, sizeof(locator));
-    navigation::formatDistance(navigation::markCurrentDistanceKm(), distance, sizeof(distance));
-    navigation::formatBearing(navigation::markCurrentBearingDeg(), bearing, sizeof(bearing));
-    _formatDuration(navigation::markElapsedSeconds(), timer, sizeof(timer));
 
     locator::updateMarkLocator(tft, locator);
     locator::updateMarkBearing(tft, bearing);

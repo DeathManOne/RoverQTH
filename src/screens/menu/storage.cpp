@@ -26,11 +26,13 @@
 #include "services/storage.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
+#include "utilities/format.h"
 
 using screens::menu::Storage;
 namespace storage  = services::storage;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
+namespace format   = utilities::format;
 
 const char* Storage::_typeToText(uint8_t type) {
     switch (type) {
@@ -39,16 +41,6 @@ const char* Storage::_typeToText(uint8_t type) {
         case CARD_SDHC: return "SDHC/SDXC";
         default:        return "Unknown";
     }
-}
-
-void Storage::_formatCapacity(uint64_t bytes, char* buffer, size_t size) {
-    constexpr double GB = 1024.0 * 1024.0 * 1024.0;
-    std::snprintf(buffer, size, "%.1f GB", static_cast<double>(bytes) / GB);
-}
-
-void Storage::_formatUsage(uint64_t total, uint64_t used, char* buffer, size_t size) {
-    const uint64_t percent = total > 0 ? (used * 100ULL) / total : 0;
-    std::snprintf(buffer, size, "%llu %%", static_cast<unsigned long long>(percent));
 }
 
 void Storage::draw(ST7796S::MSP4021 &tft) {
@@ -73,8 +65,10 @@ void Storage::draw(ST7796S::MSP4021 &tft) {
 
     if (storage::readCardInfos(type, size, total, used)) {
         std::snprintf(_typeValue, sizeof(_typeValue), "%s", _typeToText(type));
-        _formatCapacity(total, _capacityValue, sizeof(_capacityValue));
-        _formatUsage(total, used, _usageValue, sizeof(_usageValue));
+        format::storageCapacity(total, _capacityValue, sizeof(_capacityValue));
+
+        const uint64_t percentage = total > 0U ? (used * 100ULL) / total : 0U;
+        format::percentage(percentage, _usageValue, sizeof(_usageValue));
     } else {
         std::snprintf(_typeValue,     sizeof(_typeValue),      "Missing");
         std::snprintf(_capacityValue, sizeof(_capacityValue),  "--");

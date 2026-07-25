@@ -84,9 +84,6 @@ namespace services::navigation {
     bool hasCurrentPosition();
     Coordinate currentPosition();
 
-    double distanceKm(const Coordinate &from, const Coordinate &to);
-    double bearingDeg(const Coordinate &from, const Coordinate &to);
-
     void setMark(double latitude, double longitude);
     bool setMarkFromCurrentPosition();
     void clearMark();
@@ -95,9 +92,6 @@ namespace services::navigation {
     Coordinate markPosition();
     double markDistanceKm();
     double markBearingDeg();
-
-    void formatDistance(const double km, char* const buffer, const size_t size);
-    void formatBearing (double deg, char* buffer, size_t size);
 
     void setSOTA(const char* code, double latitude, double longitude, int points, int altitude);
 

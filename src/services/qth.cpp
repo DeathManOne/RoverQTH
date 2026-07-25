@@ -28,12 +28,14 @@
 #include "services/navigation.h"
 #include "services/qth.h"
 #include "services/storage.h"
+#include "utilities/format.h"
 #include "utilities/locator.h"
 #include "utilities/units.h"
 
 namespace navigation = services::navigation;
 namespace qth        = services::qth;
 namespace storage    = services::storage;
+namespace format     = utilities::format;
 namespace locator    = utilities::locator;
 namespace units      = utilities::units;
 
@@ -52,22 +54,6 @@ namespace {
             utcTime.tm_hour, utcTime.tm_min, utcTime.tm_sec
         );
         return written == 20;
-    }
-
-    bool _formatDuration(uint32_t seconds, char* buffer, size_t size) {
-        if (!buffer || size == 0) { return false; }
-
-        const uint32_t hours    = seconds / 3600;
-        const uint32_t minutes  = (seconds % 3600) / 60;
-        const uint32_t rSeconds = seconds % 60;
-        const int written = std::snprintf(
-            buffer, size,
-            "%02lu:%02lu:%02lu",
-            static_cast<unsigned long>(hours),
-            static_cast<unsigned long>(minutes),
-            static_cast<unsigned long>(rSeconds)
-        );
-        return (written > 0 && static_cast<size_t>(written) < size);
     }
 }
 
@@ -104,7 +90,7 @@ bool qth::buildCurrentRecord(QTHRecord& record) {
         { return false; }
     record.duration.seconds = navigation::markDurationSeconds();
 
-    if (!_formatDuration(record.duration.seconds, record.duration.hms, sizeof(record.duration.hms)))
+    if (!format::durationHMS(record.duration.seconds, record.duration.hms, sizeof(record.duration.hms)))
         { return false; }
     record.distance.airLineKm      = navigation::markTotalDistanceKm();
     record.distance.airLineMeters  = static_cast<uint32_t>(std::lround(units::kilometersToMeters(record.distance.airLineKm)));

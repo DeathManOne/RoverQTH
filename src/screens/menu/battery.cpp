@@ -21,16 +21,17 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include "screens/menu/battery.h"
 #include "services/settings.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
+#include "utilities/format.h"
 
 using screens::menu::Battery;
 namespace settings = services::settings;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
+namespace format   = utilities::format;
 
 uint32_t Battery::_nextCapacity(uint32_t value) {
     value += 500;
@@ -39,19 +40,12 @@ uint32_t Battery::_nextCapacity(uint32_t value) {
     return value;
 }
 
-const char* Battery::_capacityToText(uint32_t value) {
-    std::snprintf(
-        _capacityValue,  sizeof(_capacityValue),
-        "%lu mAh",      static_cast<unsigned long>(value)
-    );
-    return _capacityValue;
-}
-
 void Battery::_actionCapacity(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const uint32_t capacity = _nextCapacity(settings::getBatteryCapacity());
     if (!settings::setBatteryCapacity(capacity)) { return; }
 
-    field.value = _capacityToText(capacity);
+    format::capacityMilliAmpHours(capacity, _capacityValue, sizeof(_capacityValue));
+    field.value = _capacityValue;
     _updateField(tft, field);
 }
 
@@ -62,16 +56,12 @@ float Battery::_nextVoltage(float voltage) {
     return voltage;
 }
 
-const char* Battery::_voltageToText(float voltage, char* buffer, size_t size) {
-    std::snprintf(buffer, size, "%.2f V", voltage);
-    return buffer;
-}
-
 void Battery::_actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const float minimal = _nextVoltage(settings::getBatteryMinimal());
     if (!settings::setBatteryMinimal(minimal)) { return; }
 
-    field.value = _voltageToText(minimal, _minimalValue, sizeof(_minimalValue));
+    format::voltage(minimal, _minimalValue, sizeof(_minimalValue));
+    field.value = _minimalValue;
     _updateField(tft, field);
 }
 
@@ -79,7 +69,8 @@ void Battery::_actionNominal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const float nominal = _nextVoltage(settings::getBatteryNominal());
     if (!settings::setBatteryNominal(nominal)) { return; }
 
-    field.value = _voltageToText(nominal, _nominalValue, sizeof(_nominalValue));
+    format::voltage(nominal, _nominalValue, sizeof(_nominalValue));
+    field.value = _nominalValue;
     _updateField(tft, field);
 }
 
@@ -87,7 +78,8 @@ void Battery::_actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const float maximal = _nextVoltage(settings::getBatteryMaximal());
     if (!settings::setBatteryMaximal(maximal)) { return; }
 
-    field.value = _voltageToText(maximal, _maximalValue, sizeof(_maximalValue));
+    format::voltage(maximal, _maximalValue, sizeof(_maximalValue));
+    field.value = _maximalValue;
     _updateField(tft, field);
 }
 
@@ -103,11 +95,6 @@ uint8_t Battery::_previousRatioHigh(uint8_t value) {
     return value - 1;
 }
 
-const char* Battery::_ratioToText(uint8_t value, char* buffer, size_t size) {
-    std::snprintf(buffer, size, "%u %%", value);
-    return buffer;
-}
-
 void Battery::_actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     uint8_t value = settings::getBatteryRatioHigh();
 
@@ -116,9 +103,12 @@ void Battery::_actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     else { value = _previousRatioHigh(value); }
 
     if (!settings::setBatteryRatioHigh(value)) { return; }
+    format::percentage(value,        _ratioHighValue, sizeof(_ratioHighValue));
+    format::percentage(100U - value, _ratioLowValue,  sizeof(_ratioLowValue));
 
-    _ratioHighField.value = _ratioToText(value,       _ratioHighValue, sizeof(_ratioHighValue));
-    _ratioLowField.value  = _ratioToText(100 - value, _ratioLowValue,  sizeof(_ratioLowValue));
+    _ratioHighField.value = _ratioHighValue;
+    _ratioLowField.value  = _ratioLowValue;
+
     _updateField(tft, _ratioHighField);
     _updateField(tft, _ratioLowField);
 }
@@ -144,12 +134,19 @@ void Battery::draw(ST7796S::MSP4021 &tft) {
     const float maximal     = settings::getBatteryMaximal();
     const uint8_t ratioHigh = settings::getBatteryRatioHigh();
 
-    _capacityField.value  = _capacityToText(capacity);
-    _minimalField.value   = _voltageToText(minimal,       _minimalValue,   sizeof(_minimalValue));
-    _nominalField.value   = _voltageToText(nominal,       _nominalValue,   sizeof(_nominalValue));
-    _maximalField.value   = _voltageToText(maximal,       _maximalValue,   sizeof(_maximalValue));
-    _ratioHighField.value = _ratioToText(ratioHigh,       _ratioHighValue, sizeof(_ratioHighValue));
-    _ratioLowField.value  = _ratioToText(100 - ratioHigh, _ratioLowValue,  sizeof(_ratioLowValue));
+    format::capacityMilliAmpHours(capacity,         _capacityValue,  sizeof(_capacityValue));
+    format::voltage              (minimal,          _minimalValue,   sizeof(_minimalValue));
+    format::voltage              (nominal,          _nominalValue,   sizeof(_nominalValue));
+    format::voltage              (maximal,          _maximalValue,   sizeof(_maximalValue));
+    format::percentage           (ratioHigh,        _ratioHighValue, sizeof(_ratioHighValue));
+    format::percentage           (100U - ratioHigh, _ratioLowValue,  sizeof(_ratioLowValue));
+
+    _capacityField.value  = _capacityValue;
+    _minimalField.value   = _minimalValue;
+    _nominalField.value   = _nominalValue;
+    _maximalField.value   = _maximalValue;
+    _ratioHighField.value = _ratioHighValue;
+    _ratioLowField.value  = _ratioLowValue;
 
     _drawTitle(tft, x, y, w, rowH, gap, "battery");
     for (Field<_Action>* field : _fields)

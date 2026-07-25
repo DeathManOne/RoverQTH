@@ -48,7 +48,5 @@ namespace screens::menu {
             };
 
             static const char* _typeToText(uint8_t type);
-            static void _formatCapacity(uint64_t bytes, char* buffer, size_t size);
-            static void _formatUsage(uint64_t total, uint64_t used, char* buffer, size_t size);
     };
 }

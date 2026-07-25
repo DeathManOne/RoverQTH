@@ -27,36 +27,35 @@
 #include <Update.h>
 #include <WiFiClientSecure.h>
 
-#include <cctype>
 #include <cstdio>
 #include <cstring>
-
-#include <mbedtls/sha256.h>
 
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
+#include "utilities/hash.h"
+#include "utilities/version.h"
 
-namespace update  = services::update;
-namespace storage = services::storage;
-namespace wifi    = services::wifi;
+namespace update   = services::update;
+namespace storage  = services::storage;
+namespace wifi     = services::wifi;
+namespace hash     = utilities::hash;
+namespace uVersion = utilities::version;
 
 namespace {
-    constexpr size_t VERSION_SIZE         = 16;
-    constexpr size_t SHA256_TEXT_SIZE     = 65;
     constexpr size_t ERROR_SIZE           = 48;
     constexpr size_t DOWNLOAD_BUFFER_SIZE = 4096;
     constexpr uint32_t HTTP_TIMEOUT_MS    = 15000;
     constexpr uint32_t STREAM_TIMEOUT_MS  = 20000;
 
-    update::Status _status    = update::Status::IDLE;
+    update::Status _status = update::Status::IDLE;
     portMUX_TYPE _lock     = portMUX_INITIALIZER_UNLOCKED;
     uint8_t _progress      = 0;
     uint32_t _expectedSize = 0;
     bool _taskRunning      = false;
 
-    char _latestVersion[VERSION_SIZE] {};
-    char _expectedSha256[SHA256_TEXT_SIZE] {};
+    char _latestVersion[uVersion::TEXT_SIZE] {};
+    char _expectedSha256[hash::SHA256_TEXT_SIZE] {};
     char _error[ERROR_SIZE] {};
 
     void _copyText(char* destination, size_t destinationSize, const char* source) {
@@ -89,62 +88,6 @@ namespace {
         portEXIT_CRITICAL(&_lock);
         if (logCode != nullptr)
             { storage::appendErrorRecord(logCode); }
-    }
-
-    bool _versionToBuild(const char* version, uint32_t& build) {
-        if (version == nullptr || version[0] == '\0') { return false; }
-
-        uint16_t parts[3] {0, 0, 0};
-        uint8_t part   = 0;
-        uint8_t digits = 0;
-
-        for (size_t index = 0; version[index] != '\0'; ++index) {
-            const unsigned char character = static_cast<unsigned char>(version[index]);
-
-            if (character == '.') {
-                if (digits == 0 || part >= 2) { return false; }
-                ++part;
-                digits = 0;
-                continue;
-            }
-
-            if (!std::isdigit(character) || digits >= 3) { return false; }
-            parts[part] = static_cast<uint16_t>(parts[part] * 10U + character - '0');
-            ++digits;
-        }
-
-        if (part != 2 || digits == 0) { return false; }
-        build =
-            static_cast<uint32_t>(parts[0])   * 1000000UL
-            + static_cast<uint32_t>(parts[1]) * 1000UL
-            + static_cast<uint32_t>(parts[2]);
-        return true;
-    }
-
-    bool _isSha256(const char* value) {
-        if (value == nullptr || std::strlen(value) != 64) { return false; }
-        for (size_t index = 0; index < 64; ++index) {
-            if (!std::isxdigit(static_cast<unsigned char>(value[index])))
-                { return false; }
-        }
-        return true;
-    }
-
-    void _normalizeSha256(char output[SHA256_TEXT_SIZE], const char* input) {
-        for (size_t index = 0; index < 64; ++index)
-            { output[index] = static_cast<char>(std::tolower(static_cast<unsigned char>(input[index]))); }
-        output[64] = '\0';
-    }
-
-    void _digestToText(const uint8_t hashBytes[32], char output[SHA256_TEXT_SIZE]) {
-        static constexpr char HEX_CHARACTERS[] = "0123456789abcdef";
-
-        for (size_t index = 0; index < 32; ++index) {
-            const uint8_t value = hashBytes[index];
-            output[index * 2]     = HEX_CHARACTERS[static_cast<size_t>(value >> 4)];
-            output[index * 2 + 1] = HEX_CHARACTERS[static_cast<size_t>(value & 0x0F)];
-        }
-        output[64] = '\0';
     }
 
     bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url) {
@@ -191,42 +134,52 @@ namespace {
             return;
         }
 
-        const char* version  = document["version"].as<const char*>();
-        const char* sha256   = document["sha256"].as<const char*>();
-        const uint32_t size  = document["size"] | 0U;
-        uint32_t localBuild  = 0;
-        uint32_t remoteBuild = 0;
+        const char* const remoteVersion = document["version"].as<const char*>();
+        const char* const sha256        = document["sha256"].as<const char*>();
+        const uint32_t size             = document["size"] | 0U;
 
-        if (!_versionToBuild(PROJECT_VERSION, localBuild)  || !_versionToBuild(version, remoteBuild) || size == 0 || !_isSha256(sha256)) {
+        uVersion::Comparison comparison;
+        if (
+            !uVersion::compare(remoteVersion, PROJECT_VERSION, comparison) ||
+            size == 0                                                      ||
+            !hash::isSha256Text(sha256)
+        ) {
             _setError("Invalid manifest", "OTA_MANIFEST_FIELDS_INVALID");
             _finishTask();
             return;
         }
 
-        char normalizedSha[SHA256_TEXT_SIZE];
-        _normalizeSha256(normalizedSha, sha256);
+        char normalizedSha[hash::SHA256_TEXT_SIZE];
+        if (!hash::normalizeSha256Text(sha256, normalizedSha, sizeof(normalizedSha))) {
+            _setError("Invalid manifest", "OTA_MANIFEST_FIELDS_INVALID");
+            _finishTask();
+            return;
+        }
 
+        const bool updateAvailable = comparison == uVersion::Comparison::NEWER;
         portENTER_CRITICAL(&_lock);
-        _copyText(_latestVersion,  sizeof(_latestVersion),  version);
+    
+        _copyText(_latestVersion,  sizeof(_latestVersion),  remoteVersion);
         _copyText(_expectedSha256, sizeof(_expectedSha256), normalizedSha);
 
         _expectedSize = size;
         _progress     = 0;
         _error[0]     = '\0';
-        _status       = remoteBuild > localBuild ? update::Status::AVAILABLE : update::Status::UP_TO_DATE;
+        _status       = updateAvailable
+            ? update::Status::AVAILABLE
+            : update::Status::UP_TO_DATE;
 
         portEXIT_CRITICAL(&_lock);
-        storage::appendLogRecord(remoteBuild > localBuild ? "OTA_UPDATE_AVAILABLE" : "OTA_UP_TO_DATE");
+        storage::appendLogRecord(updateAvailable ? "OTA_UPDATE_AVAILABLE" : "OTA_UP_TO_DATE");
         _finishTask();
     }
 
     void _installTask(void*) {
         uint32_t expectedSize = 0;
+        char expectedSha[hash::SHA256_TEXT_SIZE];
 
-        char expectedSha[SHA256_TEXT_SIZE];
         portENTER_CRITICAL(&_lock);
         expectedSize = _expectedSize;
-
         _copyText(expectedSha, sizeof(expectedSha), _expectedSha256);
         portEXIT_CRITICAL(&_lock);
 
@@ -258,16 +211,11 @@ namespace {
             return;
         }
 
-        mbedtls_sha256_context shaContext;
-        mbedtls_sha256_init(&shaContext);
-
-        if (mbedtls_sha256_starts_ret(&shaContext, 0) != 0) {
+        hash::Sha256 sha256;
+        if (!sha256.begin()) {
             Update.abort();
             http.end();
-
-            mbedtls_sha256_free(&shaContext);
             _setError("SHA init failed", "OTA_SHA_INIT_FAILED");
-
             _finishTask();
             return;
         }
@@ -300,13 +248,12 @@ namespace {
             if (read <= 0) { continue; }
 
             lastDataAt = millis();
-            if (mbedtls_sha256_update_ret(&shaContext, buffer, static_cast<size_t>(read)) != 0) {
+            if (!sha256.update(buffer, static_cast<size_t>(read))) {
                 transferOk = false;
                 break;
             }
 
-            if (
-                ::Update.write(buffer, static_cast<size_t>(read)) != static_cast<size_t>(read)) {
+            if (::Update.write(buffer, static_cast<size_t>(read)) != static_cast<size_t>(read)) {
                 transferOk = false;
                 break;
             }
@@ -318,29 +265,20 @@ namespace {
         http.end();
         if (!transferOk || received != expectedSize) {
             ::Update.abort();
-            mbedtls_sha256_free(&shaContext);
-
             _setError("Download interrupted", "OTA_DOWNLOAD_INCOMPLETE");
             _finishTask();
             return;
         }
 
         _setStatus(update::Status::VERIFYING);
-        uint8_t digest[32];
-
-        if (mbedtls_sha256_finish_ret(&shaContext, digest) != 0) {
+        char calculatedSha[hash::SHA256_TEXT_SIZE];
+        if (!sha256.finish(calculatedSha, sizeof(calculatedSha))) {
             ::Update.abort();
-            mbedtls_sha256_free(&shaContext);
-
             _setError("SHA check failed", "OTA_SHA_FINISH_FAILED");
             _finishTask();
             return;
         }
 
-        mbedtls_sha256_free(&shaContext);
-        char calculatedSha[SHA256_TEXT_SIZE];
-
-        _digestToText(digest, calculatedSha);
         if (std::strcmp(calculatedSha, expectedSha) != 0) {
             ::Update.abort();
             _setError("SHA-256 mismatch", "OTA_SHA_MISMATCH");
