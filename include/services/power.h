@@ -1,5 +1,5 @@
 /*
- * include/core/power.h
+ * include/services/power.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,8 +22,13 @@
  */
 
 #pragma once
+#include <cstdint>
 
-namespace core::power {
-    bool shouldShutdown();
-    void shutdown();
+namespace services::power {
+    enum class ShutdownReason : uint8_t {NONE, BUTTON, BATTERY_CRITICAL};
+
+    bool begin(uint8_t buttonPin);
+    void update();
+
+    bool shutdown(ShutdownReason reason);
 }

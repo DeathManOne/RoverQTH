@@ -22,19 +22,20 @@
  */
 
 #include <cstdio>
-#include <cstring>
 
 #include "screens/menu/updates.h"
 #include "services/update.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
+#include "utilities/text.h"
 
 using screens::menu::Updates;
 namespace update   = services::update;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
 namespace theme    = ui::settings::themes::defaults;
+namespace text     = utilities::text;
 
 void Updates::_prepareFirmwareFields() {
     char latestVersion[16] = "";
@@ -83,7 +84,7 @@ void Updates::_prepareFirmwareFields() {
         case update::Status::ERROR:
             _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
             if (!update::getError(error, sizeof(error)))
-                { std::snprintf(error, sizeof(error), "%s", "Update failed"); }
+                { text::copy(error, sizeof(error), "Update failed"); }
             _setFirmwareStatus(error, _Action::CHECK_FIRMWARE, theme::RED);
             break;
         default:
@@ -100,8 +101,7 @@ void Updates::_updateFirmwareFields(ST7796S::MSP4021 &tft) {
 }
 
 void Updates::_setFirmwareStatus(const char* value, _Action action, uint16_t color) {
-    if (value == nullptr) { value = ""; }
-    std::snprintf(_firmwareStatusValue, sizeof(_firmwareStatusValue), "%s", value);
+    text::copy(_firmwareStatusValue, sizeof(_firmwareStatusValue), value);
 
     _firmwareStatusField.value  = _firmwareStatusValue;
     _firmwareStatusField.action = action;
@@ -110,9 +110,9 @@ void Updates::_setFirmwareStatus(const char* value, _Action action, uint16_t col
 
 void Updates::_setFirmwareVersion(const char* currentVersion, const char* latestVersion) {
     if (currentVersion == nullptr) { currentVersion = ""; }
-    if (latestVersion != nullptr && latestVersion[0] != '\0' && std::strcmp(currentVersion, latestVersion) != 0)
+    if (latestVersion != nullptr && latestVersion[0] != '\0' && !text::equals(currentVersion, latestVersion))
         { std::snprintf( _firmwareVersionValue, sizeof(_firmwareVersionValue), "%s -> %s", currentVersion, latestVersion); }
-    else { std::snprintf(_firmwareVersionValue, sizeof(_firmwareVersionValue), "%s", currentVersion); }
+    else { text::copy(_firmwareVersionValue, sizeof(_firmwareVersionValue), currentVersion); }
     _firmwareVersionField.value = _firmwareVersionValue;
 }
 
@@ -152,10 +152,10 @@ void Updates::draw(ST7796S::MSP4021 &tft) {
     }
 
     _prepareFirmwareFields();
-    std::snprintf(_sotaVersionValue,     sizeof(_sotaVersionValue),     "%s", "Not installed");
-    std::snprintf(_sotaStatusValue,      sizeof(_sotaStatusValue),      "%s", "Not checked");
-    std::snprintf(_potaVersionValue,     sizeof(_potaVersionValue),     "%s", "Not installed");
-    std::snprintf(_potaStatusValue,      sizeof(_potaStatusValue),      "%s", "Not checked");
+    text::copy(_sotaVersionValue, sizeof(_sotaVersionValue), "Not installed");
+    text::copy(_sotaStatusValue,  sizeof(_sotaStatusValue),  "Not checked");
+    text::copy(_potaVersionValue, sizeof(_potaVersionValue), "Not installed");
+    text::copy(_potaStatusValue,  sizeof(_potaStatusValue),  "Not checked");
 
     _sotaVersionField.value     = _sotaVersionValue;
     _sotaStatusField.value      = _sotaStatusValue;

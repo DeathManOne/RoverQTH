@@ -28,11 +28,13 @@
 
 namespace utilities::clock {
     uint32_t toEpochUTC(int year, int month, int day, int hour, int minute, int second);
+    bool formatISO8601(uint32_t utcEpoch, char* buffer, size_t size);
 
     void sync(const uint32_t utcEpoch);
     bool isSynced();
 
     uint32_t now();
+    bool formatTime(uint8_t hour, uint8_t minute, uint8_t second, bool valid, char* buffer, size_t size, bool withSecond = true);
     void getDate(char* buffer, size_t size);
     void getTime(char* buffer, size_t size, bool withSecond = true);
 

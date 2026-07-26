@@ -35,6 +35,7 @@
 #include "utilities/coordinates.h"
 #include "utilities/format.h"
 #include "utilities/locator.h"
+#include "utilities/text.h"
 
 namespace main        = screens::main;
 namespace datas       = screens::main::datas;
@@ -50,6 +51,7 @@ namespace uClock      = utilities::clock;
 namespace coordinates = utilities::coordinates;
 namespace format      = utilities::format;
 namespace uLocator    = utilities::locator;
+namespace text        = utilities::text;
 
 namespace {
     void _getFormattedPosition(
@@ -79,9 +81,9 @@ namespace {
                 break;
         }
 
-        if (!latitudeOk)  { std::snprintf(latitude, latitudeSize, "--"); }
-        if (!longitudeOk) { std::snprintf(longitude, longitudeSize, "--"); }
-        if (!uLocator::fromCoordinates(rawLatitude, rawLongitude, qth, qthSize)) { std::snprintf(qth, qthSize, "--"); }
+        if (!latitudeOk)  { text::copy(latitude, latitudeSize, "--"); }
+        if (!longitudeOk) { text::copy(longitude, longitudeSize, "--"); }
+        if (!uLocator::fromCoordinates(rawLatitude, rawLongitude, qth, qthSize)) { text::copy(qth, qthSize, "--"); }
     }
 }
 
@@ -114,9 +116,16 @@ void main::preloadGPS() {
     char gpsStatus[32];
     char callsign[32];
 
+    uint8_t gpsHour   = 0;
+    uint8_t gpsMinute = 0;
+    uint8_t gpsSecond = 0;
+
     uClock::getDate(date, sizeof(date));
     uClock::getTime(time, sizeof(time));
-    gps::getTime(gpsTime, sizeof(gpsTime));
+
+    const bool gpsTimeValid = gps::getTime(gpsHour, gpsMinute, gpsSecond);
+    uClock::formatTime(gpsHour, gpsMinute, gpsSecond, gpsTimeValid, gpsTime, sizeof(gpsTime));
+
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);
@@ -131,7 +140,7 @@ void main::preloadGPS() {
     );
 
     if (!settings::getFullCallsign(callsign, sizeof(callsign)))
-        { strcpy(callsign, "ERROR"); }
+        { text::copy(callsign, sizeof(callsign), "ERROR"); }
     title::setCallsign   (callsign);
     title::setDate       (date);
     title::setTime       (time);
@@ -230,9 +239,16 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     char aslBuffer[16];
     char gpsStatus[32];
 
+    uint8_t gpsHour   = 0;
+    uint8_t gpsMinute = 0;
+    uint8_t gpsSecond = 0;
+
     uClock::getDate(date, sizeof(date));
     uClock::getTime(time, sizeof(time));
-    gps::getTime(gpsTime, sizeof(gpsTime));
+
+    const bool gpsTimeValid = gps::getTime(gpsHour, gpsMinute, gpsSecond);
+    uClock::formatTime(gpsHour, gpsMinute, gpsSecond, gpsTimeValid, gpsTime, sizeof(gpsTime));
+
     gps::getPrecision(masl, hdg, speed);
     gps::getDOP(hdop, vdop, pdop);
     gps::getSat(satFix, satCount);

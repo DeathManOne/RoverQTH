@@ -21,7 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
 #include <cstddef>
 #include "screens/main/locator.h"
 #include "ui/fonts/locator_40.h"
@@ -31,11 +30,13 @@
 #include "ui/mockup/grid.h"
 #include "ui/settings/themes/defaults.h"
 #include "ui/settings/mockup.h"
+#include "utilities/text.h"
 
 namespace locator = screens::main::locator;
 namespace grid    = ui::mockup::grid;
 namespace theme   = ui::settings::themes::defaults;
 namespace mockup  = ui::settings::mockup;
+namespace text    = utilities::text;
 
 namespace {
     constexpr size_t VALUE_SIZE = 32;
@@ -75,8 +76,7 @@ namespace {
         Area area;
         char value[VALUE_SIZE] = {};
         Grid(const char* initial) {
-            strncpy(value, initial, VALUE_SIZE - 1);
-            value[VALUE_SIZE - 1] = '\0';
+            text::copy(value, sizeof(value), initial);
         }
     };
 
@@ -119,9 +119,8 @@ namespace {
         );
     }
 
-    void _setValue(char* field, const char* value) {
-        strncpy(field, value, VALUE_SIZE - 1);
-        field[VALUE_SIZE - 1] = '\0';
+    void _setValue(char* const field, const char* const value) {
+        text::copy(field, VALUE_SIZE, value);
     }
 
     void _setArea(Area &area, int outerX, int outerY, int outerW, int outerH) {
@@ -139,7 +138,7 @@ namespace {
     }
 
     void _updateGrid(ST7796S::MSP4021 &tft, Grid &grid, const char* value, void (*drawFn)(ST7796S::MSP4021 &)) {
-        if (strcmp(grid.value, value) == 0) { return; }
+        if (text::equals(grid.value, value)) { return; }
 
         _setValue(grid.value, value);
         _clearArea(tft, grid.area);
@@ -152,7 +151,7 @@ namespace {
     }
 
     void _updateSota(ST7796S::MSP4021 &tft, char* field, const char* value) {
-        if (strcmp(field, value) == 0) { return; }
+        if (text::equals(field, value)) { return; }
 
         _setValue(field, value);
         _computeTargetTitleArea(tft, _sota.info);
@@ -165,7 +164,7 @@ namespace {
     }
 
     void _updateMark(ST7796S::MSP4021 &tft, char* field, const char* value) {
-        if (strcmp(field, value) == 0) { return; }
+        if (text::equals(field, value)) { return; }
 
         _setValue(field, value);
         _computeTargetTitleArea(tft, _mark.info);
@@ -395,7 +394,7 @@ namespace {
     }
 
     void _updateMarkColumn(ST7796S::MSP4021 &tft, char* field, const char* value, int col) {
-        if (strcmp(field, value) == 0)
+        if (text::equals(field, value))
             { return; }
         _setValue(field, value);
         _clearMarkColumn(tft, col);
@@ -433,7 +432,7 @@ void locator::updateMarkDistance(ST7796S::MSP4021 &tft, const char* value) { _up
 void locator::updateMarkTimer   (ST7796S::MSP4021 &tft, const char* value) { _updateMarkColumn(tft, _mark.timer,          value, 2); }
 
 void locator::updateStatusBottom(ST7796S::MSP4021 &tft, const char* value) {
-    if (strcmp(_statusBottom.value, value) == 0)
+    if (text::equals(_statusBottom.value, value))
         { return; }
     _setValue(_statusBottom.value, value);
     _clearArea(tft, _statusBottom.area);

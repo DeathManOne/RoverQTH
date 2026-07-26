@@ -26,7 +26,9 @@
 
 namespace core::screenManager {
     void begin();
+
     void draw();
     void update(uint32_t &nextRefreshIn);
+
     void handleTouch();
 }

@@ -22,20 +22,20 @@
  */
 
 #include <Arduino.h>
-#include <cstdio>
-#include <cstring>
 
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "utilities/clock.h"
 #include "utilities/distance.h"
 #include "utilities/locator.h"
+#include "utilities/text.h"
 
 namespace gps        = services::gps;
 namespace navigation = services::navigation;
 namespace uClock     = utilities::clock;
 namespace distance   = utilities::distance;
 namespace locator    = utilities::locator;
+namespace text       = utilities::text;
 
 namespace {
     bool _hasCurrent      = false;
@@ -43,18 +43,11 @@ namespace {
     bool _hasSOTA         = false;
     bool _currentFixValid = false;
 
-    void _copyText(char* dest, size_t size, const char* src);
-
     navigation::Coordinate _current {};
     navigation::Coordinate _mark {};
     navigation::SOTATarget _sota {};
     navigation::MarkState _markState = navigation::MarkState::IDLE;
     navigation::MarkSnapshot _markSnapshot {};
-
-    void _copyText(char* dest, size_t size, const char* src) {
-        if (!dest || size == 0) { return; }
-        std::snprintf(dest, size, "%s", src ? src : "");
-    }
 }
 
 void navigation::begin() {
@@ -159,20 +152,20 @@ double navigation::markCurrentBearingDeg() {
 
 void navigation::getMarkStartLocator(char* buffer, size_t size) {
     if (_markState == MarkState::IDLE) {
-        _copyText(buffer, size, "---");
+        text::copy(buffer, size, "---");
         return;
     }
     if (!locator::fromCoordinates(_markSnapshot.start.latitude, _markSnapshot.start.longitude, buffer, size))
-        { _copyText(buffer, size, "---"); }
+        { text::copy(buffer, size, "---"); }
 }
 
 void navigation::getMarkEndLocator(char* buffer, size_t size) {
     if (!_markSnapshot.hasEnd) {
-        _copyText(buffer, size, "---");
+        text::copy(buffer, size, "---");
         return;
     }
     if (!locator::fromCoordinates(_markSnapshot.end.latitude, _markSnapshot.end.longitude, buffer, size))
-        { _copyText(buffer, size, "---"); }
+        { text::copy(buffer, size, "---"); }
 }
 
 void navigation::updateGPSFix(bool fixValid) {
@@ -238,7 +231,7 @@ double navigation::markBearingDeg() {
 }
 
 void navigation::setSOTA(const char* code, double latitude, double longitude, int points, int altitude) {
-    _copyText(_sota.code, sizeof(_sota.code), code);
+    text::copy(_sota.code, sizeof(_sota.code), code);
     _sota.coordinate.latitude  = latitude;
     _sota.coordinate.longitude = longitude;
     _sota.points               = points;
@@ -271,6 +264,6 @@ double navigation::sotaBearingDeg() {
     );
 }
 
-void navigation::getSOTACode(char* buffer, size_t size) { _copyText(buffer, size, _hasSOTA ? _sota.code : "--"); }
+void navigation::getSOTACode(char* buffer, size_t size) { text::copy(buffer, size, _hasSOTA ? _sota.code : "--"); }
 int navigation::getSOTAPoints()                         { return _hasSOTA ? _sota.points   : 0; }
 int navigation::getSOTAAltitude()                       { return _hasSOTA ? _sota.altitude : 0; }

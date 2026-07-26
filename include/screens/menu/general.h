@@ -55,7 +55,6 @@ namespace screens::menu {
 
             void _actionCallsign(ST7796S::MSP4021 &tft);
             static services::settings::CallsignSuffix _nextSuffix(services::settings::CallsignSuffix suffix);
-            static const char* _suffixToText(services::settings::CallsignSuffix suffix);
 
             void _actionSuffix(ST7796S::MSP4021 &tft, Field<_Action> &field);
             static services::settings::Units _nextUnits(services::settings::Units units);

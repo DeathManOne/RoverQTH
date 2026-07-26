@@ -21,18 +21,19 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
-
 #include "screens/main/title.h"
 #include "screens/menu/general.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
+#include "utilities/text.h"
 
 using screens::menu::General;
+
 namespace title    = screens::main::title;
 namespace settings = services::settings;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
+namespace text     = utilities::text;
 
 void General::_actionCallsign(ST7796S::MSP4021 &tft) {
     char callsign[32] = "";
@@ -53,22 +54,13 @@ settings::CallsignSuffix General::_nextSuffix(settings::CallsignSuffix suffix) {
     }
 }
 
-const char* General::_suffixToText(settings::CallsignSuffix suffix) {
-    switch (suffix) {
-        case settings::CallsignSuffix::P:    return "/P";
-        case settings::CallsignSuffix::M:    return "/M";
-        case settings::CallsignSuffix::MM:   return "/MM";
-        case settings::CallsignSuffix::AM:   return "/AM";
-        case settings::CallsignSuffix::NONE:
-        default:                             return "None";
-    }
-}
-
 void General::_actionSuffix(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     const settings::CallsignSuffix suffix = _nextSuffix(settings::getCallsignSuffix());
     if (!settings::setCallsignSuffix(suffix)) { return; }
 
-    field.value = _suffixToText(suffix);
+    const char* const suffixText = settings::callsignSuffixText(suffix);
+
+    field.value = suffixText[0] != '\0' ? suffixText : "None";
     _updateField(tft, field);
 }
 
@@ -165,15 +157,16 @@ void General::draw(ST7796S::MSP4021 &tft) {
     }
 
     if (!settings::getCallsign(_callsignValue, sizeof(_callsignValue)))
-        { std::strcpy(_callsignValue, "ERROR"); }
+        { text::copy(_callsignValue, sizeof(_callsignValue), "ERROR"); }
 
     const settings::CallsignSuffix suffix             = settings::getCallsignSuffix();
     const settings::Units units                       = settings::getUnits();
     const settings::Theme theme                       = settings::getTheme();
     const settings::CoordinateFormat coordinateFormat = settings::getCoordinateFormat();
+    const char* const suffixText                      = settings::callsignSuffixText(suffix);
 
     _callsignField.value   = _callsignValue;
-    _suffixField.value     = _suffixToText(suffix);
+    _suffixField.value     = suffixText[0] != '\0' ? suffixText : "None";
     _unitsField.value      = _unitsToText(units);
     _coordinateField.value = _coordinateFormatToText(coordinateFormat);
     _themeField.value      = _themeToText(theme);
@@ -186,7 +179,7 @@ void General::draw(ST7796S::MSP4021 &tft) {
 void General::update(ST7796S::MSP4021 &tft) {
     char callsign[32] = "";
     if (!settings::getFullCallsign(callsign, sizeof(callsign)))
-        { std::strcpy(callsign, "ERROR"); }
+        { text::copy(callsign, sizeof(callsign), "ERROR"); }
     title::updateCallsign(tft, callsign);
 }
 

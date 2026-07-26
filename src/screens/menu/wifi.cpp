@@ -21,18 +21,19 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include <cstring>
 #include "screens/menu/wifi.h"
 #include "services/wifi.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
+#include "utilities/text.h"
 
 using screens::menu::Wifi;
 namespace settings = services::settings;
 namespace wifi     = services::wifi;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
+namespace text     = utilities::text;
 
 const char* Wifi::_bootModeToText(settings::WifiBootMode mode) {
     switch (mode) {
@@ -48,14 +49,14 @@ const char* Wifi::_bootModeToText(settings::WifiBootMode mode) {
 
 void Wifi::_prepareConnectionFields() {
     if (wifi::isConnected()) {
-        std::snprintf(_wifiStatusValue, sizeof(_wifiStatusValue), "%s", "Connected");
-        std::snprintf(_wifiLoginValue,  sizeof(_wifiLoginValue),  "%s", "Logout");
+        text::copy(_wifiStatusValue, sizeof(_wifiStatusValue), "Connected");
+        text::copy(_wifiLoginValue,  sizeof(_wifiLoginValue),  "Logout");
     } else if (wifi::isConnecting()) {
-        std::snprintf(_wifiStatusValue, sizeof(_wifiStatusValue), "%s", "Connecting...");
-        std::snprintf(_wifiLoginValue,  sizeof(_wifiLoginValue),  "%s", "Cancel");
+        text::copy(_wifiStatusValue, sizeof(_wifiStatusValue), "Connecting...");
+        text::copy(_wifiLoginValue,  sizeof(_wifiLoginValue),  "Cancel");
     } else {
-        std::snprintf(_wifiStatusValue, sizeof(_wifiStatusValue), "%s", "Not connected");
-        std::snprintf(_wifiLoginValue,  sizeof(_wifiLoginValue),  "%s", "Login");
+        text::copy(_wifiStatusValue, sizeof(_wifiStatusValue), "Not connected");
+        text::copy(_wifiLoginValue,  sizeof(_wifiLoginValue),  "Login");
     }
 
     _wifiStatusField.value = _wifiStatusValue;
@@ -160,11 +161,11 @@ void Wifi::draw(ST7796S::MSP4021 &tft) {
     }
 
     if (!settings::getWifiSSID(_wifiSsidValue, sizeof(_wifiSsidValue)) || _wifiSsidValue[0] == '\0')
-        { std::snprintf(_wifiSsidValue, sizeof(_wifiSsidValue), "%s", "Empty"); }
+        { text::copy(_wifiSsidValue, sizeof(_wifiSsidValue), "Empty"); }
     char password[64] = "";
     if (settings::getWifiPassword(password, sizeof(password)) && password[0] != '\0')
-        { std::snprintf(_wifiPassValue, sizeof(_wifiPassValue), "%s", "*****"); }
-    else { std::snprintf(_wifiPassValue, sizeof(_wifiPassValue), "%s", "Empty"); }
+        { text::copy(_wifiPassValue, sizeof(_wifiPassValue), "*****"); }
+    else { text::copy(_wifiPassValue, sizeof(_wifiPassValue), "Empty"); }
     std::memset(password, 0, sizeof(password));
 
     _prepareConnectionFields();

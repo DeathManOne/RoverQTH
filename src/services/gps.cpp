@@ -21,8 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstddef>
-#include <cstdio>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
 #include "services/gps.h"
@@ -48,9 +46,9 @@ namespace {
     int _dateYear        = 0;
     int _dateMonth       = 0;
     int _dateDay         = 0;
-    int _timeHour        = 0;
-    int _timeMinute      = 0;
-    int _timeSecond      = 0;
+    uint8_t _timeHour    = 0;
+    uint8_t _timeMinute  = 0;
+    uint8_t _timeSecond  = 0;
     bool _timeValid      = false;
 
     bool _readCache() {
@@ -164,26 +162,11 @@ bool gps::poll() {
     return _readCache();
 }
 
-void gps::getTime(char* buffer, size_t size, bool withSecond) {
-    if (buffer == nullptr || size == 0) { return; }
-    if (!_timeValid) {
-        snprintf(buffer, size, withSecond ? "-- : -- : --" : "-- : --");
-        return;
-    }
-
-    if (withSecond) {
-        snprintf(
-            buffer, size,
-            "%02d : %02d : %02d",
-            _timeHour, _timeMinute, _timeSecond
-        );
-    } else {
-        snprintf(
-            buffer, size,
-            "%02d : %02d",
-            _timeHour, _timeMinute
-        );
-    }
+bool gps::getTime(uint8_t& hour, uint8_t& minute, uint8_t& second) {
+    hour   = _timeHour;
+    minute = _timeMinute;
+    second = _timeSecond;
+    return _timeValid;
 }
 
 uint8_t gps::getAcquisitionProgress() {

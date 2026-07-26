@@ -22,7 +22,6 @@
  */
 
 #include <cstddef>
-#include <cstring>
 
 #include "screens/main/datas.h"
 #include "ui/fonts/RobotoMono_Medium_18.h"
@@ -30,11 +29,13 @@
 #include "ui/mockup/right.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
+#include "utilities/text.h"
 
-namespace datas = screens::main::datas;
-namespace right = ui::mockup::right;
+namespace datas  = screens::main::datas;
+namespace right  = ui::mockup::right;
 namespace mockup = ui::settings::mockup;
-namespace theme = ui::settings::themes::defaults;
+namespace theme  = ui::settings::themes::defaults;
+namespace text   = utilities::text;
 
 namespace {
     constexpr size_t VALUE_SIZE = 32;
@@ -55,11 +56,8 @@ namespace {
 
         Field(const int rowIndex, const char* name, uint16_t textColor)
         : row(rowIndex), color(textColor) {
-            strncpy(label, name, VALUE_SIZE - 1);
-            label[VALUE_SIZE - 1] = '\0';
-
-            strncpy(value, "", VALUE_SIZE - 1);
-            value[VALUE_SIZE - 1] = '\0';
+            text::copy(label, sizeof(label), name);
+            value[0] = '\0';
         }
     };
 
@@ -67,7 +65,7 @@ namespace {
     void _drawRow (ST7796S::MSP4021 &tft, const Field &field);
 
     void _updateRow(ST7796S::MSP4021 &tft, Field &field, const char* value);
-    void _setField(Field &field, const char* value);
+    void _setField(Field& field, const char* value);
 
     Field _latitude (0, "LAT",    theme::GREEN);
     Field _longitude(1, "LON",    theme::GREEN);
@@ -102,13 +100,12 @@ namespace {
         );
     }
 
-    void _setField(Field &field, const char* value) {
-        strncpy(field.value, value, VALUE_SIZE - 1);
-        field.value[VALUE_SIZE - 1] = '\0';
+    void _setField(Field& field, const char* const value) {
+        text::copy(field.value, sizeof(field.value), value);
     }
 
     void _updateRow(ST7796S::MSP4021 &tft, Field &field, const char* value) {
-        if (strcmp(field.value, value) == 0)
+        if (text::equals(field.value, value))
             { return; }
         _setField(field, value);
         _clearRow(tft, field);

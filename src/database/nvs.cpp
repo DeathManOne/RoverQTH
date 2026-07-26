@@ -21,11 +21,12 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include <Preferences.h>
 #include "database/nvs.h"
+#include "utilities/text.h"
 
-namespace nvs = database::nvs;
+namespace nvs  = database::nvs;
+namespace text = utilities::text;
 
 namespace {
     Preferences _prefs;
@@ -410,9 +411,7 @@ bool nvs::getWifiSSID(char* buffer, size_t size) {
     if (!buffer || size == 0) { return false; }
 
     const String value = _prefs.getString(KEY_WIFI_SSID, DEFAULT_WIFI_SSID);
-    const int written  = std::snprintf(buffer, size, "%s", value.c_str());
-
-    return (written >= 0 && static_cast<size_t>(written) < size);
+    return text::copy(buffer, size, value.c_str());
 }
 
 bool nvs::setWifiSSID(const char* ssid) {
@@ -433,9 +432,7 @@ bool nvs::getWifiPassword(char* buffer, size_t size) {
     if (!buffer || size == 0) { return false; }
 
     const String value = _prefs.getString(KEY_WIFI_PASSWORD, DEFAULT_WIFI_PASSWORD);
-    const int written  = std::snprintf(buffer, size, "%s", value.c_str());
-
-    return (written >= 0 && static_cast<size_t>(written) < size);
+    return text::copy(buffer, size, value.c_str());
 }
 
 bool nvs::setWifiPassword(const char* password) {

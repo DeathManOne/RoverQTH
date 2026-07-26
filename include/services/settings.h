@@ -78,6 +78,7 @@ namespace services::settings {
 
     CallsignSuffix getCallsignSuffix();
     bool setCallsignSuffix(CallsignSuffix callsignSuffix);
+    const char* callsignSuffixText(CallsignSuffix suffix);
     bool resetCallsignSuffix();
 
     bool getFullCallsign(char* buffer, size_t size);

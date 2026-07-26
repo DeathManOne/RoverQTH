@@ -25,7 +25,6 @@
 #include <SPI.h>
 
 #include "core/boot.h"
-#include "core/power.h"
 #include "core/screenManager.h"
 #include "core/state.h"
 #include "display/manager.h"
@@ -33,6 +32,7 @@
 #include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
+#include "services/power.h"
 #include "services/settings.h"
 #include "services/storage.h"
 #include "services/update.h"
@@ -40,13 +40,13 @@
 #include "ui/settings/gps.h"
 
 namespace boot        = core::boot;
-namespace power       = core::power;
 namespace manager     = core::screenManager;
 namespace state       = core::state;
 namespace app         = RoverQTH;
 namespace battery     = services::battery;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
+namespace power       = services::power;
 namespace settings    = services::settings;
 namespace storage     = services::storage;
 namespace update      = services::update;
@@ -81,11 +81,11 @@ namespace {
 void app::setup() {
     storage::appendLogRecord("SYSTEM_START");
 
-    if (!settings::begin()) { storage::appendErrorRecord("NVS_INIT_FAILED"); }
+    if (!settings::begin())      { storage::appendErrorRecord("NVS_INIT_FAILED"); }
+    if (!power::begin(BTN_PIN))  { storage::appendErrorRecord("POWER_INIT_FAILED"); }
 
     battery::begin(BATT_PIN);
-    if (power::shouldShutdown())
-        { power::shutdown(); }
+    if (battery::isCritical())   { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
 
     display::begin(
         TFT_CLK,        TFT_MISO,       TFT_MOSI,
@@ -94,7 +94,7 @@ void app::setup() {
     );
 
     navigation::begin();
-    if (!wifi::begin()) { storage::appendErrorRecord("WIFI_INIT_FAILED"); }
+    if (!wifi::begin())          { storage::appendErrorRecord("WIFI_INIT_FAILED"); }
 
     update::begin();
     state::begin();
@@ -111,17 +111,17 @@ void app::setup() {
 }
 
 void app::loop() {
+    power::update();
     wifi::update();
 
-    const uint32_t now    = millis();
-    const bool updateBusy = update::isBusy();
-
+    const uint32_t now = millis();
     if (now >= _nextBatteryRefresh) {
         battery::update();
-        if (power::shouldShutdown() && !updateBusy)
-            { power::shutdown(); }
+        if (battery::isCritical())
+            { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
         _nextBatteryRefresh = now + BATTERY_PERIOD_MS;
     }
+
     manager::handleTouch();
 
     if (now < _nextScreenRefresh) { return; }

@@ -151,7 +151,10 @@ namespace {
     }
 }
 
-void manager::begin() { draw(); }
+void manager::begin() {
+    draw();
+}
+
 void manager::draw() {
     switch (state::currentScreen()) {
         case state::Screen::MENU:

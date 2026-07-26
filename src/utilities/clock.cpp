@@ -54,6 +54,20 @@ namespace {
 
 bool uClock::isSynced() { return _synced; }
 
+bool uClock::formatISO8601(const uint32_t utcEpoch, char* const buffer, const size_t size) {
+    if (buffer == nullptr || size < 21 || utcEpoch == 0) { return false; }
+
+    tm utc {};
+    if (!_getUTC(utcEpoch, utc)) { return false; }
+
+    const int written = std::snprintf(buffer, size,
+        "%04d-%02d-%02dT%02d:%02d:%02dZ",
+        utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
+        utc.tm_hour,        utc.tm_min,     utc.tm_sec
+    );
+    return written == 20;
+}
+
 uint32_t uClock::toEpochUTC(int year, int month, int day, int hour, int minute, int second) {
     if (year   < 1970 ||
         month  < 1    || month > 12  ||
@@ -84,6 +98,27 @@ uint32_t uClock::now() {
     return _syncEpoch + ((millis() - _syncMillis) / 1000);
 }
 
+bool uClock::formatTime(const uint8_t hour, const uint8_t minute, const uint8_t second, const bool valid, char* const buffer, const size_t size, const bool withSecond) {
+    if (buffer == nullptr || size == 0) { return false; }
+
+    if (!valid || hour > 23U || minute > 59U || second > 60U) {
+        const int written = std::snprintf(buffer, size, withSecond ? "-- : -- : --" : "-- : --");
+        return written >= 0 && static_cast<size_t>(written) < size;
+    }
+
+    const int written = withSecond
+        ? std::snprintf(buffer, size, "%02u : %02u : %02u",
+            static_cast<unsigned>(hour),
+            static_cast<unsigned>(minute),
+            static_cast<unsigned>(second)
+        )
+        : std::snprintf(buffer, size, "%02u : %02u",
+            static_cast<unsigned>(hour),
+            static_cast<unsigned>(minute)
+        );
+    return written >= 0 && static_cast<size_t>(written) < size;
+}
+
 void uClock::getDate(char* buffer, size_t size) {
     if (buffer == nullptr || size == 0) { return; }
 
@@ -96,18 +131,15 @@ void uClock::getDate(char* buffer, size_t size) {
     snprintf(buffer, size, "%04d %02d %02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
 }
 
-void uClock::getTime(char* buffer, size_t size, bool withSecond) {
-    if (buffer == nullptr || size == 0) { return; }
-
-    tm utc = {};
-    if (!_getUTC(now(), utc)) {
-        if (withSecond) { snprintf(buffer, size, "-- : -- : --"); }
-        else { snprintf(buffer, size, "-- : --"); }
-        return;
-    }
-
-    if (withSecond) { snprintf(buffer, size, "%02d : %02d : %02d", utc.tm_hour, utc.tm_min, utc.tm_sec); }
-    else { snprintf(buffer, size, "%02d : %02d", utc.tm_hour, utc.tm_min); }
+void uClock::getTime(char* const buffer, const size_t size, const bool withSecond) {
+    tm utc {};
+    const bool valid = _getUTC(now(), utc);
+    formatTime(
+        valid ? static_cast<uint8_t>(utc.tm_hour) : 0U,
+        valid ? static_cast<uint8_t>(utc.tm_min)  : 0U,
+        valid ? static_cast<uint8_t>(utc.tm_sec)  : 0U,
+        valid, buffer, size, withSecond
+    );
 }
 
 void uClock::reset() {

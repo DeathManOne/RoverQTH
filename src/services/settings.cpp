@@ -159,6 +159,17 @@ bool settings::resetCallsign() {
     return _checkWrite(nvs::resetCallsign(), "CALLSIGN_RESET_FAILED");
 }
 
+const char* settings::callsignSuffixText(const CallsignSuffix suffix) {
+    switch (suffix) {
+        case CallsignSuffix::P:    return "/P";
+        case CallsignSuffix::M:    return "/M";
+        case CallsignSuffix::MM:   return "/MM";
+        case CallsignSuffix::AM:   return "/AM";
+        case CallsignSuffix::NONE:
+        default:                   return "";
+    }
+}
+
 settings::CallsignSuffix settings::getCallsignSuffix() {
     uint8_t value = nvs::getCallsignSuffix();
     switch (static_cast<CallsignSuffix>(value)) {
@@ -181,34 +192,19 @@ bool settings::resetCallsignSuffix() {
     return _checkWrite(nvs::resetCallsignSuffix(), "CALLSIGN_SUFFIX_RESET_FAILED");
 }
 
-bool settings::getFullCallsign(char* buffer, size_t size) {
+bool settings::getFullCallsign(char* const buffer, const size_t size) {
     if (buffer == nullptr || size == 0) { return false; }
 
     char callsign[32];
-    if (!getCallsign(callsign, sizeof(callsign))) { return false; }
-
-    const auto suffix = getCallsignSuffix();
-    const char* suffixText = "";
-
-    switch (suffix) {
-        case CallsignSuffix::NONE:
-            suffixText = "";
-            break;
-        case CallsignSuffix::P:
-            suffixText = "/P";
-            break;
-        case CallsignSuffix::M:
-            suffixText = "/M";
-            break;
-        case CallsignSuffix::MM:
-            suffixText = "/MM";
-            break;
-        case CallsignSuffix::AM:
-            suffixText = "/AM";
-            break;
+    if (!getCallsign(callsign, sizeof(callsign))) {
+        buffer[0] = '\0';
+        return false;
     }
-    snprintf(buffer, size, "%s%s", callsign, suffixText);
-    return true;
+
+    const char* const suffix = callsignSuffixText(getCallsignSuffix());
+    const int written        = std::snprintf(buffer, size, "%s%s", callsign, suffix);
+
+    return written >= 0 && static_cast<size_t>(written) < size;
 }
 
 settings::Theme settings::getTheme() {

@@ -22,12 +22,13 @@
  */
 
 #include <cstdio>
-#include <ctime>
 #include "services/storage.h"
 #include "utilities/clock.h"
+#include "utilities/text.h"
 
 namespace storage = services::storage;
-namespace uClock   = utilities::clock;
+namespace uClock  = utilities::clock;
+namespace text    = utilities::text;
 
 namespace {
     constexpr size_t MAX_LOGS_WAITING   = 20;
@@ -76,20 +77,12 @@ namespace {
 
         int written = 0;
         if (uClock::isSynced()) {
-            const time_t rawTime = static_cast<time_t>(uClock::now());
-
-            struct tm utcTime {};
-            if (!gmtime_r(&rawTime, &utcTime)) { return false; }
-
-            written = std::snprintf(
-                buffer, size,
-                "%04d-%02d-%02dT%02d:%02d:%02dZ | %s\n",
-                utcTime.tm_year + 1900, utcTime.tm_mon + 1, utcTime.tm_mday,
-                utcTime.tm_hour, utcTime.tm_min, utcTime.tm_sec, data
-            );
+            char timestamp[21];
+            if (!uClock::formatISO8601(uClock::now(), timestamp, sizeof(timestamp)))
+                { return false; }
+            written = std::snprintf(buffer, size, "%s | %s\n", timestamp, data);
         } else {
-            written = std::snprintf(
-                buffer, size,
+            written = std::snprintf(buffer, size,
                 "BOOT+%010lums | %s\n",
                 static_cast<unsigned long>(millis()), data
             );
@@ -104,7 +97,10 @@ namespace {
         WaitingLog& waiting = _waitingLogs[_waitingLogsCount];
         waiting.path        = path;
 
-        std::snprintf(waiting.data, MAX_LOGS_LENGTH, "%s", data);
+        if (!text::copy(waiting.data, sizeof(waiting.data), data)) {
+            waiting.path = nullptr;
+            return false;
+        }
         ++_waitingLogsCount;
         return true;
     }

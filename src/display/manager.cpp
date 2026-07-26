@@ -97,5 +97,11 @@ void display::TCalibrateInfo(settings::Calibration &calibration) {
     );
 }
 
-bool display::TRead(int &x, int &y) { return _tft().TRead(x, y); }
-void display::clearScreen()         { _tft().fillScreen(theme::BLACK); }
+bool display::TRead(int &x, int &y) {
+    return _tft().TRead(x, y); 
+}
+
+void display::clearScreen() {
+    if (internal::TFT == nullptr) { return; }
+    _tft().fillScreen(theme::BLACK);
+}

@@ -21,18 +21,19 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include "screens/menu/storage.h"
 #include "services/storage.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
 #include "utilities/format.h"
+#include "utilities/text.h"
 
 using screens::menu::Storage;
 namespace storage  = services::storage;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
 namespace format   = utilities::format;
+namespace text     = utilities::text;
 
 const char* Storage::_typeToText(uint8_t type) {
     switch (type) {
@@ -64,15 +65,15 @@ void Storage::draw(ST7796S::MSP4021 &tft) {
     uint64_t used  = 0;
 
     if (storage::readCardInfos(type, size, total, used)) {
-        std::snprintf(_typeValue, sizeof(_typeValue), "%s", _typeToText(type));
+        text::copy(_typeValue, sizeof(_typeValue), _typeToText(type));
         format::storageCapacity(total, _capacityValue, sizeof(_capacityValue));
 
         const uint64_t percentage = total > 0U ? (used * 100ULL) / total : 0U;
         format::percentage(percentage, _usageValue, sizeof(_usageValue));
     } else {
-        std::snprintf(_typeValue,     sizeof(_typeValue),      "Missing");
-        std::snprintf(_capacityValue, sizeof(_capacityValue),  "--");
-        std::snprintf(_usageValue,    sizeof(_usageValue),     "--");
+        text::copy(_typeValue,     sizeof(_typeValue),      "Missing");
+        text::copy(_capacityValue, sizeof(_capacityValue),  "--");
+        text::copy(_usageValue,    sizeof(_usageValue),     "--");
     }
 
     _typeField.value     = _typeValue;

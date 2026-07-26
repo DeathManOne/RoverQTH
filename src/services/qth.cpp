@@ -23,11 +23,11 @@
 
 #include <cmath>
 #include <cstdio>
-#include <ctime>
 
 #include "services/navigation.h"
 #include "services/qth.h"
 #include "services/storage.h"
+#include "utilities/clock.h"
 #include "utilities/format.h"
 #include "utilities/locator.h"
 #include "utilities/units.h"
@@ -35,27 +35,10 @@
 namespace navigation = services::navigation;
 namespace qth        = services::qth;
 namespace storage    = services::storage;
+namespace uClock     = utilities::clock;
 namespace format     = utilities::format;
 namespace locator    = utilities::locator;
 namespace units      = utilities::units;
-
-namespace {
-    bool _formatUTC(uint32_t epoch, char* buffer, size_t size) {
-        if (!buffer || size < 21 || epoch == 0) { return false; }
-
-        const time_t rawTime = static_cast<time_t>(epoch);
-        struct tm utcTime {};
-
-        if (!gmtime_r(&rawTime, &utcTime)) { return false; }
-        const int written = std::snprintf(
-            buffer, size,
-            "%04d-%02d-%02dT%02d:%02d:%02dZ",
-            utcTime.tm_year + 1900, utcTime.tm_mon + 1, utcTime.tm_mday,
-            utcTime.tm_hour, utcTime.tm_min, utcTime.tm_sec
-        );
-        return written == 20;
-    }
-}
 
 bool qth::isCurrentRecordLongEnough() {
     if (navigation::markState() != navigation::MarkState::READY_TO_SAVE)
@@ -75,7 +58,7 @@ bool qth::buildCurrentRecord(QTHRecord& record) {
     record.start.longitude = snapshot.start.longitude;
     record.start.altitude  = snapshot.start.altitude;
 
-    if (!_formatUTC(record.start.time, record.start.utc, sizeof(record.start.utc)))
+    if (!uClock::formatISO8601(record.start.time, record.start.utc, sizeof(record.start.utc)))
         { return false; }
     if (!locator::fromCoordinates(record.start.latitude, record.start.longitude, record.start.locator, sizeof(record.start.locator)))
         { return false; }
@@ -84,7 +67,7 @@ bool qth::buildCurrentRecord(QTHRecord& record) {
     record.stop.longitude = snapshot.end.longitude;
     record.stop.altitude  = snapshot.end.altitude;
 
-    if (!_formatUTC(record.stop.time, record.stop.utc, sizeof(record.stop.utc)))
+    if (!uClock::formatISO8601(record.stop.time, record.stop.utc, sizeof(record.stop.utc)))
         { return false; }
     if (!locator::fromCoordinates(record.stop.latitude, record.stop.longitude, record.stop.locator, sizeof(record.stop.locator)))
         { return false; }

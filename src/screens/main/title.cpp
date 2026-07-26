@@ -23,7 +23,6 @@
 
 #include <cstddef>
 #include <cstdio>
-#include <cstring>
 
 #include "services/battery.h"
 #include "screens/main/title.h"
@@ -32,6 +31,7 @@
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
 #include "utilities/format.h"
+#include "utilities/text.h"
 
 namespace battery = services::battery;
 namespace title   = screens::main::title;
@@ -39,6 +39,7 @@ namespace header  = ui::mockup::header;
 namespace mockup  = ui::settings::mockup;
 namespace theme   = ui::settings::themes::defaults;
 namespace format  = utilities::format;
+namespace text    = utilities::text;
 
 namespace {
     constexpr size_t VALUE_SIZE = 32;
@@ -51,8 +52,7 @@ namespace {
         char value[VALUE_SIZE] = {};
 
         Field(const char* initial) {
-            strncpy(value, initial, VALUE_SIZE - 1);
-            value[VALUE_SIZE - 1] = '\0';
+            text::copy(value, sizeof(value), initial);
         }
     };
 
@@ -97,18 +97,18 @@ namespace {
     }
 
     void _setField(Field &field, const char* value) {
-        strncpy(field.value, value, VALUE_SIZE - 1);
-        field.value[VALUE_SIZE - 1] = '\0';
+        text::copy(field.value, sizeof(field.value), value);
     }
 
     void _updateField(ST7796S::MSP4021 &tft, Field &field, const char* value) {
-        if (strcmp(field.value, value) == 0)
+        if (text::equals(field.value, value))
             { return; }
         _setField(field, value);
         _drawRect(tft, field);
         _drawText(tft, field);
     }
 }
+
 void title::setCallsign(const char* value) { _setField(_callsign, value); }
 void title::setDate    (const char* value) { _setField(_date,     value); }
 void title::setTime    (const char* value) { _setField(_time,     value); }

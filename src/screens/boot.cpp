@@ -21,7 +21,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include <cstddef>
 #include <DejaVuSans_Bold_18.h>
 
@@ -227,4 +226,3 @@ void boot::updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress) {
     _gpsProgress = progress;
     _drawGPSAction(tft);
 }
-

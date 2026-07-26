@@ -22,14 +22,15 @@
  */
 
 #include <Arduino.h>
-#include <cstdio>
 #include <WiFi.h>
 
 #include "services/storage.h"
 #include "services/wifi.h"
+#include "utilities/text.h"
 
 namespace storage = services::storage;
 namespace wifi    = services::wifi;
+namespace text    = utilities::text;
 
 namespace {
     bool _initialized = false;
@@ -68,9 +69,7 @@ bool wifi::connect(const char* ssid, const char* password, uint32_t timeoutSec) 
     if (!_initialized || !ssid || ssid[0] == '\0' || timeoutSec == 0) { return false; }
     if (!password) { password = ""; }
 
-    const int written = std::snprintf(_requestedSSID, sizeof(_requestedSSID), "%s", ssid);
-
-    if (written <= 0 || static_cast<size_t>(written) >= sizeof(_requestedSSID)) {
+    if (!text::copy(_requestedSSID, sizeof(_requestedSSID), ssid) || _requestedSSID[0] == '\0') {
         _requestedSSID[0] = '\0';
         return false;
     }
@@ -110,21 +109,18 @@ void wifi::disconnect() {
     if (wasConnected) { storage::appendLogRecord("WIFI_DISCONNECTED"); }
 }
 
-bool wifi::getSSID(char* buffer, size_t size) {
-    if (!buffer || size == 0) { return false; }
-    buffer[0] = '\0';
+bool wifi::getSSID(char* const buffer, const size_t size) {
+    if (buffer == nullptr || size == 0) { return false; }
 
+    buffer[0] = '\0';
     if (isConnected()) {
         const String currentSSID = WiFi.SSID();
         if (currentSSID.length() == 0) { return false; }
-
-        const int written = std::snprintf(buffer, size, "%s", currentSSID.c_str());
-        return (written > 0 && static_cast<size_t>(written) < size);
+        return text::copy(buffer, size, currentSSID.c_str());
     }
 
     if (_requestedSSID[0] == '\0') { return false; }
-    const int written = std::snprintf(buffer, size, "%s", _requestedSSID);
-    return (written > 0 && static_cast<size_t>(written) < size);
+    return text::copy(buffer, size, _requestedSSID);
 }
 
 int32_t wifi::getRSSI() {

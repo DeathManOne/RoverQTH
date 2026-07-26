@@ -24,7 +24,6 @@
 #pragma once
 
 #include <HardwareSerial.h>
-#include <cstddef>
 #include <cstdint>
 
 namespace services::gps {
@@ -33,7 +32,7 @@ namespace services::gps {
     bool update (uint32_t timeoutMs = 10);
     bool poll();
 
-    void getTime(char* buffer, size_t size, bool withSecond = true);
+    bool getTime(uint8_t& hour, uint8_t& minute, uint8_t& second);
     uint8_t getAcquisitionProgress();
 
     double getAltitude();

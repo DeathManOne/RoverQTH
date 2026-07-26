@@ -27,19 +27,18 @@
 #include <Update.h>
 #include <WiFiClientSecure.h>
 
-#include <cstdio>
-#include <cstring>
-
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
 #include "utilities/hash.h"
+#include "utilities/text.h"
 #include "utilities/version.h"
 
 namespace update   = services::update;
 namespace storage  = services::storage;
 namespace wifi     = services::wifi;
 namespace hash     = utilities::hash;
+namespace text     = utilities::text;
 namespace uVersion = utilities::version;
 
 namespace {
@@ -58,13 +57,14 @@ namespace {
     char _expectedSha256[hash::SHA256_TEXT_SIZE] {};
     char _error[ERROR_SIZE] {};
 
-    void _copyText(char* destination, size_t destinationSize, const char* source) {
-        if (destination == nullptr || destinationSize == 0) { return; }
-
-        if (source == nullptr)
-            { source = ""; }
-        std::snprintf(destination, destinationSize, "%s", source);
-    }
+    void _setStatus(update::Status value);
+    void _setProgress(uint8_t value);
+    void _setError(const char* value, const char* logCode);
+    bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url);
+    void _finishTask();
+    void _checkTask(void*);
+    void _installTask(void*);
+    bool _startTask(TaskFunction_t function, const char* name, uint32_t stackSize);
 
     void _setStatus(update::Status value) {
         portENTER_CRITICAL(&_lock);
@@ -82,7 +82,7 @@ namespace {
     void _setError(const char* value, const char* logCode) {
         portENTER_CRITICAL(&_lock);
 
-        _copyText(_error, sizeof(_error), value);
+        text::copy(_error, sizeof(_error), value);
         _status = update::Status::ERROR;
 
         portEXIT_CRITICAL(&_lock);
@@ -159,8 +159,8 @@ namespace {
         const bool updateAvailable = comparison == uVersion::Comparison::NEWER;
         portENTER_CRITICAL(&_lock);
     
-        _copyText(_latestVersion,  sizeof(_latestVersion),  remoteVersion);
-        _copyText(_expectedSha256, sizeof(_expectedSha256), normalizedSha);
+        text::copy(_latestVersion,  sizeof(_latestVersion),  remoteVersion);
+        text::copy(_expectedSha256, sizeof(_expectedSha256), normalizedSha);
 
         _expectedSize = size;
         _progress     = 0;
@@ -180,7 +180,7 @@ namespace {
 
         portENTER_CRITICAL(&_lock);
         expectedSize = _expectedSize;
-        _copyText(expectedSha, sizeof(expectedSha), _expectedSha256);
+        text::copy(expectedSha, sizeof(expectedSha), _expectedSha256);
         portEXIT_CRITICAL(&_lock);
 
         WiFiClientSecure client;
@@ -279,7 +279,7 @@ namespace {
             return;
         }
 
-        if (std::strcmp(calculatedSha, expectedSha) != 0) {
+        if (!text::equals(calculatedSha, expectedSha)) {
             ::Update.abort();
             _setError("SHA-256 mismatch", "OTA_SHA_MISMATCH");
             _finishTask();
@@ -399,7 +399,7 @@ bool update::getLatestVersion(char* buffer, size_t size) {
     if (buffer == nullptr || size == 0) { return false; }
 
     portENTER_CRITICAL(&_lock);
-    _copyText(buffer, size, _latestVersion);
+    text::copy(buffer, size, _latestVersion);
 
     const bool available = _latestVersion[0] != '\0';
     portEXIT_CRITICAL(&_lock);
@@ -411,7 +411,7 @@ bool update::getError(char* buffer, size_t size) {
     if (buffer == nullptr || size == 0) { return false; }
 
     portENTER_CRITICAL(&_lock);
-    _copyText(buffer, size, _error);
+    text::copy(buffer, size, _error);
 
     const bool available = _error[0] != '\0';
     portEXIT_CRITICAL(&_lock);

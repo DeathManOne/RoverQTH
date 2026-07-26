@@ -1,5 +1,5 @@
 /*
- * src/core/power.cpp
+ * include/utilities/text.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -21,23 +21,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <esp_sleep.h>
-#include "core/power.h"
-#include "services/battery.h"
-#include "services/storage.h"
+#pragma once
+#include <cstddef>
 
-namespace power   = core::power;
-namespace battery = services::battery;
-namespace storage = services::storage;
-
-bool power::shouldShutdown() { return battery::isCritical(); }
-
-void power::shutdown() {
-    storage::appendLogRecord("SYSTEM_SHUTDOWN_BATTERY_CRITICAL");
-    // futur :
-    // storage save
-    // flush logs
-    // etc
-
-    esp_deep_sleep_start();
+namespace utilities::text {
+    bool copy(char* destination, size_t destinationSize, const char* source);
+    bool equals(const char* left, const char* right);
 }
