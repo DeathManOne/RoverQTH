@@ -55,6 +55,12 @@ void display::begin(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t touchCS, ui
     while (!TCalibrate()) { delay(10); }
 }
 
+void display::shutdown() {
+    if (internal::TFT == nullptr) { return; }
+    clearScreen();
+    _tft().shutdown();
+}
+
 bool display::TLoad() {
     settings::Calibration calibration;
     if (!settings::getTouchCalibration(calibration))

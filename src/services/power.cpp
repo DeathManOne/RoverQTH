@@ -75,7 +75,7 @@ namespace {
         }
 
         storage::appendLogRecord(_shutdownLog(_shutdownReason));
-        display::clearScreen();
+        display::shutdown();
         delay(20);
         esp_deep_sleep_start();
     }
