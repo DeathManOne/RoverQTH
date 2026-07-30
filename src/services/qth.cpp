@@ -49,9 +49,11 @@ bool qth::isCurrentRecordLongEnough() {
 bool qth::buildCurrentRecord(QTHRecord& record) {
     if (navigation::markState() != navigation::MarkState::READY_TO_SAVE)
         { return false; }
-    const navigation::MarkSnapshot& snapshot = navigation::markSnapshot();
 
-    if (!snapshot.hasEnd) { return false; }
+    navigation::MarkSnapshot snapshot {};
+    if (!navigation::getMarkSnapshot(snapshot)) { return false; }
+    if (!snapshot.hasEnd)                       { return false; }
+
     record = {};
     record.start.time      = snapshot.startUTC;
     record.start.latitude  = snapshot.start.latitude;

@@ -22,8 +22,6 @@
  */
 
 #pragma once
-
-#include <cstddef>
 #include <cstdint>
 
 namespace services::wifi {
@@ -36,8 +34,4 @@ namespace services::wifi {
 
     void update();
     void disconnect();
-
-
-    bool getSSID(char* buffer, size_t size);
-    int32_t getRSSI();
 }

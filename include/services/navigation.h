@@ -27,23 +27,11 @@
 #include <cstdint>
 
 namespace services::navigation {
+    enum class MarkState : uint8_t {IDLE, RECORDING, READY_TO_SAVE};
     struct Coordinate {
         double latitude;
         double longitude;
         double altitude;
-    };
-
-    struct SOTATarget {
-        Coordinate coordinate;
-        char code[24];
-        int points;
-        int altitude;
-    };
-
-    enum class MarkState {
-        IDLE,
-        RECORDING,
-        READY_TO_SAVE
     };
 
     struct MarkSnapshot {
@@ -59,47 +47,22 @@ namespace services::navigation {
     };
 
     void begin();
+    void updateGPSFix(const Coordinate& coordinate, bool fixValid);
 
     bool startMark();
     bool stopMark();
-    bool isMarkRecording();
+    void clearMark();
+    bool hasMark();
     MarkState markState();
 
     uint32_t markElapsedSeconds();
     uint32_t markDurationSeconds();
 
-    Coordinate markStartPosition();
-    Coordinate markEndPosition();
-
-    const MarkSnapshot& markSnapshot();
+    bool getMarkSnapshot(MarkSnapshot& snapshot);
 
     double markTotalDistanceKm();
     double markCurrentDistanceKm();
     double markCurrentBearingDeg();
 
     void getMarkStartLocator(char* buffer, size_t size);
-    void getMarkEndLocator  (char* buffer, size_t size);
-
-    void updateGPSFix(bool fixValid);
-    bool hasCurrentPosition();
-    Coordinate currentPosition();
-
-    void setMark(double latitude, double longitude);
-    bool setMarkFromCurrentPosition();
-    void clearMark();
-    bool hasMark();
-
-    Coordinate markPosition();
-    double markDistanceKm();
-    double markBearingDeg();
-
-    void setSOTA(const char* code, double latitude, double longitude, int points, int altitude);
-
-    void clearSOTA();
-    bool hasSOTA();
-    double sotaDistanceKm();
-    double sotaBearingDeg();
-    void getSOTACode(char* buffer, size_t size);
-    int getSOTAPoints();
-    int getSOTAAltitude();
 }

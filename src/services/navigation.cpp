@@ -23,14 +23,12 @@
 
 #include <Arduino.h>
 
-#include "services/gps.h"
 #include "services/navigation.h"
 #include "utilities/clock.h"
 #include "utilities/distance.h"
 #include "utilities/locator.h"
 #include "utilities/text.h"
 
-namespace gps        = services::gps;
 namespace navigation = services::navigation;
 namespace uClock     = utilities::clock;
 namespace distance   = utilities::distance;
@@ -38,232 +36,223 @@ namespace locator    = utilities::locator;
 namespace text       = utilities::text;
 
 namespace {
-    bool _hasCurrent      = false;
-    bool _hasMark         = false;
-    bool _hasSOTA         = false;
-    bool _currentFixValid = false;
+    struct NavigationData {
+        navigation::Coordinate current;
+        navigation::MarkSnapshot mark;
+        navigation::MarkState state;
+        bool hasCurrent;
+        bool currentFixValid;
+    };
 
     navigation::Coordinate _current {};
-    navigation::Coordinate _mark {};
-    navigation::SOTATarget _sota {};
-    navigation::MarkState _markState = navigation::MarkState::IDLE;
     navigation::MarkSnapshot _markSnapshot {};
+
+    bool _hasCurrent                 = false;
+    bool _currentFixValid            = false;
+    portMUX_TYPE _lock               = portMUX_INITIALIZER_UNLOCKED;
+    navigation::MarkState _markState = navigation::MarkState::IDLE;
+
+    void _copyNavigationData(NavigationData& data) {
+        portENTER_CRITICAL(&_lock);
+        data.current         = _current;
+        data.mark            = _markSnapshot;
+        data.state           = _markState;
+        data.hasCurrent      = _hasCurrent;
+        data.currentFixValid = _currentFixValid;
+        portEXIT_CRITICAL(&_lock);
+    }
 }
 
 void navigation::begin() {
-    _hasCurrent         = false;
-    _hasMark            = false;
-    _hasSOTA            = false;
-    _current            = {};
-    _mark               = {};
-    _sota               = {};
-    _markSnapshot       = {};
-    _markState          = MarkState::IDLE;
-    _currentFixValid    = false;
+    portENTER_CRITICAL(&_lock);
+    _current         = {};
+    _markSnapshot    = {};
+    _markState       = MarkState::IDLE;
+    _hasCurrent      = false;
+    _currentFixValid = false;
+    portEXIT_CRITICAL(&_lock);
+}
+
+void navigation::updateGPSFix(const Coordinate& coordinate, const bool fixValid) {
+    portENTER_CRITICAL(&_lock);
+    _currentFixValid = fixValid;
+
+    if (!fixValid) {
+        portEXIT_CRITICAL(&_lock);
+        return;
+    }
+
+    _current    = coordinate;
+    _hasCurrent = true;
+
+    if (_markState == MarkState::RECORDING) {
+        if (coordinate.altitude < _markSnapshot.minAltitude)
+            { _markSnapshot.minAltitude = coordinate.altitude; }
+        if (coordinate.altitude > _markSnapshot.maxAltitude)
+            { _markSnapshot.maxAltitude = coordinate.altitude; }
+    }
+    portEXIT_CRITICAL(&_lock);
 }
 
 bool navigation::startMark() {
-    if (!_hasCurrent || !_currentFixValid || !uClock::isSynced())
-        { return false; }
-    _markSnapshot = {};
-    _markSnapshot.start              = _current;
-    _markSnapshot.end                = {};
-    _markSnapshot.startUTC           = uClock::now();
-    _markSnapshot.stopUTC            = 0;
-    _markSnapshot.startedAtMillis    = millis();
-    _markSnapshot.stoppedAtMillis    = 0;
-    _markSnapshot.minAltitude        = _current.altitude;
-    _markSnapshot.maxAltitude        = _current.altitude;
-    _markSnapshot.hasEnd             = false;
+    if (!uClock::isSynced()) { return false; }
 
-    _mark      = _current;
-    _hasMark   = true;
+    const uint32_t utc       = uClock::now();
+    const uint32_t startedAt = millis();
+
+    portENTER_CRITICAL(&_lock);
+
+    if (!_hasCurrent || !_currentFixValid || _markState != MarkState::IDLE) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    _markSnapshot                 = {};
+    _markSnapshot.start           = _current;
+    _markSnapshot.startUTC        = utc;
+    _markSnapshot.startedAtMillis = startedAt;
+    _markSnapshot.minAltitude     = _current.altitude;
+    _markSnapshot.maxAltitude     = _current.altitude;
     _markState = MarkState::RECORDING;
+
+    portEXIT_CRITICAL(&_lock);
     return true;
 }
 
 bool navigation::stopMark() {
-    if (_markState != MarkState::RECORDING || !_hasCurrent || !_currentFixValid || !uClock::isSynced())
-        { return false; }
+    if (!uClock::isSynced()) { return false; }
+
+    const uint32_t utc       = uClock::now();
+    const uint32_t stoppedAt = millis();
+
+    portENTER_CRITICAL(&_lock);
+
+    if (_markState != MarkState::RECORDING || !_hasCurrent || !_currentFixValid) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
     _markSnapshot.end             = _current;
-    _markSnapshot.stopUTC         = uClock::now();
-    _markSnapshot.stoppedAtMillis = millis();
+    _markSnapshot.stopUTC         = utc;
+    _markSnapshot.stoppedAtMillis = stoppedAt;
     _markSnapshot.hasEnd          = true;
+    _markState                    = MarkState::READY_TO_SAVE;
 
-    _markState = MarkState::READY_TO_SAVE;
-    return true;
-}
-
-bool navigation::isMarkRecording()            { return _markState == MarkState::RECORDING; }
-navigation::MarkState navigation::markState() { return _markState; }
-
-uint32_t navigation::markElapsedSeconds() {
-    if (_markState == MarkState::IDLE)
-        { return 0; }
-    if (_markState == MarkState::READY_TO_SAVE)
-        { return markDurationSeconds(); }
-    return (millis() - _markSnapshot.startedAtMillis) / 1000;
-}
-
-uint32_t navigation::markDurationSeconds() {
-    if (!_markSnapshot.hasEnd) { return 0; }
-    return (_markSnapshot.stoppedAtMillis - _markSnapshot.startedAtMillis) / 1000;
-}
-
-navigation::Coordinate navigation::markStartPosition()     { return _markSnapshot.start; }
-navigation::Coordinate navigation::markEndPosition()       { return _markSnapshot.end; }
-const navigation::MarkSnapshot& navigation::markSnapshot() { return _markSnapshot; }
-
-double navigation::markTotalDistanceKm() {
-    if (!_markSnapshot.hasEnd)
-        { return -1.0; }
-    return distance::betweenKilometers(
-        _markSnapshot.start.latitude, _markSnapshot.start.longitude,
-        _markSnapshot.end.latitude,   _markSnapshot.end.longitude);
-}
-
-double navigation::markCurrentDistanceKm() {
-    if (_markState == MarkState::IDLE)  { return -1.0; }
-    if (_markState == MarkState::READY_TO_SAVE) {
-        const double km = markTotalDistanceKm();
-        return (km <= 0.0) ? -1.0 : km;
-    }
-    return distance::betweenKilometers(
-        _current.latitude,            _current.longitude,
-        _markSnapshot.start.latitude, _markSnapshot.start.longitude
-    );
-}
-
-double navigation::markCurrentBearingDeg() {
-    if (_markState == MarkState::IDLE) { return -1.0; }
-    if (_markState == MarkState::READY_TO_SAVE) {
-        const double km = markTotalDistanceKm();
-        if (km <= 0.0) { return -1.0; }
-        return distance::bearingDegrees(
-            _markSnapshot.start.latitude, _markSnapshot.start.longitude,
-            _markSnapshot.end.latitude,   _markSnapshot.end.longitude
-        );
-    }
-    return distance::bearingDegrees(
-        _current.latitude,            _current.longitude,
-        _markSnapshot.start.latitude, _markSnapshot.start.longitude
-    );
-}
-
-void navigation::getMarkStartLocator(char* buffer, size_t size) {
-    if (_markState == MarkState::IDLE) {
-        text::copy(buffer, size, "---");
-        return;
-    }
-    if (!locator::fromCoordinates(_markSnapshot.start.latitude, _markSnapshot.start.longitude, buffer, size))
-        { text::copy(buffer, size, "---"); }
-}
-
-void navigation::getMarkEndLocator(char* buffer, size_t size) {
-    if (!_markSnapshot.hasEnd) {
-        text::copy(buffer, size, "---");
-        return;
-    }
-    if (!locator::fromCoordinates(_markSnapshot.end.latitude, _markSnapshot.end.longitude, buffer, size))
-        { text::copy(buffer, size, "---"); }
-}
-
-void navigation::updateGPSFix(bool fixValid) {
-    _currentFixValid = fixValid;
-    if (!fixValid) { return; }
-
-    double latitude;
-    double longitude;
-    gps::getPosition(latitude, longitude);
-
-    _current    = {latitude, longitude, gps::getAltitude()};
-    _hasCurrent = true;
-
-    if (_markState != MarkState::RECORDING) { return; }
-    if (_current.altitude < _markSnapshot.minAltitude)
-        { _markSnapshot.minAltitude = _current.altitude; }
-    if (_current.altitude > _markSnapshot.maxAltitude)
-        { _markSnapshot.maxAltitude = _current.altitude; }
-}
-
-bool navigation::hasCurrentPosition()                { return _hasCurrent; }
-navigation::Coordinate navigation::currentPosition() { return _current; }
-
-void navigation::setMark(double latitude, double longitude) {
-    _mark.latitude  = latitude;
-    _mark.longitude = longitude;
-    _hasMark        = true;
-}
-
-bool navigation::setMarkFromCurrentPosition() {
-    if (!_hasCurrent) { return false; }
-    _mark    = _current;
-    _hasMark = true;
+    portEXIT_CRITICAL(&_lock);
     return true;
 }
 
 void navigation::clearMark() {
-    _hasMark      = false;
-    _mark         = {};
+    portENTER_CRITICAL(&_lock);
     _markSnapshot = {};
     _markState    = MarkState::IDLE;
+    portEXIT_CRITICAL(&_lock);
 }
 
-bool navigation::hasMark()                        { return _hasMark; }
-navigation::Coordinate navigation::markPosition() { return _mark; }
+bool navigation::hasMark() {
+    portENTER_CRITICAL(&_lock);
+    const bool hasMark = _markState != MarkState::IDLE;
+    portEXIT_CRITICAL(&_lock);
+    return hasMark;
+}
 
-double navigation::markDistanceKm() {
-    if (!_hasCurrent || !_hasMark)
-        { return -1.0; }
+navigation::MarkState navigation::markState() {
+    portENTER_CRITICAL(&_lock);
+    const MarkState state = _markState;
+    portEXIT_CRITICAL(&_lock);
+    return state;
+}
+
+uint32_t navigation::markElapsedSeconds() {
+    NavigationData data {};
+    _copyNavigationData(data);
+    if (data.state == MarkState::IDLE) { return 0; }
+
+    if (data.state == MarkState::READY_TO_SAVE && data.mark.hasEnd)
+        { return (data.mark.stoppedAtMillis - data.mark.startedAtMillis) / 1000U; }
+    return (millis() - data.mark.startedAtMillis) / 1000U;
+}
+
+uint32_t navigation::markDurationSeconds() {
+    MarkSnapshot snapshot {};
+
+    if (!getMarkSnapshot(snapshot)) { return 0; }
+    if (!snapshot.hasEnd)           { return 0; }
+    return (snapshot.stoppedAtMillis - snapshot.startedAtMillis) / 1000U;
+}
+
+bool navigation::getMarkSnapshot(MarkSnapshot& snapshot) {
+    portENTER_CRITICAL(&_lock);
+    const bool available = _markState != MarkState::IDLE;
+    snapshot             = _markSnapshot;
+    portEXIT_CRITICAL(&_lock);
+    return available;
+}
+
+double navigation::markTotalDistanceKm() {
+    MarkSnapshot snapshot {};
+
+    if (!getMarkSnapshot(snapshot) || !snapshot.hasEnd) { return -1.0; }
     return distance::betweenKilometers(
-        _current.latitude, _current.longitude,
-        _mark.latitude,    _mark.longitude
+        snapshot.start.latitude, snapshot.start.longitude,
+        snapshot.end.latitude,   snapshot.end.longitude
     );
 }
 
-double navigation::markBearingDeg() {
-    if (!_hasCurrent || !_hasMark)
-        { return -1.0; }
-    return distance::bearingDegrees(
-        _current.latitude, _current.longitude,
-        _mark.latitude,    _mark.longitude
-    );
-}
+double navigation::markCurrentDistanceKm() {
+    NavigationData data {};
+    _copyNavigationData(data);
+    if (data.state == MarkState::IDLE) { return -1.0; }
 
-void navigation::setSOTA(const char* code, double latitude, double longitude, int points, int altitude) {
-    text::copy(_sota.code, sizeof(_sota.code), code);
-    _sota.coordinate.latitude  = latitude;
-    _sota.coordinate.longitude = longitude;
-    _sota.points               = points;
-    _sota.altitude             = altitude;
-    _hasSOTA                   = true;
-}
+    if (data.state == MarkState::READY_TO_SAVE) {
+        if (!data.mark.hasEnd) { return -1.0; }
+        const double distanceKm = distance::betweenKilometers(
+            data.mark.start.latitude, data.mark.start.longitude,
+            data.mark.end.latitude,   data.mark.end.longitude
+        );
+        return distanceKm > 0.0 ? distanceKm : -1.0;
+    }
 
-void navigation::clearSOTA() {
-    _hasSOTA = false;
-    _sota    = {};
-}
-
-bool navigation::hasSOTA() { return _hasSOTA; }
-
-double navigation::sotaDistanceKm() {
-    if (!_hasCurrent || !_hasSOTA)
-        { return -1.0; }
+    if (!data.hasCurrent || !data.currentFixValid) { return -1.0; }
     return distance::betweenKilometers(
-        _current.latitude,         _current.longitude,
-        _sota.coordinate.latitude, _sota.coordinate.longitude
+        data.current.latitude,    data.current.longitude,
+        data.mark.start.latitude, data.mark.start.longitude
     );
 }
 
-double navigation::sotaBearingDeg() {
-    if (!_hasCurrent || !_hasSOTA)
-        { return -1.0; }
+double navigation::markCurrentBearingDeg() {
+    NavigationData data {};
+    _copyNavigationData(data);
+    if (data.state == MarkState::IDLE) { return -1.0; }
+
+    if (data.state == MarkState::READY_TO_SAVE) {
+        if (!data.mark.hasEnd) { return -1.0; }
+        const double distanceKm = distance::betweenKilometers(
+            data.mark.start.latitude, data.mark.start.longitude,
+            data.mark.end.latitude,   data.mark.end.longitude
+        );
+
+        if (distanceKm <= 0.0) { return -1.0; }
+        return distance::bearingDegrees(
+            data.mark.start.latitude, data.mark.start.longitude,
+            data.mark.end.latitude,   data.mark.end.longitude
+        );
+    }
+
+    if (!data.hasCurrent || !data.currentFixValid) { return -1.0; }
     return distance::bearingDegrees(
-        _current.latitude,         _current.longitude,
-        _sota.coordinate.latitude, _sota.coordinate.longitude
+        data.current.latitude,    data.current.longitude,
+        data.mark.start.latitude, data.mark.start.longitude
     );
 }
 
-void navigation::getSOTACode(char* buffer, size_t size) { text::copy(buffer, size, _hasSOTA ? _sota.code : "--"); }
-int navigation::getSOTAPoints()                         { return _hasSOTA ? _sota.points   : 0; }
-int navigation::getSOTAAltitude()                       { return _hasSOTA ? _sota.altitude : 0; }
+void navigation::getMarkStartLocator(char* const buffer, const size_t size) {
+    MarkSnapshot snapshot {};
+
+    if (!getMarkSnapshot(snapshot)) {
+        text::copy(buffer, size, "---");
+        return;
+    }
+    if (!locator::fromCoordinates(snapshot.start.latitude, snapshot.start.longitude, buffer, size))
+        { text::copy(buffer, size, "---"); }
+}

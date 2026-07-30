@@ -46,14 +46,13 @@ namespace {
     bool _buttonArmed     = false;
     bool _shutdownPending = false;
 
-    power::ShutdownReason _shutdownReason = power::ShutdownReason::NONE;
+    power::ShutdownReason _shutdownReason = power::ShutdownReason::BUTTON;
 
     const char* _shutdownLog(const power::ShutdownReason reason) {
         switch (reason) {
-            case power::ShutdownReason::BUTTON:           return "SYSTEM_SHUTDOWN_BUTTON";
             case power::ShutdownReason::BATTERY_CRITICAL: return "SYSTEM_SHUTDOWN_BATTERY_CRITICAL";
-            case power::ShutdownReason::NONE:
-            default:                                      return "SYSTEM_SHUTDOWN";
+            case power::ShutdownReason::BUTTON:
+            default:                                      return "SYSTEM_SHUTDOWN_BUTTON";
         }
     }
 
@@ -68,9 +67,10 @@ namespace {
         const esp_err_t wakeupResult = esp_sleep_enable_ext0_wakeup(_wakeupGpio, 0);
         if (wakeupResult != ESP_OK) {
             storage::appendErrorRecord("POWER_WAKEUP_CONFIGURATION_FAILED");
-
             _shutdownPending = false;
-            _shutdownReason  = power::ShutdownReason::NONE;
+
+            rtc_gpio_deinit(_wakeupGpio);
+            pinMode(_buttonPin, INPUT_PULLUP);
             return;
         }
 
@@ -101,7 +101,6 @@ bool power::begin(const uint8_t buttonPin) {
     _buttonArmed      = !_stablePressed;
     _lastButtonChange = millis();
     _shutdownPending  = false;
-    _shutdownReason   = ShutdownReason::NONE;
     _initialized      = true;
     return true;
 }
@@ -127,11 +126,15 @@ void power::update() {
     _tryShutdown();
 }
 
-bool power::shutdown(const ShutdownReason reason) {
-    if (!_initialized || reason == ShutdownReason::NONE) { return false; }
+void power::shutdown(const ShutdownReason reason) {
+    if (!_initialized) { return; }
+
+    if (_shutdownPending && _shutdownReason == ShutdownReason::BATTERY_CRITICAL && reason == ShutdownReason::BUTTON) {
+        _tryShutdown();
+        return;
+    }
 
     _shutdownReason  = reason;
     _shutdownPending = true;
     _tryShutdown();
-    return true;
 }

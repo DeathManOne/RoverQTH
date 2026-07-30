@@ -32,7 +32,6 @@
 #include "screens/menu/page.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
-#include "services/gps.h"
 #include "ui/mockup/buttons.h"
 #include "utilities/clock.h"
 
@@ -48,7 +47,6 @@ using screens::menu::Updates;
 namespace title      = screens::main::title;
 namespace menu       = screens::menu;
 namespace navigation = screens::menu::navigation;
-namespace gps        = services::gps;
 namespace buttons    = ui::mockup::buttons;
 namespace uClock     = utilities::clock;
 

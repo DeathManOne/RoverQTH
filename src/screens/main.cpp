@@ -21,6 +21,8 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <limits>
+
 #include "screens/main.h"
 #include "screens/main/datas.h"
 #include "screens/main/locator.h"
@@ -30,6 +32,7 @@
 #include "services/navigation.h"
 #include "services/settings.h"
 #include "ui/mockup/buttons.h"
+#include "ui/settings/gps.h"
 #include "ui/settings/themes/defaults.h"
 #include "utilities/clock.h"
 #include "utilities/coordinates.h"
@@ -46,6 +49,7 @@ namespace gps         = services::gps;
 namespace navigation  = services::navigation;
 namespace settings    = services::settings;
 namespace buttons     = ui::mockup::buttons;
+namespace uiGps       = ui::settings::gps;
 namespace theme       = ui::settings::themes::defaults;
 namespace uClock      = utilities::clock;
 namespace coordinates = utilities::coordinates;
@@ -54,36 +58,41 @@ namespace uLocator    = utilities::locator;
 namespace text        = utilities::text;
 
 namespace {
-    void _getFormattedPosition(
+    void _getFormattedPosition(const gps::Snapshot& snapshot,
         char* const latitude,  const size_t latitudeSize,
         char* const longitude, const size_t longitudeSize,
         char* const qth,       const size_t qthSize
     ) {
-        double rawLatitude  = 0.0;
-        double rawLongitude = 0.0;
+        if (!snapshot.positionValid) {
+            text::copy(latitude,  latitudeSize,  "--");
+            text::copy(longitude, longitudeSize, "--");
+            text::copy(qth,       qthSize,       "--");
+            return;
+        }
+
         bool latitudeOk     = false;
         bool longitudeOk    = false;
-        gps::getPosition(rawLatitude, rawLongitude);
 
         switch (settings::getCoordinateFormat()) {
             case settings::CoordinateFormat::DD:
-                latitudeOk  = coordinates::formatDD(rawLatitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
-                longitudeOk = coordinates::formatDD(rawLongitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
+                latitudeOk  = coordinates::formatDD(snapshot.latitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
+                longitudeOk = coordinates::formatDD(snapshot.longitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
                 break;
             case settings::CoordinateFormat::DMS:
-                latitudeOk  = coordinates::formatDMS(rawLatitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
-                longitudeOk = coordinates::formatDMS(rawLongitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
+                latitudeOk  = coordinates::formatDMS(snapshot.latitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
+                longitudeOk = coordinates::formatDMS(snapshot.longitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
                 break;
             case settings::CoordinateFormat::DDM:
             default:
-                latitudeOk  = coordinates::formatDDM(rawLatitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
-                longitudeOk = coordinates::formatDDM(rawLongitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
+                latitudeOk  = coordinates::formatDDM(snapshot.latitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
+                longitudeOk = coordinates::formatDDM(snapshot.longitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
                 break;
         }
 
         if (!latitudeOk)  { text::copy(latitude, latitudeSize, "--"); }
         if (!longitudeOk) { text::copy(longitude, longitudeSize, "--"); }
-        if (!uLocator::fromCoordinates(rawLatitude, rawLongitude, qth, qthSize)) { text::copy(qth, qthSize, "--"); }
+        if (!uLocator::fromCoordinates(snapshot.latitude, snapshot.longitude, qth, qthSize))
+            { text::copy(qth, qthSize, "--"); }
     }
 }
 
@@ -101,8 +110,12 @@ void main::preload() {
 void main::preloadGPS() {
     const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
 
-    double masl, hdg, speed, hdop, vdop, pdop;
-    int satFix, satCount;
+    double masl;
+    double hdg;
+    double speed;
+    double hdop;
+    int satFix;
+    int satCount;
 
     char date[16];
     char time[16];
@@ -116,24 +129,31 @@ void main::preloadGPS() {
     char gpsStatus[32];
     char callsign[32];
 
-    uint8_t gpsHour   = 0;
-    uint8_t gpsMinute = 0;
-    uint8_t gpsSecond = 0;
+    gps::Snapshot gpsData {};
+    gps::getSnapshot(gpsData);
 
     uClock::getDate(date, sizeof(date));
     uClock::getTime(time, sizeof(time));
 
-    const bool gpsTimeValid = gps::getTime(gpsHour, gpsMinute, gpsSecond);
-    uClock::formatTime(gpsHour, gpsMinute, gpsSecond, gpsTimeValid, gpsTime, sizeof(gpsTime));
+    uClock::formatTime(gpsData.hour, gpsData.minute, gpsData.second, gpsData.timeValid, gpsTime, sizeof(gpsTime));
 
-    gps::getPrecision(masl, hdg, speed);
-    gps::getDOP(hdop, vdop, pdop);
-    gps::getSat(satFix, satCount);
-    _getFormattedPosition(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
+    masl     = gpsData.altitude;
+    hdop     = gpsData.hdop;
+    satFix   = static_cast<int>(gpsData.fixType);
+    satCount = static_cast<int>(gpsData.satellites);
+
+    const bool moving = gpsData.speed >= uiGps::MIN_HEADING_SPEED_KMH;
+    hdg               = moving ? gpsData.heading : std::numeric_limits<double>::quiet_NaN();
+    speed             = moving ? gpsData.speed   : 0.0;
+
+    _getFormattedPosition(gpsData, latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
 
     format::heading (hdg,   hdgBuffer,             sizeof(hdgBuffer));
     format::speed   (speed, imperial, speedBuffer, sizeof(speedBuffer));
-    format::altitude(masl,  imperial, aslBuffer,   sizeof(aslBuffer));
+
+    if (gpsData.positionValid) { format::altitude(masl, imperial, aslBuffer, sizeof(aslBuffer)); }
+    else { text::copy(aslBuffer, sizeof(aslBuffer), "--"); }
+
     snprintf(
         gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
         satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop
@@ -159,35 +179,11 @@ void main::preloadGPS() {
 }
 
 void main::preloadSOTA() {
-    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
-
-    if (!navigation::hasSOTA()) {
-        locator::setSOTABearing("---");
-        locator::setSOTADistance("---");
-        locator::setSOTAPoints("---");
-        locator::setSOTAAltitude("---");
-        locator::setSOTACode("---");
-        return;
-    }
-
-    char distance[16];
-    char bearing[16];
-    char points[16];
-    char altitude[16];
-    char code[24];
-
-    format::altitude(navigation::getSOTAAltitude(), imperial, altitude, sizeof(altitude));
-    format::distance(navigation::sotaDistanceKm(),  imperial, distance, sizeof(distance));
-    format::bearing (navigation::sotaBearingDeg(),  bearing,            sizeof(bearing));
-    navigation::getSOTACode(code, sizeof(code));
-
-    snprintf(points, sizeof(points), "%d (+1)", navigation::getSOTAPoints());
-
-    locator::setSOTABearing(bearing);
-    locator::setSOTADistance(distance);
-    locator::setSOTAPoints(points);
-    locator::setSOTAAltitude(altitude);
-    locator::setSOTACode(code);
+    locator::setSOTABearing("---");
+    locator::setSOTADistance("---");
+    locator::setSOTAPoints("---");
+    locator::setSOTAAltitude("---");
+    locator::setSOTACode("---");
 }
 
 void main::preloadMARK() {
@@ -225,8 +221,12 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     title::getBatteryLevel(battery, sizeof(battery));
     title::updateBattery(tft, battery);
 
-    double masl, hdg, speed, hdop, vdop, pdop;
-    int satFix, satCount;
+    double masl;
+    double hdg;
+    double speed;
+    double hdop;
+    int satFix;
+    int satCount;
 
     char date[16];
     char time[16];
@@ -239,24 +239,31 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     char aslBuffer[16];
     char gpsStatus[32];
 
-    uint8_t gpsHour   = 0;
-    uint8_t gpsMinute = 0;
-    uint8_t gpsSecond = 0;
+    gps::Snapshot gpsData {};
+    gps::getSnapshot(gpsData);
 
     uClock::getDate(date, sizeof(date));
     uClock::getTime(time, sizeof(time));
 
-    const bool gpsTimeValid = gps::getTime(gpsHour, gpsMinute, gpsSecond);
-    uClock::formatTime(gpsHour, gpsMinute, gpsSecond, gpsTimeValid, gpsTime, sizeof(gpsTime));
+    uClock::formatTime(gpsData.hour, gpsData.minute, gpsData.second, gpsData.timeValid, gpsTime, sizeof(gpsTime));
 
-    gps::getPrecision(masl, hdg, speed);
-    gps::getDOP(hdop, vdop, pdop);
-    gps::getSat(satFix, satCount);
-    _getFormattedPosition(latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
+    masl     = gpsData.altitude;
+    hdop     = gpsData.hdop;
+    satFix   = static_cast<int>(gpsData.fixType);
+    satCount = static_cast<int>(gpsData.satellites);
+
+    const bool moving = gpsData.speed >= uiGps::MIN_HEADING_SPEED_KMH;
+    hdg               = moving ? gpsData.heading : std::numeric_limits<double>::quiet_NaN();
+    speed             = moving ? gpsData.speed   : 0.0;
+
+    _getFormattedPosition(gpsData, latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
 
     format::heading (hdg,   hdgBuffer,             sizeof(hdgBuffer));
     format::speed   (speed, imperial, speedBuffer, sizeof(speedBuffer));
-    format::altitude(masl,  imperial, aslBuffer,   sizeof(aslBuffer));
+
+    if (gpsData.positionValid) { format::altitude(masl, imperial, aslBuffer, sizeof(aslBuffer)); }
+    else { text::copy(aslBuffer, sizeof(aslBuffer), "--"); }
+
     snprintf(
         gpsStatus, sizeof(gpsStatus), "FIX %s  SAT %02d  HDOP %.1f",
         satFix >= 3 ? "3D" : satFix == 2 ? "2D" : "--", satCount, hdop

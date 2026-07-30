@@ -27,17 +27,34 @@
 #include <cstdint>
 
 namespace services::gps {
-    bool begin  (HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
-    bool restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
-    bool update (uint32_t timeoutMs = 10);
-    bool poll();
+    struct Snapshot {
+        double latitude;
+        double longitude;
+        double altitude;
 
-    bool getTime(uint8_t& hour, uint8_t& minute, uint8_t& second);
+        double heading;
+        double speed;
+
+        double hdop;
+        double pdop;
+
+        uint8_t fixType;
+        uint8_t satellites;
+
+        uint8_t hour;
+        uint8_t minute;
+        uint8_t second;
+
+        bool positionValid;
+        bool fixValid;
+        bool timeValid;
+    };
+
+    bool begin  (HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
+    bool restart(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
+
+    bool update(uint32_t timeoutMs = 10);
+    bool getSnapshot(Snapshot& snapshot);
+
     uint8_t getAcquisitionProgress();
-
-    double getAltitude();
-    void getSat(int &fix, int &count);
-    void getPrecision(double &MASL, double &HDG, double &speed);
-    void getDOP(double &HDOP, double &VDOP, double &PDOP);
-    void getPosition(double &latitude, double &longitude);
 }

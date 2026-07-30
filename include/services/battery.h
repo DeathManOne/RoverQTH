@@ -1,5 +1,5 @@
 /*
- * include/core/battery.h
+ * include/services/battery.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -25,13 +25,10 @@
 #include <cstdint>
 
 namespace services::battery {
-    bool begin(uint8_t pin);
-    bool update();
+    void begin(uint8_t pin);
+    void update();
 
     bool isPresent();
-    bool isLow();
     bool isCritical();
-
-    float getVoltage();
     uint8_t getPercent();
 }

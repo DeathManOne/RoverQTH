@@ -25,10 +25,10 @@
 #include <cstdint>
 
 namespace services::power {
-    enum class ShutdownReason : uint8_t {NONE, BUTTON, BATTERY_CRITICAL};
+    enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
 
     bool begin(uint8_t buttonPin);
     void update();
 
-    bool shutdown(ShutdownReason reason);
+    void shutdown(ShutdownReason reason);
 }

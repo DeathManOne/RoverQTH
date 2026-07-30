@@ -32,39 +32,34 @@ namespace settings = ui::settings::gps;
 namespace uClock   = utilities::clock;
 
 namespace {
-    SFE_UBLOX_GNSS *_gps = nullptr;
-    int _satFix          = 0;
-    int _satCount        = 0;
-    double _masl         = 0.0;
-    double _hdg          = 0.0;
-    double _speed        = 0.0;
-    double _hdop         = 0.0;
-    double _vdop         = 0.0;
-    double _pdop         = 0.0;
-    double _latitude     = 0.0;
-    double _longitude    = 0.0;
-    int _dateYear        = 0;
-    int _dateMonth       = 0;
-    int _dateDay         = 0;
-    uint8_t _timeHour    = 0;
-    uint8_t _timeMinute  = 0;
-    uint8_t _timeSecond  = 0;
-    bool _timeValid      = false;
+    portMUX_TYPE _snapshotLock = portMUX_INITIALIZER_UNLOCKED;
+    SFE_UBLOX_GNSS *_gps       = nullptr;
+    int _dateYear              = 0;
+    int _dateMonth             = 0;
+    int _dateDay               = 0;
+    bool _hasSnapshot          = false;
+    gps::Snapshot _snapshot {};
 
     bool _readCache() {
-        const bool fixOk = _gps->getGnssFixOk();
-        if (!fixOk) { return false; }
+        gps::Snapshot next {};
+        portENTER_CRITICAL(&_snapshotLock);
+        next = _snapshot;
+        portEXIT_CRITICAL(&_snapshotLock);
 
-        _satFix    = _gps->getFixType();
-        _satCount  = _gps->getSIV();
-        _masl      = _gps->getAltitude() / 1000.0;
-        _hdg       = _gps->getHeading() / 100000.0;
-        _speed     = (_gps->getGroundSpeed() / 1000.0) * 3.6;
-        _hdop      = _gps->getHorizontalDOP() / 100.0;
-        _vdop      = _gps->getVerticalDOP() / 100.0;
-        _pdop      = _gps->getPDOP() / 100.0;
-        _latitude  = _gps->getLatitude() / 10000000.0;
-        _longitude = _gps->getLongitude() / 10000000.0;
+        next.fixValid   = _gps->getGnssFixOk();
+        next.fixType    = static_cast<uint8_t>(_gps->getFixType());
+        next.satellites = static_cast<uint8_t>(_gps->getSIV());
+        next.hdop       = _gps->getHorizontalDOP() / 100.0;
+        next.pdop       = _gps->getPDOP() / 100.0;
+
+        if (next.fixValid) {
+            next.altitude      = _gps->getAltitude()     / 1000.0;
+            next.heading       = _gps->getHeading()      / 100000.0;
+            next.speed         = (_gps->getGroundSpeed() / 1000.0) * 3.6;
+            next.latitude      = _gps->getLatitude()     / 10000000.0;
+            next.longitude     = _gps->getLongitude()    / 10000000.0;
+            next.positionValid = true;
+        }
 
         if (_gps->getDateValid()) {
             _dateYear  = _gps->getYear();
@@ -73,20 +68,36 @@ namespace {
         }
 
         if (_gps->getTimeValid()) {
-            _timeHour   = _gps->getHour();
-            _timeMinute = _gps->getMinute();
-            _timeSecond = _gps->getSecond();
-            _timeValid  = true;
+            next.hour      = static_cast<uint8_t>(_gps->getHour());
+            next.minute    = static_cast<uint8_t>(_gps->getMinute());
+            next.second    = static_cast<uint8_t>(_gps->getSecond());
+            next.timeValid = true;
         }
 
         if (_gps->getDateValid() && _gps->getTimeValid()) {
             const uint32_t utcEpoch = uClock::toEpochUTC(
-                _dateYear, _dateMonth, _dateDay,
-                _timeHour, _timeMinute, _timeSecond
-            );
+                    _dateYear, _dateMonth,  _dateDay,
+                    next.hour, next.minute, next.second
+                );
             if (utcEpoch != 0) { uClock::sync(utcEpoch); }
         }
-        return true;
+
+        portENTER_CRITICAL(&_snapshotLock);
+        _snapshot    = next;
+        _hasSnapshot = true;
+        portEXIT_CRITICAL(&_snapshotLock);
+        return next.fixValid;
+    }
+
+    void _resetCache() {
+        portENTER_CRITICAL(&_snapshotLock);
+        _snapshot    = {};
+        _hasSnapshot = false;
+        portEXIT_CRITICAL(&_snapshotLock);
+
+        _dateYear    = 0;
+        _dateMonth   = 0;
+        _dateDay     = 0;
     }
 }
 
@@ -130,15 +141,7 @@ bool gps::restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBa
         _gps = nullptr;
     }
 
-    _satFix     = 0;
-    _satCount   = 0;
-    _hdop       = 0.0;
-    _vdop       = 0.0;
-    _pdop       = 0.0;
-    _timeHour   = 0;
-    _timeMinute = 0;
-    _timeSecond = 0;
-    _timeValid  = false;
+    _resetCache();
     return begin(uart, rx, tx, finalBaud, timeout);
 }
 
@@ -155,79 +158,38 @@ bool gps::update(uint32_t timeoutMs) {
     return false;
 }
 
-bool gps::poll() {
-    if (!_gps)
-        { return false; }
-    _gps->checkUblox();
-    return _readCache();
-}
+bool gps::getSnapshot(Snapshot& snapshot) {
+    portENTER_CRITICAL(&_snapshotLock);
+    const bool available = _hasSnapshot;
+    snapshot             = _snapshot;
+    portEXIT_CRITICAL(&_snapshotLock);
 
-bool gps::getTime(uint8_t& hour, uint8_t& minute, uint8_t& second) {
-    hour   = _timeHour;
-    minute = _timeMinute;
-    second = _timeSecond;
-    return _timeValid;
+    return available;
 }
 
 uint8_t gps::getAcquisitionProgress() {
-    int fix          = 0;
-    int sat          = 0;
-    double hdop      = 0.0;
-    double vdop      = 0.0;
-    double pdop      = 0.0;
+    update();
+
+    Snapshot snapshot {};
+    if (!getSnapshot(snapshot)) { return 0; }
+
     uint8_t progress = 0;
-    if (!update()) { return progress; }
+    if (snapshot.satellites >= 1U) { progress += 10U; }
+    if (snapshot.satellites >= 4U) { progress += 15U; }
+    if (snapshot.satellites >= 8U) { progress += 10U; }
 
-    getSat(fix, sat);
-    getDOP(hdop, vdop, pdop);
+    if (snapshot.fixType >= 2U) { progress += 20U; }
+    if (snapshot.fixType >= 3U) { progress += 20U; }
 
-    if (sat >= 1) { progress += 10; }
-    if (sat >= 4) { progress += 15; }
-    if (sat >= 8) { progress += 10; }
+    const bool goodHDOP      = snapshot.hdop > 0.0 && snapshot.hdop < settings::HDOP_FAIR;
+    const bool excellentHDOP = snapshot.hdop > 0.0 && snapshot.hdop < settings::HDOP_GOOD;
+    const bool goodPDOP      = snapshot.pdop > 0.0 && snapshot.pdop < 3.0;
 
-    if (fix >= 2) { progress += 20; }
-    if (fix >= 3) { progress += 20; }
+    if (goodHDOP)      { progress += 10U; }
+    if (excellentHDOP) { progress += 10U; }
+    if (goodPDOP)      { progress += 5U; }
 
-    const bool goodHDOP      = hdop > 0 && hdop < settings::HDOP_FAIR;
-    const bool excellentHDOP = hdop > 0 && hdop < settings::HDOP_GOOD;
-    const bool goodPDOP      = pdop > 0 && pdop < 3.0;
-
-    if (goodHDOP)      { progress += 10; }
-    if (excellentHDOP) { progress += 10; }
-    if (goodPDOP)      { progress += 5; }
-
-    if (fix >= 3 && sat >= settings::SAT_MIN_FIX && goodHDOP)
-        { progress = 100; }
-    return (progress >= 100) ? 100 : progress;
-}
-
-double gps::getAltitude() { return _masl; }
-
-void gps::getSat(int &fix, int &count) {
-    fix   = _satFix;
-    count = _satCount;
-}
-
-void gps::getPrecision(double &MASL, double &HDG, double &speed) {
-    MASL              = _masl;
-    const bool moving = _speed >= settings::MIN_HEADING_SPEED_KMH;
-
-    if (moving) {
-        HDG   = _hdg;
-        speed = _speed;
-    } else {
-        HDG   = NAN;
-        speed = 0.0;
-    }
-}
-
-void gps::getDOP(double &HDOP, double &VDOP, double &PDOP) {
-    HDOP = _hdop;
-    VDOP = _vdop;
-    PDOP = _pdop;
-}
-
-void gps::getPosition(double &latitude, double &longitude) {
-    latitude  = _latitude;
-    longitude = _longitude;
+    if (snapshot.fixValid && snapshot.fixType >= 3U && snapshot.satellites >= settings::SAT_MIN_FIX && goodHDOP)
+        { return 100U; }
+    return progress > 100U ? 100U : progress;
 }

@@ -26,11 +26,9 @@
 
 #include "services/storage.h"
 #include "services/wifi.h"
-#include "utilities/text.h"
 
 namespace storage = services::storage;
 namespace wifi    = services::wifi;
-namespace text    = utilities::text;
 
 namespace {
     bool _initialized = false;
@@ -38,8 +36,6 @@ namespace {
 
     uint32_t _connectionStartedAt = 0;
     uint32_t _connectionTimeoutMs = 0;
-
-    char _requestedSSID[33] {};
 
     void _resetConnectionState() {
         _connecting          = false;
@@ -56,8 +52,7 @@ bool wifi::begin() {
     WiFi.persistent(false);
 
     _resetConnectionState();
-    _requestedSSID[0] = '\0';
-    _initialized      = true;
+    _initialized = true;
     return true;
 }
 
@@ -68,11 +63,6 @@ bool wifi::isConnecting () { return (_initialized && _connecting); }
 bool wifi::connect(const char* ssid, const char* password, uint32_t timeoutSec) {
     if (!_initialized || !ssid || ssid[0] == '\0' || timeoutSec == 0) { return false; }
     if (!password) { password = ""; }
-
-    if (!text::copy(_requestedSSID, sizeof(_requestedSSID), ssid) || _requestedSSID[0] == '\0') {
-        _requestedSSID[0] = '\0';
-        return false;
-    }
     
     WiFi.disconnect();
     WiFi.begin(ssid, password);
@@ -107,23 +97,4 @@ void wifi::disconnect() {
     _resetConnectionState();
 
     if (wasConnected) { storage::appendLogRecord("WIFI_DISCONNECTED"); }
-}
-
-bool wifi::getSSID(char* const buffer, const size_t size) {
-    if (buffer == nullptr || size == 0) { return false; }
-
-    buffer[0] = '\0';
-    if (isConnected()) {
-        const String currentSSID = WiFi.SSID();
-        if (currentSSID.length() == 0) { return false; }
-        return text::copy(buffer, size, currentSSID.c_str());
-    }
-
-    if (_requestedSSID[0] == '\0') { return false; }
-    return text::copy(buffer, size, _requestedSSID);
-}
-
-int32_t wifi::getRSSI() {
-    if (!isConnected()) { return 0; }
-    return WiFi.RSSI();
 }

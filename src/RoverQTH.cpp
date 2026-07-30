@@ -69,7 +69,13 @@ namespace {
     void _gpsTask(void*) {
         while (true) {
             const uint32_t startMs = millis();
-            navigation::updateGPSFix(gps::update(GPS_UPDATE_TIMEOUT_MS));
+            gps::update(GPS_UPDATE_TIMEOUT_MS);
+
+            gps::Snapshot snapshot {};
+            if (gps::getSnapshot(snapshot)) {
+                const navigation::Coordinate coordinate { snapshot.latitude, snapshot.longitude, snapshot.altitude};
+                navigation::updateGPSFix(coordinate, snapshot.fixValid && snapshot.positionValid);
+            } else { navigation::updateGPSFix({}, false); }
 
             const uint32_t elapsedMs = millis() - startMs;
             if (elapsedMs < GPS_SAMPLE_PERIOD_MS)
