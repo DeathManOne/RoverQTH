@@ -59,6 +59,7 @@ namespace text        = utilities::text;
 
 namespace {
     void _getFormattedPosition(const gps::Snapshot& snapshot,
+        const settings::CoordinateFormat coordinateFormat,
         char* const latitude,  const size_t latitudeSize,
         char* const longitude, const size_t longitudeSize,
         char* const qth,       const size_t qthSize
@@ -73,7 +74,7 @@ namespace {
         bool latitudeOk     = false;
         bool longitudeOk    = false;
 
-        switch (settings::getCoordinateFormat()) {
+        switch (coordinateFormat) {
             case settings::CoordinateFormat::DD:
                 latitudeOk  = coordinates::formatDD(snapshot.latitude,  coordinates::Axis::LATITUDE,  latitude,  latitudeSize);
                 longitudeOk = coordinates::formatDD(snapshot.longitude, coordinates::Axis::LONGITUDE, longitude, longitudeSize);
@@ -108,7 +109,8 @@ void main::preload() {
 }
 
 void main::preloadGPS() {
-    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+    const settings::General configuration = settings::general();
+    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
     double masl;
     double hdg;
@@ -146,7 +148,11 @@ void main::preloadGPS() {
     hdg               = moving ? gpsData.heading : std::numeric_limits<double>::quiet_NaN();
     speed             = moving ? gpsData.speed   : 0.0;
 
-    _getFormattedPosition(gpsData, latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
+    _getFormattedPosition(gpsData, configuration.coordinateFormat,
+        latitude,  sizeof(latitude),
+        longitude, sizeof(longitude),
+        qth,       sizeof(qth)
+    );
 
     format::heading (hdg,   hdgBuffer,             sizeof(hdgBuffer));
     format::speed   (speed, imperial, speedBuffer, sizeof(speedBuffer));
@@ -187,7 +193,8 @@ void main::preloadSOTA() {
 }
 
 void main::preloadMARK() {
-    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+    const settings::General configuration = settings::general();
+    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
     if (!services::navigation::hasMark()) {
         locator::setMarkLocator("---");
@@ -214,8 +221,9 @@ void main::preloadMARK() {
 }
 
 void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
-    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
-    nextRefreshIn = 1000;
+    const settings::General configuration = settings::general();
+    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
+    nextRefreshIn                         = 1000;
 
     char battery[8] = {};
     title::getBatteryLevel(battery, sizeof(battery));
@@ -256,7 +264,11 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     hdg               = moving ? gpsData.heading : std::numeric_limits<double>::quiet_NaN();
     speed             = moving ? gpsData.speed   : 0.0;
 
-    _getFormattedPosition(gpsData, latitude, sizeof(latitude), longitude, sizeof(longitude), qth, sizeof(qth));
+    _getFormattedPosition(gpsData, configuration.coordinateFormat,
+        latitude,  sizeof(latitude),
+        longitude, sizeof(longitude),
+        qth,       sizeof(qth)
+    );
 
     format::heading (hdg,   hdgBuffer,             sizeof(hdgBuffer));
     format::speed   (speed, imperial, speedBuffer, sizeof(speedBuffer));
@@ -284,7 +296,8 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
 }
 
 void main::updateMARK(ST7796S::MSP4021 &tft) {
-    const bool imperial = settings::getUnits() == settings::Units::IMPERIAL;
+    const settings::General configuration = settings::general();
+    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
     if (!navigation::hasMark() ||
         (navigation::markState() == navigation::MarkState::READY_TO_SAVE && navigation::markTotalDistanceKm() <= 0.0)

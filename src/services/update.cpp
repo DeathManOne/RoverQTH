@@ -42,7 +42,6 @@ namespace text     = utilities::text;
 namespace uVersion = utilities::version;
 
 namespace {
-    constexpr size_t ERROR_SIZE           = 48;
     constexpr size_t DOWNLOAD_BUFFER_SIZE = 4096;
     constexpr uint32_t HTTP_TIMEOUT_MS    = 15000;
     constexpr uint32_t STREAM_TIMEOUT_MS  = 20000;
@@ -53,9 +52,9 @@ namespace {
     uint32_t _expectedSize = 0;
     bool _taskRunning      = false;
 
-    char _latestVersion[uVersion::TEXT_SIZE] {};
+    char _latestVersion[update::VERSION_SIZE]    {};
     char _expectedSha256[hash::SHA256_TEXT_SIZE] {};
-    char _error[ERROR_SIZE] {};
+    char _error[update::ERROR_SIZE]              {};
 
     void _setStatus(update::Status value);
     void _setProgress(uint8_t value);
@@ -64,7 +63,7 @@ namespace {
     void _finishTask();
     void _checkTask(void*);
     void _installTask(void*);
-    bool _startTask(TaskFunction_t function, const char* name, uint32_t stackSize);
+    bool _startTask(TaskFunction_t function, const char* name, uint32_t stackSize, update::Status initialStatus);
 
     void _setStatus(update::Status value) {
         portENTER_CRITICAL(&_lock);
@@ -186,9 +185,6 @@ namespace {
         WiFiClientSecure client;
         HTTPClient http;
 
-        _setStatus(update::Status::DOWNLOADING);
-        _setProgress(0);
-
         if (!_openGet(http, client, DL_FIRMWARE)) {
             http.end();
             _setError("Firmware unavailable", "OTA_FIRMWARE_HTTP_FAILED");
@@ -301,14 +297,19 @@ namespace {
         ESP.restart();
     }
 
-    bool _startTask(TaskFunction_t function, const char* name, uint32_t stackSize) {
+    bool _startTask(TaskFunction_t function, const char* name, uint32_t stackSize, update::Status initialStatus) {
         portENTER_CRITICAL(&_lock);
+
         if (_taskRunning) {
             portEXIT_CRITICAL(&_lock);
             return false;
         }
 
         _taskRunning = true;
+        _progress    = 0;
+        _error[0]    = '\0';
+        _status      = initialStatus;
+
         portEXIT_CRITICAL(&_lock);
 
         const BaseType_t result = xTaskCreate(function, name, stackSize, nullptr, 1, nullptr);
@@ -342,11 +343,7 @@ bool update::checkUpdate() {
         _setError("WiFi not connected", "OTA_WIFI_NOT_CONNECTED");
         return false;
     }
-    if (isBusy()) { return false; }
-
-    _setProgress(0);
-    _setStatus(Status::CHECKING);
-    return _startTask(_checkTask, "OTA check", 8192);
+    return _startTask(_checkTask, "OTA check", 8192, Status::CHECKING);
 }
 
 bool update::startUpdate() {
@@ -354,16 +351,13 @@ bool update::startUpdate() {
         _setError("WiFi not connected", "OTA_WIFI_NOT_CONNECTED");
         return false;
     }
-    if (isBusy() || !isAvailable()) { return false; }
-    return _startTask(_installTask, "OTA install", 12288);
-}
 
-bool update::isUpdating() {
-    const Status current = status();
-    return
-        current == Status::DOWNLOADING ||
-        current == Status::VERIFYING   ||
-        current == Status::INSTALLING;
+    portENTER_CRITICAL(&_lock);
+    const bool available = !_taskRunning && _status == Status::AVAILABLE;
+    portEXIT_CRITICAL(&_lock);
+
+    if (!available) { return false; }
+    return _startTask(_installTask, "OTA install", 12288, Status::DOWNLOADING);
 }
 
 bool update::isBusy() {
@@ -373,48 +367,17 @@ bool update::isBusy() {
     return busy;
 }
 
-bool update::isAvailable() {
-    return status() == Status::AVAILABLE;
-}
-
-int update::progress() {
+update::Snapshot update::snapshot() {
+    Snapshot value;
     portENTER_CRITICAL(&_lock);
-    const int value = _progress;
-    portEXIT_CRITICAL(&_lock);
-    return value;
-}
-
-update::Status update::status() {
-    portENTER_CRITICAL(&_lock);
-    const Status value = _status;
+    value.status   = _status;
+    value.progress = _progress;
+    text::copy(value.latestVersion, sizeof(value.latestVersion), _latestVersion);
+    text::copy(value.error,         sizeof(value.error),         _error);
     portEXIT_CRITICAL(&_lock);
     return value;
 }
 
 const char* update::currentVersion() {
     return PROJECT_VERSION;
-}
-
-bool update::getLatestVersion(char* buffer, size_t size) {
-    if (buffer == nullptr || size == 0) { return false; }
-
-    portENTER_CRITICAL(&_lock);
-    text::copy(buffer, size, _latestVersion);
-
-    const bool available = _latestVersion[0] != '\0';
-    portEXIT_CRITICAL(&_lock);
-
-    return available;
-}
-
-bool update::getError(char* buffer, size_t size) {
-    if (buffer == nullptr || size == 0) { return false; }
-
-    portENTER_CRITICAL(&_lock);
-    text::copy(buffer, size, _error);
-
-    const bool available = _error[0] != '\0';
-    portEXIT_CRITICAL(&_lock);
-
-    return available;
 }

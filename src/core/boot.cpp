@@ -21,6 +21,8 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstring>
+
 #include "core/boot.h"
 #include "core/state.h"
 #include "display/boot.h"
@@ -63,23 +65,20 @@ namespace {
             return;
         }
 
-        char ssid[33];
-        if (!settings::getWifiSSID(ssid, sizeof(ssid))) {
+        settings::Wifi configuration = settings::wifi();
+        if (configuration.ssid[0] == '\0') {
+            std::memset(configuration.password, 0, sizeof(configuration.password));
             storage::appendErrorRecord("WIFI_SSID_LOAD_FAILED");
+
             _wifiOk = false;
             dBoot::updateWifi(&_wifiOk);
             return;
         }
 
-        char password[64];
-        if (!settings::getWifiPassword(password, sizeof(password))) {
-            storage::appendErrorRecord("WIFI_PASSWORD_LOAD_FAILED");
-            _wifiOk = false;
-            dBoot::updateWifi(&_wifiOk);
-            return;
-        }
+        const bool started = wifi::connect(configuration.ssid, configuration.password, 5);
+        std::memset(configuration.password, 0, sizeof(configuration.password));
 
-        if (!wifi::connect(ssid, password, 5)) {
+        if (!started) {
             storage::appendErrorRecord("WIFI_BOOT_CONNECT_FAILED");
             _wifiOk = false;
             dBoot::updateWifi(&_wifiOk);

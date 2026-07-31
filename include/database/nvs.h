@@ -36,25 +36,14 @@ namespace database::nvs {
     bool setTouchCalibrationReversed(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc);
     bool resetTouchCalibrationReversed();
 
-    uint32_t getBatteryCapacity();
-    bool setBatteryCapacity(uint32_t capacity);
-    bool resetBatteryCapacity();
-
     float getBatteryMinimal();
     bool setBatteryMinimal(float voltage);
-    bool resetBatteryMinimal();
-
-    float getBatteryNominal();
-    bool setBatteryNominal(float voltage);
-    bool resetBatteryNominal();
 
     float getBatteryMaximal();
     bool setBatteryMaximal(float voltage);
-    bool resetBatteryMaximal();
 
     uint8_t getBatteryRatioHigh();
     bool setBatteryRatioHigh(uint8_t ratio);
-    bool resetBatteryRatioHigh();
 
     bool getCallsign(char* buffer, size_t size);
     bool setCallsign(const char* callsign);
@@ -62,23 +51,15 @@ namespace database::nvs {
 
     uint8_t getCallsignSuffix();
     bool setCallsignSuffix(uint8_t suffix);
-    bool resetCallsignSuffix();
-
-    uint8_t getTheme();
-    bool setTheme(uint8_t theme);
-    bool resetTheme();
 
     uint8_t getTFTRotation();
     bool setTFTRotation(uint8_t rotation);
-    bool resetTFTRotation();
 
     uint8_t getUnits();
     bool setUnits(uint8_t unit);
-    bool resetUnits();
 
     uint8_t getCoordinateFormat();
     bool setCoordinateFormat(uint8_t format);
-    bool resetCoordinateFormat();
 
     bool getWifiSSID(char* buffer, size_t size);
     bool setWifiSSID(const char* ssid);
@@ -90,9 +71,7 @@ namespace database::nvs {
 
     uint8_t getWifiBootMode();
     bool setWifiBootMode(uint8_t mode);
-    bool resetWifiBootMode();
 
     bool getWifiLastEnabled();
     bool setWifiLastEnabled(bool enabled);
-    bool resetWifiLastEnabled();
 }

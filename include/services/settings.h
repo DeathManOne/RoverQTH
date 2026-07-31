@@ -27,8 +27,11 @@
 #include <cstdint>
 
 namespace services::settings {
+    constexpr size_t CALLSIGN_SIZE      = 32;
+    constexpr size_t WIFI_SSID_SIZE     = 33;
+    constexpr size_t WIFI_PASSWORD_SIZE = 64;
+
     enum class Units            : uint8_t {METRIC, IMPERIAL};
-    enum class Theme            : uint8_t {DEFAULTS, NIGHT, HIGHS};
     enum class TFTRotation      : uint8_t {NORMAL = 1, REVERSED = 3};
     enum class CallsignSuffix   : uint8_t {NONE, P, M, MM, AM};
     enum class CoordinateFormat : uint8_t {DD, DDM, DMS};
@@ -46,77 +49,52 @@ namespace services::settings {
         float coeffYC   = 0.0;
     };
 
+    struct Battery {
+        float minimal     = 0.0f;
+        float maximal     = 0.0f;
+        uint8_t ratioHigh = 0;
+    };
+
+    struct General {
+        char callsign[CALLSIGN_SIZE] {};
+        CallsignSuffix suffix             = CallsignSuffix::NONE;
+        Units units                       = Units::METRIC;
+        CoordinateFormat coordinateFormat = CoordinateFormat::DDM;
+    };
+
+    struct Wifi {
+        char ssid[WIFI_SSID_SIZE]         {};
+        char password[WIFI_PASSWORD_SIZE] {};
+        WifiBootMode bootMode = WifiBootMode::NEVER;
+        bool lastEnabled      = false;
+    };
+
     bool begin();
 
     bool getTouchCalibration(Calibration &calibration);
     bool setTouchCalibration(const Calibration &normal, const Calibration &reversed);
     bool resetTouchCalibration();
 
-    uint32_t getBatteryCapacity();
-    bool setBatteryCapacity(uint32_t capacity);
-    bool resetBatteryCapacity();
-
-    float getBatteryMinimal();
+    Battery battery();
     bool setBatteryMinimal(float voltage);
-    bool resetBatteryMinimal();
-
-    float getBatteryNominal();
-    bool setBatteryNominal(float voltage);
-    bool resetBatteryNominal();
-
-    float getBatteryMaximal();
     bool setBatteryMaximal(float voltage);
-    bool resetBatteryMaximal();
-
-    uint8_t getBatteryRatioHigh();
     bool setBatteryRatioHigh(uint8_t ratio);
-    bool resetBatteryRatioHigh();
 
-    bool getCallsign(char* buffer, size_t size);
-    bool setCallsign(const char* callsign);
-    bool resetCallsign();
-
-    CallsignSuffix getCallsignSuffix();
-    bool setCallsignSuffix(CallsignSuffix callsignSuffix);
-    const char* callsignSuffixText(CallsignSuffix suffix);
-    bool resetCallsignSuffix();
-
+    General general();
     bool getFullCallsign(char* buffer, size_t size);
-
-    Theme getTheme();
-    bool setTheme(Theme theme);
-    bool resetTheme();
+    bool setCallsign(const char* callsign);
+    bool setCallsignSuffix(CallsignSuffix callsignSuffix);
+    bool setUnits(Units units);
+    bool setCoordinateFormat(CoordinateFormat format);
+    const char* callsignSuffixText(CallsignSuffix suffix);
 
     TFTRotation getTFTRotation();
     bool setTFTRotation(TFTRotation rotation);
-    bool resetTFTRotation();
 
-    Units getUnits();
-    bool setUnits(Units units);
-    bool resetUnits();
-
-    CoordinateFormat getCoordinateFormat();
-    bool setCoordinateFormat(CoordinateFormat format);
-    bool resetCoordinateFormat();
-
-    bool getWifiSSID(char* buffer, size_t size);
+    Wifi wifi();
     bool setWifiSSID(const char* ssid);
-    bool resetWifiSSID();
-
-    bool getWifiPassword(char* buffer, size_t size);
     bool setWifiPassword(const char* password);
-    bool resetWifiPassword();
-
-    WifiBootMode getWifiBootMode();
     bool setWifiBootMode(WifiBootMode mode);
-    bool resetWifiBootMode();
-
-    bool getWifiLastEnabled();
     bool setWifiLastEnabled(bool enabled);
-    bool resetWifiLastEnabled();
-
-    bool hasWifiCredentials();
     bool shouldConnectWifiAtBoot();
-
-    bool resetAll();
 }

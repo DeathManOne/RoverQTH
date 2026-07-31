@@ -35,11 +35,13 @@ namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
 namespace text     = utilities::text;
 
-void General::_actionCallsign(ST7796S::MSP4021 &tft) {
-    char callsign[32] = "";
-    if (settings::getCallsign(callsign, sizeof(callsign)))
-        { tft.KSetText(callsign); }
+void General::_actionCallsign(ST7796S::MSP4021& tft) {
+    const settings::General configuration = settings::general();
+
+    if (configuration.callsign[0] != '\0')
+        { tft.KSetText(configuration.callsign); }
     tft.KDraw("Callsign");
+
     _mode = Mode::KEYBOARD;
 }
 
@@ -55,9 +57,11 @@ settings::CallsignSuffix General::_nextSuffix(settings::CallsignSuffix suffix) {
 }
 
 void General::_actionSuffix(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const settings::CallsignSuffix suffix = _nextSuffix(settings::getCallsignSuffix());
-    if (!settings::setCallsignSuffix(suffix)) { return; }
+    const settings::General configuration = settings::general();
+    const settings::CallsignSuffix suffix = _nextSuffix(configuration.suffix);
 
+    if (!settings::setCallsignSuffix(suffix))
+        { return; }
     const char* const suffixText = settings::callsignSuffixText(suffix);
 
     field.value = suffixText[0] != '\0' ? suffixText : "None";
@@ -81,10 +85,13 @@ const char* General::_unitsToText(settings::Units units) {
 }
 
 void General::_actionUnits(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const settings::Units units = _nextUnits(settings::getUnits());
-    if (!settings::setUnits(units)) { return; }
+    const settings::General configuration = settings::general();
+    const settings::Units units           = _nextUnits(configuration.units);
 
+    if (!settings::setUnits(units))
+        { return; }
     field.value = _unitsToText(units);
+
     _updateField(tft, field);
 }
 
@@ -107,37 +114,13 @@ const char* General::_coordinateFormatToText(settings::CoordinateFormat format) 
 }
 
 void General::_actionCoordinateFormat(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const settings::CoordinateFormat format = _nextCoordinateFormat(settings::getCoordinateFormat());
-    if (!settings::setCoordinateFormat(format)) { return; }
+    const settings::General configuration   = settings::general();
+    const settings::CoordinateFormat format = _nextCoordinateFormat(configuration.coordinateFormat);
 
+    if (!settings::setCoordinateFormat(format))
+        { return; }
     field.value = _coordinateFormatToText(format);
-    _updateField(tft, field);
-}
 
-settings::Theme General::_nextTheme(settings::Theme theme) {
-    switch (theme) {
-        case settings::Theme::DEFAULTS: return settings::Theme::NIGHT;
-        case settings::Theme::NIGHT:    return settings::Theme::HIGHS;
-        case settings::Theme::HIGHS:
-        default:                        return settings::Theme::DEFAULTS;
-    }
-}
-
-const char* General::_themeToText(settings::Theme theme) {
-    switch (theme) {
-        case settings::Theme::NIGHT:    return "Night";
-        case settings::Theme::HIGHS:    return "High";
-        case settings::Theme::DEFAULTS:
-        default:                        return "Default";
-    }
-}
-
-void General::_actionTheme(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    return; // TODO: Feature temporarily disabled.
-    const settings::Theme theme = _nextTheme(settings::getTheme());
-    if (!settings::setTheme(theme)) { return; }
-
-    field.value = _themeToText(theme);
     _updateField(tft, field);
 }
 
@@ -156,20 +139,14 @@ void General::draw(ST7796S::MSP4021 &tft) {
         rowY += rowH;
     }
 
-    if (!settings::getCallsign(_callsignValue, sizeof(_callsignValue)))
-        { text::copy(_callsignValue, sizeof(_callsignValue), "ERROR"); }
-
-    const settings::CallsignSuffix suffix             = settings::getCallsignSuffix();
-    const settings::Units units                       = settings::getUnits();
-    const settings::Theme theme                       = settings::getTheme();
-    const settings::CoordinateFormat coordinateFormat = settings::getCoordinateFormat();
-    const char* const suffixText                      = settings::callsignSuffixText(suffix);
+    const settings::General configuration = settings::general();
+    const char* const suffixText = settings::callsignSuffixText(configuration.suffix);
+    text::copy(_callsignValue, sizeof(_callsignValue), configuration.callsign);
 
     _callsignField.value   = _callsignValue;
     _suffixField.value     = suffixText[0] != '\0' ? suffixText : "None";
-    _unitsField.value      = _unitsToText(units);
-    _coordinateField.value = _coordinateFormatToText(coordinateFormat);
-    _themeField.value      = _themeToText(theme);
+    _unitsField.value      = _unitsToText(configuration.units);
+    _coordinateField.value = _coordinateFormatToText(configuration.coordinateFormat);
     
     _drawTitle(tft, x, y, w, rowH, gap, "general");
     for (Field<_Action>* field : _fields)
@@ -208,9 +185,6 @@ bool General::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
                 return true;
             case _Action::COORDINATES:
                 _actionCoordinateFormat(tft, *field);
-                return true;
-            case _Action::THEME:
-                _actionTheme(tft, *field);
                 return true;
             case _Action::NONE:
             default: return false;

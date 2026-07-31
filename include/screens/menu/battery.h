@@ -32,37 +32,29 @@ namespace screens::menu {
             void draw       (ST7796S::MSP4021 &tft) override;
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
-            enum class _Action {NONE, CAPACITY, MINIMAL, NOMINAL, MAXIMAL, RATIO_HIGH, RATIO_LOW};
+            enum class _Action {NONE, MINIMAL, MAXIMAL, RATIO_HIGH, RATIO_LOW};
 
-            char _capacityValue[16]  = "";
             char _minimalValue[16]   = "";
-            char _nominalValue[16]   = "";
             char _maximalValue[16]   = "";
             char _ratioHighValue[16] = "";
             char _ratioLowValue[16]  = "";
 
-            Field<_Action> _capacityField  = _makeField("Capacity",   _Action::CAPACITY,   ui::settings::themes::defaults::GREEN);
             Field<_Action> _minimalField   = _makeField("Minimal",    _Action::MINIMAL,    ui::settings::themes::defaults::GREEN);
-            Field<_Action> _nominalField   = _makeField("Nominal",    _Action::NOMINAL,    ui::settings::themes::defaults::GREEN);
             Field<_Action> _maximalField   = _makeField("Maximal",    _Action::MAXIMAL,    ui::settings::themes::defaults::GREEN);
             Field<_Action> _ratioHighField = _makeField("Ratio high", _Action::RATIO_HIGH, ui::settings::themes::defaults::GREEN);
             Field<_Action> _ratioLowField  = _makeField("Ratio low",  _Action::RATIO_LOW,  ui::settings::themes::defaults::GREEN);
 
-            Field<_Action>* _fields[6] = {
-                &_capacityField,
+            Field<_Action>* _fields[4] = {
                 &_minimalField,
-                &_nominalField,
                 &_maximalField,
                 &_ratioHighField,
                 &_ratioLowField
             };
 
-            static uint32_t _nextCapacity(uint32_t value);
-            void _actionCapacity(ST7796S::MSP4021 &tft, Field<_Action> &field);
-
             static float _nextVoltage(float voltage);
+            static float _nextMinimal(float minimal, float maximal);
+            static float _nextMaximal(float maximal, float minimal);
             void _actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field);
-            void _actionNominal(ST7796S::MSP4021 &tft, Field<_Action> &field);
             void _actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field);
 
             static uint8_t _nextRatioHigh(uint8_t value);

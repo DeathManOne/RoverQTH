@@ -76,17 +76,19 @@ void battery::begin(uint8_t pin) {
 }
 
 void battery::update() {
-    const float min     = settings::getBatteryMinimal();
-    const float max     = settings::getBatteryMaximal();
-    const float range   = max - min;
+    const settings::Battery configuration = settings::battery();
+
+    const float min   = configuration.minimal;
+    const float max   = configuration.maximal;
+    const float range = max - min;
 
     if (range <= 0.0f) {
         _resetState();
         return;
     }
 
-    const float ratioHigh   = settings::getBatteryRatioHigh() / 100.0f;
-    const float ratioLow    = 1.0f - ratioHigh;
+    const float ratioHigh = configuration.ratioHigh / 100.0f;
+    const float ratioLow  = 1.0f - ratioHigh;
     if (ratioLow <= 0.0f || ratioHigh <= 0.0f) {
         _resetState();
         return;

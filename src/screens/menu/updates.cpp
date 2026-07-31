@@ -38,13 +38,11 @@ namespace theme    = ui::settings::themes::defaults;
 namespace text     = utilities::text;
 
 void Updates::_prepareFirmwareFields() {
-    char latestVersion[16] = "";
-    char error[48]         = "";
+    const update::Snapshot snapshot  = update::snapshot();
+    const char* const currentVersion = update::currentVersion();
+    const char* const latestVersion  = snapshot.latestVersion[0] != '\0' ? snapshot.latestVersion : nullptr;
 
-    const char* currentVersion  = update::currentVersion();
-    const bool hasLatestVersion = update::getLatestVersion(latestVersion, sizeof(latestVersion));
-
-    switch (update::status()) {
+    switch (snapshot.status) {
         case update::Status::IDLE:
             _setFirmwareVersion(currentVersion);
             _setFirmwareStatus("Check", _Action::CHECK_FIRMWARE, theme::CYAN);
@@ -55,37 +53,37 @@ void Updates::_prepareFirmwareFields() {
             break;
         case update::Status::UP_TO_DATE:
             _setFirmwareVersion(currentVersion);
-            _setFirmwareStatus(
-                "Up to date", _Action::CHECK_FIRMWARE, theme::GREEN);
+            _setFirmwareStatus("Up to date", _Action::CHECK_FIRMWARE, theme::GREEN);
             break;
         case update::Status::AVAILABLE:
-            _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
+            _setFirmwareVersion(currentVersion, latestVersion);
             _setFirmwareStatus("Download", _Action::DOWNLOAD_FIRMWARE, theme::CYAN);
             break;
         case update::Status::DOWNLOADING:
-            _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
-            std::snprintf(_firmwareStatusValue, sizeof(_firmwareStatusValue), "Downloading %d%%", update::progress());
+            _setFirmwareVersion(currentVersion, latestVersion);
+            std::snprintf(
+                _firmwareStatusValue, sizeof(_firmwareStatusValue),
+                "Downloading %u%%",   static_cast<unsigned int>(snapshot.progress)
+            );
             _firmwareStatusField.value  = _firmwareStatusValue;
             _firmwareStatusField.action = _Action::NONE;
             _firmwareStatusField.color  = theme::YELLOW;
             break;
         case update::Status::VERIFYING:
-            _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
-            _setFirmwareStatus("Verifying...", _Action::NONE, theme::YELLOW);
+            _setFirmwareVersion(currentVersion, latestVersion);
+            _setFirmwareStatus("Verifying...", _Action::NONE, theme::YELLOW );
             break;
         case update::Status::INSTALLING:
-            _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
+            _setFirmwareVersion(currentVersion, latestVersion);
             _setFirmwareStatus("Installing...", _Action::NONE, theme::ORANGE);
             break;
         case update::Status::SUCCESS:
-            _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
+            _setFirmwareVersion(currentVersion, latestVersion);
             _setFirmwareStatus("Restarting...", _Action::NONE, theme::GREEN);
             break;
         case update::Status::ERROR:
-            _setFirmwareVersion(currentVersion, hasLatestVersion ? latestVersion : nullptr);
-            if (!update::getError(error, sizeof(error)))
-                { text::copy(error, sizeof(error), "Update failed"); }
-            _setFirmwareStatus(error, _Action::CHECK_FIRMWARE, theme::RED);
+            _setFirmwareVersion(currentVersion, latestVersion);
+            _setFirmwareStatus(snapshot.error[0] != '\0' ? snapshot.error : "Update failed", _Action::CHECK_FIRMWARE, theme::RED);
             break;
         default:
             _setFirmwareVersion(currentVersion);
@@ -117,13 +115,11 @@ void Updates::_setFirmwareVersion(const char* currentVersion, const char* latest
 }
 
 void Updates::_actionCheckFirmware(ST7796S::MSP4021 &tft) {
-    if (update::isBusy()) { return; }
     update::checkUpdate();
     _updateFirmwareFields(tft);
 }
 
 void Updates::_actionDownloadFirmware(ST7796S::MSP4021 &tft) {
-    if (update::isBusy() || !update::isAvailable()) { return; }
     if (update::startUpdate()) {
         _setFirmwareStatus("Starting...", _Action::NONE, theme::YELLOW);
         _updateField(tft, _firmwareStatusField);

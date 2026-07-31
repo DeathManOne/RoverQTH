@@ -63,15 +63,16 @@ void Wifi::_prepareConnectionFields() {
     _wifiLoginField.value  = _wifiLoginValue;
 }
 
-void Wifi::_actionSSID(ST7796S::MSP4021 &tft) {
-    char ssid[64] = "";
-    if (settings::getWifiSSID(ssid, sizeof(ssid)) && ssid[0] != '\0')
-        { tft.KSetText(ssid); }
-    std::memset(ssid, 0, sizeof(ssid));
+void Wifi::_actionSSID(ST7796S::MSP4021& tft) {
+    settings::Wifi configuration = settings::wifi();
+
+    if (configuration.ssid[0] != '\0')
+        { tft.KSetText(configuration.ssid); }
+    std::memset(configuration.password, 0, sizeof(configuration.password));
 
     _editingAction = _Action::SSID;
     tft.KDraw("SSID");
-    _mode = Mode::KEYBOARD;
+    _mode          = Mode::KEYBOARD;
 }
 
 void Wifi::_actionPassword(ST7796S::MSP4021 &tft) {
@@ -83,8 +84,10 @@ void Wifi::_actionPassword(ST7796S::MSP4021 &tft) {
 }
 
 void Wifi::_actionBootMode(ST7796S::MSP4021 &tft) {
+    settings::Wifi configuration = settings::wifi();
     settings::WifiBootMode nextMode;
-    switch (settings::getWifiBootMode()) {
+
+    switch (configuration.bootMode) {
         case settings::WifiBootMode::NEVER:
             nextMode = settings::WifiBootMode::ALWAYS;
             break;
@@ -96,9 +99,12 @@ void Wifi::_actionBootMode(ST7796S::MSP4021 &tft) {
             nextMode = settings::WifiBootMode::NEVER;
             break;
     }
-    if (!settings::setWifiBootMode(nextMode)) { return; }
+    std::memset(configuration.password, 0, sizeof(configuration.password));
 
+    if (!settings::setWifiBootMode(nextMode))
+        { return; }
     _wifiBootModeField.value = _bootModeToText(nextMode);
+
     _updateField(tft, _wifiBootModeField);
 }
 
@@ -123,24 +129,16 @@ void Wifi::_actionLogin(ST7796S::MSP4021 &tft) {
         return;
     }
 
-    char ssid[33]      = "";
-    char password[64]  = "";
-
-    const bool hasSSID = settings::getWifiSSID(ssid, sizeof(ssid)) && ssid[0] != '\0';
-    if (!hasSSID) {
-        std::memset(ssid,     0, sizeof(ssid));
-        std::memset(password, 0, sizeof(password));
+    settings::Wifi configuration = settings::wifi();
+    if (configuration.ssid[0] == '\0') {
+        std::memset(configuration.password, 0, sizeof(configuration.password));
         return;
     }
 
-    settings::getWifiPassword(password, sizeof(password));
+    const bool started = wifi::connect(configuration.ssid, configuration.password);
+    std::memset(configuration.password, 0, sizeof(configuration.password));
 
-    const bool started = wifi::connect(ssid, password);
-    std::memset(ssid,     0, sizeof(ssid));
-    std::memset(password, 0, sizeof(password));
-
-    if (!started)
-        { return; }
+    if (!started) { return; }
     settings::setWifiLastEnabled(true);
     _updateConnectionFields(tft);
 }
@@ -160,18 +158,18 @@ void Wifi::draw(ST7796S::MSP4021 &tft) {
         rowY += rowH;
     }
 
-    if (!settings::getWifiSSID(_wifiSsidValue, sizeof(_wifiSsidValue)) || _wifiSsidValue[0] == '\0')
-        { text::copy(_wifiSsidValue, sizeof(_wifiSsidValue), "Empty"); }
-    char password[64] = "";
-    if (settings::getWifiPassword(password, sizeof(password)) && password[0] != '\0')
-        { text::copy(_wifiPassValue, sizeof(_wifiPassValue), "*****"); }
-    else { text::copy(_wifiPassValue, sizeof(_wifiPassValue), "Empty"); }
-    std::memset(password, 0, sizeof(password));
+    settings::Wifi configuration = settings::wifi();
+    if (configuration.ssid[0] != '\0')
+        { text::copy(_wifiSsidValue, sizeof(_wifiSsidValue), configuration.ssid); }
+    else { text::copy(_wifiSsidValue, sizeof(_wifiSsidValue), "Empty"); }
 
+    text::copy(_wifiPassValue, sizeof(_wifiPassValue), configuration.password[0] != '\0' ? "*****" : "Empty");
     _prepareConnectionFields();
+
     _wifiSsidField.value     = _wifiSsidValue;
     _wifiPassField.value     = _wifiPassValue;
-    _wifiBootModeField.value = _bootModeToText(settings::getWifiBootMode());
+    _wifiBootModeField.value = _bootModeToText(configuration.bootMode);
+    std::memset(configuration.password, 0, sizeof(configuration.password));
     
     _drawTitle(tft, x, y, w, rowH, gap, "WiFi");
     for (Field<_Action>* field : _fields)

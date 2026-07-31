@@ -33,22 +33,6 @@ namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
 namespace format   = utilities::format;
 
-uint32_t Battery::_nextCapacity(uint32_t value) {
-    value += 500;
-    if (value > 10000)
-        { return 500; }
-    return value;
-}
-
-void Battery::_actionCapacity(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const uint32_t capacity = _nextCapacity(settings::getBatteryCapacity());
-    if (!settings::setBatteryCapacity(capacity)) { return; }
-
-    format::capacityMilliAmpHours(capacity, _capacityValue, sizeof(_capacityValue));
-    field.value = _capacityValue;
-    _updateField(tft, field);
-}
-
 float Battery::_nextVoltage(float voltage) {
     voltage += 0.10f;
     if (voltage > 4.30f)
@@ -56,8 +40,31 @@ float Battery::_nextVoltage(float voltage) {
     return voltage;
 }
 
+float Battery::_nextMinimal(const float minimal, const float maximal) {
+    float value = minimal;
+    for (uint8_t attempt = 0; attempt < 19U; ++attempt) {
+        value = _nextVoltage(value);
+        if (value < maximal)
+            { return value; }
+    }
+    return minimal;
+}
+
+float Battery::_nextMaximal(const float maximal, const float minimal) {
+    float value = maximal;
+    for (uint8_t attempt = 0; attempt < 19U; ++attempt) {
+        value = _nextVoltage(value);
+        if (value > minimal)
+            { return value; }
+    }
+    return maximal;
+}
+
 void Battery::_actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const float minimal = _nextVoltage(settings::getBatteryMinimal());
+   const settings::Battery configuration = settings::battery();
+   const float minimal = _nextMinimal(configuration.minimal, configuration.maximal);
+
+    if (minimal == configuration.minimal)      { return; }
     if (!settings::setBatteryMinimal(minimal)) { return; }
 
     format::voltage(minimal, _minimalValue, sizeof(_minimalValue));
@@ -65,17 +72,11 @@ void Battery::_actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     _updateField(tft, field);
 }
 
-void Battery::_actionNominal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const float nominal = _nextVoltage(settings::getBatteryNominal());
-    if (!settings::setBatteryNominal(nominal)) { return; }
-
-    format::voltage(nominal, _nominalValue, sizeof(_nominalValue));
-    field.value = _nominalValue;
-    _updateField(tft, field);
-}
-
 void Battery::_actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    const float maximal = _nextVoltage(settings::getBatteryMaximal());
+    const settings::Battery configuration = settings::battery();
+    const float maximal = _nextMaximal(configuration.maximal, configuration.minimal);
+
+    if (maximal == configuration.maximal)      { return; }
     if (!settings::setBatteryMaximal(maximal)) { return; }
 
     format::voltage(maximal, _maximalValue, sizeof(_maximalValue));
@@ -96,7 +97,8 @@ uint8_t Battery::_previousRatioHigh(uint8_t value) {
 }
 
 void Battery::_actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field) {
-    uint8_t value = settings::getBatteryRatioHigh();
+    const settings::Battery configuration = settings::battery();
+    uint8_t value                         = configuration.ratioHigh;
 
     if (field.action == _Action::RATIO_HIGH)
         { value = _nextRatioHigh(value); }
@@ -128,22 +130,19 @@ void Battery::draw(ST7796S::MSP4021 &tft) {
         rowY += rowH;
     }
 
-    const uint32_t capacity = settings::getBatteryCapacity();
-    const float minimal     = settings::getBatteryMinimal();
-    const float nominal     = settings::getBatteryNominal();
-    const float maximal     = settings::getBatteryMaximal();
-    const uint8_t ratioHigh = settings::getBatteryRatioHigh();
+    const settings::Battery configuration = settings::battery();
 
-    format::capacityMilliAmpHours(capacity,         _capacityValue,  sizeof(_capacityValue));
-    format::voltage              (minimal,          _minimalValue,   sizeof(_minimalValue));
-    format::voltage              (nominal,          _nominalValue,   sizeof(_nominalValue));
-    format::voltage              (maximal,          _maximalValue,   sizeof(_maximalValue));
-    format::percentage           (ratioHigh,        _ratioHighValue, sizeof(_ratioHighValue));
-    format::percentage           (100U - ratioHigh, _ratioLowValue,  sizeof(_ratioLowValue));
+    const float minimal     = configuration.minimal;
+    const float maximal     = configuration.maximal;
+    const uint8_t ratioHigh = configuration.ratioHigh;
+    const uint8_t ratioLow  = 100U - ratioHigh;
 
-    _capacityField.value  = _capacityValue;
+    format::voltage   (minimal,   _minimalValue,   sizeof(_minimalValue));
+    format::voltage   (maximal,   _maximalValue,   sizeof(_maximalValue));
+    format::percentage(ratioHigh, _ratioHighValue, sizeof(_ratioHighValue));
+    format::percentage(ratioLow,  _ratioLowValue,  sizeof(_ratioLowValue));
+
     _minimalField.value   = _minimalValue;
-    _nominalField.value   = _nominalValue;
     _maximalField.value   = _maximalValue;
     _ratioHighField.value = _ratioHighValue;
     _ratioLowField.value  = _ratioLowValue;
@@ -157,14 +156,8 @@ bool Battery::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     for (Field<_Action>* field : _fields) {
         if (!_isPressed(*field, x, y)) { continue; }
         switch (field->action) {
-            case _Action::CAPACITY:
-                _actionCapacity(tft, *field);
-                return true;
             case _Action::MINIMAL:
                 _actionMinimal(tft, *field);
-                return true;
-            case _Action::NOMINAL:
-                _actionNominal(tft, *field);
                 return true;
             case _Action::MAXIMAL:
                 _actionMaximal(tft, *field);

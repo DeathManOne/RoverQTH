@@ -35,7 +35,7 @@ namespace screens::menu {
             void update     (ST7796S::MSP4021 &tft) override;
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
-            enum class _Action {NONE, CALLSIGN, SUFFIX, UNITS, COORDINATES, THEME};
+            enum class _Action {NONE, CALLSIGN, SUFFIX, UNITS, COORDINATES};
 
             char _callsignValue[32] = "";
 
@@ -43,14 +43,12 @@ namespace screens::menu {
             Field<_Action> _suffixField     = _makeField("Suffix",      _Action::SUFFIX,      ui::settings::themes::defaults::GREEN);
             Field<_Action> _unitsField      = _makeField("Units",       _Action::UNITS,       ui::settings::themes::defaults::GREEN);
             Field<_Action> _coordinateField = _makeField("Coordinates", _Action::COORDINATES, ui::settings::themes::defaults::GREEN);
-            Field<_Action> _themeField      = _makeField("Theme",       _Action::THEME,       ui::settings::themes::defaults::WHITE);
 
-            Field<_Action>* _fields[5] = {
+            Field<_Action>* _fields[4] = {
                 &_callsignField,
                 &_suffixField,
                 &_unitsField,
-                &_coordinateField,
-                &_themeField
+                &_coordinateField
             };
 
             void _actionCallsign(ST7796S::MSP4021 &tft);
@@ -61,13 +59,9 @@ namespace screens::menu {
             static const char* _unitsToText(services::settings::Units units);
 
             void _actionUnits(ST7796S::MSP4021 &tft, Field<_Action> &field);
-            static services::settings::Theme _nextTheme(services::settings::Theme theme);
-            static const char* _themeToText(services::settings::Theme theme);
 
             void _actionCoordinateFormat(ST7796S::MSP4021 &tft, Field<_Action> &field);
             static services::settings::CoordinateFormat _nextCoordinateFormat(services::settings::CoordinateFormat format);
             static const char* _coordinateFormatToText(services::settings::CoordinateFormat format);
-
-            void _actionTheme(ST7796S::MSP4021 &tft, Field<_Action> &field);
     };
 }

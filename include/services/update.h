@@ -27,6 +27,9 @@
 #include <cstdint>
 
 namespace services::update {
+    constexpr size_t VERSION_SIZE = 16;
+    constexpr size_t ERROR_SIZE   = 48;
+
     enum class Status : uint8_t {
         IDLE,
         CHECKING,
@@ -39,20 +42,20 @@ namespace services::update {
         ERROR
     };
 
+    struct Snapshot {
+        Status status    = Status::IDLE;
+        uint8_t progress = 0;
+
+        char latestVersion[VERSION_SIZE] {};
+        char error[ERROR_SIZE] {};
+    };
+
     bool begin();
+    bool isBusy();
 
     bool checkUpdate();
     bool startUpdate();
 
-    bool isUpdating();
-    bool isBusy();
-    bool isAvailable();
-
-    int progress();
-    Status status();
-
+    Snapshot snapshot();
     const char* currentVersion();
-
-    bool getLatestVersion(char* buffer, size_t size);
-    bool getError(char* buffer, size_t size);
 }

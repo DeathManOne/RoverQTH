@@ -61,28 +61,22 @@ namespace {
     // GENERAL
     constexpr const char* KEY_CALLSIGN          = "callsign";
     constexpr const char* KEY_CALLSIGN_SUFFIX   = "callsign_suffix";
-    constexpr const char* KEY_THEME             = "theme";
     constexpr const char* KEY_TFT_ROTATION      = "tft_rotation";
     constexpr const char* KEY_UNITS             = "units";
     constexpr const char* KEY_COORDINATE_FORMAT = "coord_format";
 
     constexpr const char* DEFAULT_CALLSIGN      = "SWL";
     constexpr uint8_t DEFAULT_CALLSIGN_SUFFIX   = 0;
-    constexpr uint8_t DEFAULT_THEME             = 0;
     constexpr uint8_t DEFAULT_TFT_ROTATION      = 1;
     constexpr uint8_t DEFAULT_UNITS             = 0;
     constexpr uint8_t DEFAULT_COORDINATE_FORMAT = 1;
 
     // BATTERY
-    constexpr const char* KEY_BATT_CAPACITY     = "batt_cap";
     constexpr const char* KEY_BATT_MINIMAL      = "batt_min";
-    constexpr const char* KEY_BATT_NOMINAL      = "batt_nom";
     constexpr const char* KEY_BATT_MAXIMAL      = "batt_max";
     constexpr const char* KEY_BATT_RATIO_HIGH   = "batt_ratio_high";
 
-    constexpr uint32_t DEFAULT_BATT_CAPACITY    = 3000;
     constexpr float DEFAULT_BATT_MINIMAL        = 3.30f;
-    constexpr float DEFAULT_BATT_NOMINAL        = 3.70f;
     constexpr float DEFAULT_BATT_MAXIMAL        = 4.20f;
     constexpr uint8_t DEFAULT_BATT_RATIO_HIGH   = 50;
 
@@ -194,25 +188,6 @@ bool nvs::resetTouchCalibrationReversed() {
     return true;
 }
 
-uint32_t nvs::getBatteryCapacity() {
-    if (!_ready && !begin())
-        { return DEFAULT_BATT_CAPACITY; }
-    return _prefs.getUInt(KEY_BATT_CAPACITY, DEFAULT_BATT_CAPACITY);
-}
-
-bool nvs::setBatteryCapacity(uint32_t capacity) {
-    if (!_ready && !begin())
-        { return false; }
-    return _prefs.putUInt(KEY_BATT_CAPACITY, capacity) > 0;
-}
-
-bool nvs::resetBatteryCapacity() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_BATT_CAPACITY);
-    return true;
-}
-
 float nvs::getBatteryMinimal() {
     if (!_ready && !begin())
         { return DEFAULT_BATT_MINIMAL; }
@@ -223,32 +198,6 @@ bool nvs::setBatteryMinimal(float voltage) {
     if (!_ready && !begin())
         { return false; }
     return _prefs.putFloat(KEY_BATT_MINIMAL, voltage) > 0;
-}
-
-bool nvs::resetBatteryMinimal() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_BATT_MINIMAL);
-    return true;
-}
-
-float nvs::getBatteryNominal() {
-    if (!_ready && !begin())
-        { return DEFAULT_BATT_NOMINAL; }
-    return _prefs.getFloat(KEY_BATT_NOMINAL,  DEFAULT_BATT_NOMINAL);
-}
-
-bool nvs::setBatteryNominal(float voltage) {
-    if (!_ready && !begin())
-        { return false; }
-    return _prefs.putFloat(KEY_BATT_NOMINAL, voltage) > 0;
-}
-
-bool nvs::resetBatteryNominal() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_BATT_NOMINAL);
-    return true;
 }
 
 float nvs::getBatteryMaximal() {
@@ -263,13 +212,6 @@ bool nvs::setBatteryMaximal(float voltage) {
     return _prefs.putFloat(KEY_BATT_MAXIMAL, voltage) > 0;
 }
 
-bool nvs::resetBatteryMaximal() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_BATT_MAXIMAL);
-    return true;
-}
-
 uint8_t nvs::getBatteryRatioHigh() {
     if (!_ready && !begin())
         { return DEFAULT_BATT_RATIO_HIGH; }
@@ -280,13 +222,6 @@ bool nvs::setBatteryRatioHigh(uint8_t ratio) {
     if (!_ready && !begin())
         { return false; }
     return _prefs.putUChar(KEY_BATT_RATIO_HIGH, ratio) > 0;
-}
-
-bool nvs::resetBatteryRatioHigh() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_BATT_RATIO_HIGH);
-    return true;
 }
 
 bool nvs::getCallsign(char* buffer, size_t size) {
@@ -323,32 +258,6 @@ bool nvs::setCallsignSuffix(uint8_t suffix) {
     return _prefs.putUChar(KEY_CALLSIGN_SUFFIX, suffix) > 0;
 }
 
-bool nvs::resetCallsignSuffix() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_CALLSIGN_SUFFIX);
-    return true;
-}
-
-uint8_t nvs::getTheme() {
-    if (!_ready && !begin())
-        { return DEFAULT_THEME; }
-    return _prefs.getUChar(KEY_THEME, DEFAULT_THEME);
-}
-
-bool nvs::setTheme(uint8_t theme) {
-    if (!_ready && !begin())
-        { return false; }
-    return _prefs.putUChar(KEY_THEME, theme) > 0;
-}
-
-bool nvs::resetTheme() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_THEME);
-    return true;
-}
-
 uint8_t nvs::getTFTRotation() {
     if (!_ready && !begin())
         { return DEFAULT_TFT_ROTATION; }
@@ -359,13 +268,6 @@ bool nvs::setTFTRotation(uint8_t rotation) {
     if (!_ready && !begin())
         { return false; }
     return _prefs.putUChar(KEY_TFT_ROTATION, rotation) > 0;
-}
-
-bool nvs::resetTFTRotation() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_TFT_ROTATION);
-    return true;
 }
 
 uint8_t nvs::getUnits() {
@@ -380,13 +282,6 @@ bool nvs::setUnits(uint8_t units) {
     return _prefs.putUChar(KEY_UNITS, units) > 0;
 }
 
-bool nvs::resetUnits() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_UNITS);
-    return true;
-}
-
 uint8_t nvs::getCoordinateFormat() {
     if (!_ready && !begin())
         { return DEFAULT_COORDINATE_FORMAT; }
@@ -397,13 +292,6 @@ bool nvs::setCoordinateFormat(uint8_t format) {
     if (!_ready && !begin())
         { return false; }
     return _prefs.putUChar(KEY_COORDINATE_FORMAT, format) > 0;
-}
-
-bool nvs::resetCoordinateFormat() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_COORDINATE_FORMAT);
-    return true;
 }
 
 bool nvs::getWifiSSID(char* buffer, size_t size) {
@@ -465,13 +353,6 @@ bool nvs::setWifiBootMode(uint8_t mode) {
     return (_prefs.putUChar(KEY_WIFI_BOOT_MODE, mode) > 0);
 }
 
-bool nvs::resetWifiBootMode() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_WIFI_BOOT_MODE);
-    return true;
-}
-
 bool nvs::getWifiLastEnabled() {
     if (!_ready && !begin())
         { return DEFAULT_WIFI_LAST_ENABLED; }
@@ -482,12 +363,5 @@ bool nvs::setWifiLastEnabled(bool enabled) {
     if (!_ready && !begin())
         { return false; }
     _prefs.putBool(KEY_WIFI_LAST_ENABLED, enabled);
-    return true;
-}
-
-bool nvs::resetWifiLastEnabled() {
-    if (!_ready && !begin())
-        { return false; }
-    _prefs.remove(KEY_WIFI_LAST_ENABLED);
     return true;
 }
