@@ -29,12 +29,22 @@
 #include <SDCard.h>
 
 namespace services::storage {
+    using LineCallback = bool (*)(const char* line, void* userData);
+
     bool begin(SPIClass &spi, uint32_t timeoutSec = 10);
     bool isReady();
 
     bool readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used);
 
+    bool readFileLines(const char* path, LineCallback callback, void* userData = nullptr);
+
+    bool fileExists(const char* path);
+    bool readFile  (const char* path, char* buffer, size_t size);
+    bool writeFile (const char* path,   const char* data);
+    bool appendFile(const char* path,   const char* data);
+    bool renameFile(const char* source, const char* destination);
+    bool deleteFile(const char* path);
+
     bool appendLogRecord  (const char* data);
     bool appendErrorRecord(const char* data);
-    bool appendQTHRecord  (const char* data);
 }

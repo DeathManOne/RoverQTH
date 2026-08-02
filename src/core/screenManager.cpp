@@ -71,6 +71,18 @@ namespace {
         if (markState == navigation::MarkState::IDLE) {
             const bool started = navigation::startMark();
             if (!started) { return; }
+            if (!qth::saveTemporaryRecord()) {
+                navigation::clearMark();
+                storage::appendErrorRecord("QTH_TEMP_CREATE_FAILED");
+                return;
+            }
+
+            if (!qth::resetTrace()) {
+                qth::discardTemporaryRecord();
+                navigation::clearMark();
+                storage::appendErrorRecord("QTH_TRACE_CREATE_FAILED");
+                return;
+            }
 
             storage::appendLogRecord("QTH_RECORDING_STARTED");
             state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
@@ -86,6 +98,10 @@ namespace {
 
         if (navigation::markState() == navigation::MarkState::READY_TO_SAVE) {
             if (!qth::isCurrentRecordLongEnough()) {
+                if (!qth::discardTemporaryRecord())
+                    { storage::appendErrorRecord("QTH_TEMP_DELETE_FAILED"); }
+                if (!qth::discardTemporaryTrace())
+                    { storage::appendErrorRecord("QTH_TRACE_DELETE_FAILED"); }
                 storage::appendLogRecord("QTH_RECORDING_DISCARDED");
                 navigation::clearMark();
                 state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY);
@@ -93,7 +109,31 @@ namespace {
                 main::updateMARK();
                 return;
             }
-            
+
+            navigation::MarkSnapshot snapshot {};
+
+            if (!navigation::getMarkSnapshot(snapshot) || !snapshot.hasEnd) {
+                storage::appendErrorRecord("QTH_FINAL_POINT_UNAVAILABLE");
+                state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
+                mockup::updateMARK();
+                main::updateMARK();
+                return;
+            }
+
+            qth::TracePoint finalPoint {};
+            finalPoint.utc       = snapshot.stopUTC;
+            finalPoint.latitude  = snapshot.end.latitude;
+            finalPoint.longitude = snapshot.end.longitude;
+            finalPoint.altitude  = snapshot.end.altitude;
+
+            if (!qth::appendFinalTracePoint(finalPoint)) {
+                storage::appendErrorRecord("QTH_FINAL_POINT_APPEND_FAILED");
+                state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
+                mockup::updateMARK();
+                main::updateMARK();
+                return;
+            }
+
             const bool saved = qth::saveCurrentRecord();
             if (!saved) {
                 state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);

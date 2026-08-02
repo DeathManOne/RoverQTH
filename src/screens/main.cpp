@@ -194,9 +194,10 @@ void main::preloadSOTA() {
 
 void main::preloadMARK() {
     const settings::General configuration = settings::general();
-    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
+    const bool imperial = configuration.units == settings::Units::IMPERIAL;
 
-    if (!services::navigation::hasMark()) {
+    navigation::MarkDisplaySnapshot mark {};
+    if (!navigation::getMarkDisplaySnapshot(mark)) {
         locator::setMarkLocator("---");
         locator::setMarkBearing("---");
         locator::setMarkDistance("---");
@@ -204,17 +205,18 @@ void main::preloadMARK() {
         return;
     }
 
-    char locator[32];
+    char markLocator[32];
     char distance[16];
     char bearing[16];
     char timer[16];
 
-    format::distance       (navigation::markCurrentDistanceKm(), imperial, distance, sizeof(distance));
-    format::bearing        (navigation::markCurrentBearingDeg(), bearing,            sizeof(bearing));
-    format::durationCompact(navigation::markElapsedSeconds(),    timer,              sizeof(timer));
-    navigation::getMarkStartLocator(locator, sizeof(locator));
+    if (!uLocator::fromCoordinates(mark.start.latitude, mark.start.longitude, markLocator, sizeof(markLocator)))
+        { text::copy(markLocator, sizeof(markLocator), "---"); }
+    format::distance(mark.distanceKm, imperial, distance, sizeof(distance));
+    format::bearing(mark.bearingDeg, bearing, sizeof(bearing));
+    format::durationCompact(mark.elapsedSeconds, timer, sizeof(timer));
 
-    locator::setMarkLocator(locator);
+    locator::setMarkLocator(markLocator);
     locator::setMarkBearing(bearing);
     locator::setMarkDistance(distance);
     locator::setMarkTimer(timer);
@@ -295,13 +297,12 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     updateMARK(tft);
 }
 
-void main::updateMARK(ST7796S::MSP4021 &tft) {
+void main::updateMARK(ST7796S::MSP4021& tft) {
     const settings::General configuration = settings::general();
-    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
+    const bool imperial = configuration.units == settings::Units::IMPERIAL;
 
-    if (!navigation::hasMark() ||
-        (navigation::markState() == navigation::MarkState::READY_TO_SAVE && navigation::markTotalDistanceKm() <= 0.0)
-    ) {
+    navigation::MarkDisplaySnapshot mark {};
+    if (!navigation::getMarkDisplaySnapshot(mark)) {
         locator::updateMarkLocator(tft, "---");
         locator::updateMarkBearing(tft, "---");
         locator::updateMarkDistance(tft, "---");
@@ -309,17 +310,18 @@ void main::updateMARK(ST7796S::MSP4021 &tft) {
         return;
     }
 
-    char locator[32];
+    char markLocator[32];
     char distance[16];
     char bearing[16];
     char timer[16];
 
-    format::distance       (navigation::markCurrentDistanceKm(), imperial, distance, sizeof(distance));
-    format::bearing        (navigation::markCurrentBearingDeg(), bearing,            sizeof(bearing));
-    format::durationCompact(navigation::markElapsedSeconds(),    timer,              sizeof(timer));
-    navigation::getMarkStartLocator(locator, sizeof(locator));
+    if (!uLocator::fromCoordinates(mark.start.latitude, mark.start.longitude, markLocator, sizeof(markLocator)))
+        { text::copy(markLocator, sizeof(markLocator), "---"); }
+    format::distance(mark.distanceKm, imperial, distance, sizeof(distance));
+    format::bearing(mark.bearingDeg, bearing, sizeof(bearing));
+    format::durationCompact(mark.elapsedSeconds, timer, sizeof(timer));
 
-    locator::updateMarkLocator(tft, locator);
+    locator::updateMarkLocator(tft, markLocator);
     locator::updateMarkBearing(tft, bearing);
     locator::updateMarkDistance(tft, distance);
     locator::updateMarkTimer(tft, timer);

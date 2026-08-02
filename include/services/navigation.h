@@ -34,6 +34,11 @@ namespace services::navigation {
         double altitude;
     };
 
+    struct TracePoint {
+        Coordinate coordinate;
+        uint32_t utc;
+    };
+
     struct MarkSnapshot {
         Coordinate start;
         Coordinate end;
@@ -41,28 +46,31 @@ namespace services::navigation {
         uint32_t stopUTC;
         uint32_t startedAtMillis;
         uint32_t stoppedAtMillis;
-        double minAltitude;
-        double maxAltitude;
         bool hasEnd;
+    };
+
+    struct MarkDisplaySnapshot {
+        MarkState state         = MarkState::IDLE;
+        Coordinate start        {};
+        uint32_t elapsedSeconds = 0U;
+        double distanceKm       = -1.0;
+        double bearingDeg       = -1.0;
     };
 
     void begin();
     void updateGPSFix(const Coordinate& coordinate, bool fixValid);
 
+    bool peekPendingTracePoint(TracePoint& point);
+    bool discardPendingTracePoint();
+
     bool startMark();
+    bool restoreMark(const Coordinate& start, uint32_t startUTC);
     bool stopMark();
     void clearMark();
-    bool hasMark();
-    MarkState markState();
 
-    uint32_t markElapsedSeconds();
+    MarkState markState();
     uint32_t markDurationSeconds();
 
     bool getMarkSnapshot(MarkSnapshot& snapshot);
-
-    double markTotalDistanceKm();
-    double markCurrentDistanceKm();
-    double markCurrentBearingDeg();
-
-    void getMarkStartLocator(char* buffer, size_t size);
+    bool getMarkDisplaySnapshot(MarkDisplaySnapshot& snapshot);
 }

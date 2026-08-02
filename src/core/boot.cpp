@@ -28,6 +28,7 @@
 #include "display/boot.h"
 #include "display/manager.h"
 #include "services/gps.h"
+#include "services/qth.h"
 #include "services/settings.h"
 #include "services/storage.h"
 #include "services/wifi.h"
@@ -37,6 +38,7 @@ namespace boot     = core::boot;
 namespace state    = core::state;
 namespace dBoot    = display::boot;
 namespace gps      = services::gps;
+namespace qth      = services::qth;
 namespace settings = services::settings;
 namespace storage  = services::storage;
 namespace wifi     = services::wifi;
@@ -51,6 +53,7 @@ namespace {
     void _initSdCard(SPIClass &sdSPI, uint32_t timeout);
     void _initGPS           (HardwareSerial &gpsUART);
     void _waitGPSAcquisition(HardwareSerial &gpsUART);
+    void _restoreQTH();
 
     void _initWifi() {
         if (!wifi::isInitialized()) {
@@ -184,12 +187,33 @@ namespace {
             }
         }
     }
+
+    void _restoreQTH() {
+        if (!_sdOk || !_gpsOk) { return; }
+
+        const qth::RecoveryStatus status = qth::recoverTemporaryRecord();
+        switch (status) {
+            case qth::RecoveryStatus::NONE:
+                return;
+            case qth::RecoveryStatus::RECORDING_RESTORED:
+                state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
+                storage::appendLogRecord("QTH_RECORDING_RESTORED");
+                return;
+            case qth::RecoveryStatus::RECORD_FINALIZED:
+                storage::appendLogRecord("QTH_RECORD_FINALIZED");
+                return;
+            case qth::RecoveryStatus::ERROR:
+            default:
+                storage::appendErrorRecord("QTH_RECOVERY_FAILED");
+                return;
+        }
+    }
 }
 
 bool boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
     _wifiOk = false;
     _sdOk   = false;
-    _gpsOk  = false;
+    _gpsOk  = false;    
 
     dBoot::clear();
     dBoot::drawLogo();
@@ -198,6 +222,7 @@ bool boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
     _initWifi();
     _initSdCard(sdSPI, 10);
     _initGPS(gpsUART);
+    _restoreQTH();
 
     state::setButtonState(state::Button::MENU, state::ButtonState::READY);
     return _sdOk && _gpsOk;

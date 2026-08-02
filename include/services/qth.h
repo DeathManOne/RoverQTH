@@ -22,43 +22,30 @@
  */
 
 #pragma once
-
-#include <cstddef>
 #include <cstdint>
 
 namespace services::qth {
-    constexpr uint32_t MIN_DURATION_SECONDS = 5;
+    enum class RecoveryStatus : uint8_t {NONE, RECORDING_RESTORED, RECORD_FINALIZED, ERROR};
 
-    struct QTHPosition {
-        uint32_t time;
-        char utc[21];
-        double latitude;
-        double longitude;
-        double altitude;
-        char locator[15];
-    };
-
-    struct QTHDuration {
-        uint32_t seconds;
-        char hms[16];
-    };
-
-    struct QTHDistance {
-        uint32_t airLineMeters;
-        double airLineKm;
-    };
-
-    struct QTHRecord {
-        QTHPosition start;
-        QTHPosition stop;
-        QTHDuration duration;
-        QTHDistance distance;
-        double minimumAltitude;
-        double maximumAltitude;
+    struct TracePoint {
+        uint32_t utc     = 0U;
+        double latitude  = 0.0;
+        double longitude = 0.0;
+        double altitude  = 0.0;
     };
 
     bool isCurrentRecordLongEnough();
-    bool buildCurrentRecord(QTHRecord& record);
-    bool serializeJSONL(const QTHRecord& record, char* buffer, size_t size);
+    
+    bool saveTemporaryRecord();
+    bool discardTemporaryRecord();
+    RecoveryStatus recoverTemporaryRecord();
+
+    bool discardTemporaryTrace();
+
+    bool appendTracePoint     (const TracePoint& point);
+    bool appendFinalTracePoint(const TracePoint& point);
+    bool resetTrace();
+
     bool saveCurrentRecord();
+
 }

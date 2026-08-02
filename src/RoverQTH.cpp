@@ -33,6 +33,7 @@
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/power.h"
+#include "services/qth.h"
 #include "services/settings.h"
 #include "services/storage.h"
 #include "services/update.h"
@@ -47,6 +48,7 @@ namespace battery     = services::battery;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
 namespace power       = services::power;
+namespace qth         = services::qth;
 namespace settings    = services::settings;
 namespace storage     = services::storage;
 namespace update      = services::update;
@@ -119,6 +121,25 @@ void app::setup() {
 void app::loop() {
     power::update();
     wifi::update();
+
+    navigation::TracePoint pendingPoint {};
+    while (navigation::peekPendingTracePoint(pendingPoint)) {
+        qth::TracePoint tracePoint {};
+        tracePoint.utc       = pendingPoint.utc;
+        tracePoint.latitude  = pendingPoint.coordinate.latitude;
+        tracePoint.longitude = pendingPoint.coordinate.longitude;
+        tracePoint.altitude  = pendingPoint.coordinate.altitude;
+
+        if (!qth::appendTracePoint(tracePoint)) {
+            storage::appendErrorRecord("QTH_TRACE_APPEND_FAILED");
+            break;
+        }
+
+        if (!navigation::discardPendingTracePoint()) {
+            storage::appendErrorRecord("QTH_TRACE_QUEUE_FAILED");
+            break;
+        }
+    }
 
     const uint32_t now = millis();
     if (now >= _nextBatteryRefresh) {

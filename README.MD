@@ -73,7 +73,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * SD card initialization
 * Persistent SD card storage
 * Automatic SD directory management
-* Persistent QTH recording (JSONL)
+* Persistent QTH recording using independent JSON files
 * System event logging
 * Error logging
 * Battery monitoring
@@ -88,8 +88,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * Battery voltage monitoring
 * Battery percentage estimation
 * Battery presence detection
-* Configurable battery capacity
-* Configurable minimal, nominal and maximal battery voltage
+* Configurable minimal and maximal battery voltage
 * Configurable voltage divider ratio (High / Low)
 * Dynamic low and critical battery thresholds
 
@@ -98,17 +97,26 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 ## QTH Recording
 
 RoverQTH records operating locations as independent QTH sessions.
-Each session is stored as a single JSON object using the JSONL format and contains:
 
-* Start position
-* Stop position
-* UTC timestamps
-* Maidenhead locators
+Each completed session is stored in its own JSON file. The filename matches the internal QTH identifier:
+
+```text
+20260801-142530-0000038092.json
+```
+
+Each file contains:
+
+* QTH identifier
+* User callsign
+* Operating mode
+* Start position and UTC timestamp
+* End position and UTC timestamp
 * Altitude
-* Duration
-* Air-line distance
+* Recorded movement trace
 
-QTH sessions are stored in JSONL format to simplify post-processing and third-party software development.
+Derived information such as Maidenhead locators, duration, distance, bearing and altitude statistics can be recalculated from the stored positions and trace.
+
+During an active recording, RoverQTH uses temporary metadata and trace files. An interrupted recording can be restored after an unexpected restart.
 
 ---
 
@@ -125,9 +133,14 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 │   ├── system.log
 │   └── error.log
 ├── qth/
-│   └── QTH.jsonl
-└── tmp/     ← temporary files/downloads
+│   ├── <QTH-ID>.json
+│   ├── QTH.tmp
+│   ├── QTH.trace.tmp
+│   └── QTH.final.tmp
+└── tmp/     ← temporary downloads
 ```
+
+The `QTH.tmp`, `QTH.trace.tmp` and `QTH.final.tmp` files exist only while recording, recovering or finalizing a QTH.
 
 ### Logging
 
@@ -374,7 +387,7 @@ Implemented features:
 * Online firmware update system
 * Persistent SD storage
 * Persistent QTH session recording
-* JSONL export format
+* Independent JSON file for each QTH session
 * Automatic SD directory management
 * Persistent system logging with automatic timestamps
 

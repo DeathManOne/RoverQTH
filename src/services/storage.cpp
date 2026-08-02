@@ -34,16 +34,6 @@ namespace {
     constexpr size_t MAX_LOGS_WAITING   = 20;
     constexpr size_t MAX_LOGS_LENGTH    = 256;
 
-    struct WaitingLog {
-        const char* path;
-        char data[MAX_LOGS_LENGTH];
-    };
-
-    SDCard *_sd              = nullptr;
-    bool _ready              = false;
-    size_t _waitingLogsCount = 0;
-    WaitingLog _waitingLogs[MAX_LOGS_WAITING] {};
-
     constexpr const char* DIR_ROOT             = "/RoverQTH";
 
     constexpr const char* DIR_DATABASE         = "/RoverQTH/database";
@@ -59,18 +49,33 @@ namespace {
     constexpr const char* FILE_LOGS_SYSTEM     = "/RoverQTH/logs/system.log";
 
     constexpr const char* DIR_QTH              = "/RoverQTH/qth";
-    constexpr const char* FILE_QTH             = "/RoverQTH/qth/QTH.jsonl";
-
     constexpr const char* DIR_TMP              = "/RoverQTH/tmp";
     constexpr const char* FILE_TMP_FIRMWARE    = "/RoverQTH/tmp/firmware.tmp";
     constexpr const char* FILE_TMP_POTA        = "/RoverQTH/tmp/pota.tmp";
     constexpr const char* FILE_TMP_SOTA        = "/RoverQTH/tmp/sota.tmp";
 
+    struct WaitingLog {
+        const char* path;
+        char data[MAX_LOGS_LENGTH];
+    };
+
+    struct FileReadContext {
+        char* buffer;
+        size_t size;
+        size_t length;
+        bool valid;
+    };
+
+    SDCard *_sd              = nullptr;
+    bool _ready              = false;
+    size_t _waitingLogsCount = 0;
+    WaitingLog _waitingLogs[MAX_LOGS_WAITING] {};
+
     bool _formatRecord(const char* data, char* buffer, size_t size);
     bool _queueLogs(const char* path, const char* data);
-    void _clearWaitingLogs();
-    void _flushWaitingLogs();
+    bool _flushWaitingLogs();
     bool _ensureTree();
+    bool _readFileChunk(const uint8_t* const data, const size_t length, void* const userData);
 
     bool _formatRecord(const char* data, char* buffer, size_t size) {
         if (!data || data[0] == '\0' || !buffer || size == 0) { return false; }
@@ -105,26 +110,32 @@ namespace {
         return true;
     }
 
-    void _clearWaitingLogs() {
-        for (size_t index = 0; index < _waitingLogsCount; ++index) {
-            _waitingLogs[index].path    = nullptr;
-            _waitingLogs[index].data[0] = '\0';
-        }
-        _waitingLogsCount = 0;
-    }
+    bool _flushWaitingLogs() {
+        if (!storage::isReady()) { return false; }
 
-    void _flushWaitingLogs() {
-        if (!storage::isReady()) { return; }
-        for (size_t index = 0; index < _waitingLogsCount; ++index) {
-            const WaitingLog& waiting = _waitingLogs[index];
-            if (!waiting.path || waiting.data[0] == '\0') { continue; }
-            if (!_sd->fileWriteOrAppend(waiting.path, waiting.data)) {
-                _ready = false;
-                _clearWaitingLogs();
-                return;
+        size_t writtenCount = 0U;
+        while (writtenCount < _waitingLogsCount) {
+            const WaitingLog& waiting = _waitingLogs[writtenCount];
+            if (waiting.path == nullptr || waiting.data[0] == '\0') {
+                ++writtenCount;
+                continue;
             }
+            if (!_sd->fileWriteOrAppend(waiting.path, waiting.data))
+                { break; }
+            ++writtenCount;
         }
-        _clearWaitingLogs();
+
+        if (writtenCount > 0U) {
+            const size_t remaining = _waitingLogsCount - writtenCount;
+            for (size_t index = 0U; index < remaining; ++index)
+                { _waitingLogs[index] = _waitingLogs[writtenCount + index]; }
+            for (size_t index = remaining; index < _waitingLogsCount; ++index) {
+                _waitingLogs[index].path    = nullptr;
+                _waitingLogs[index].data[0] = '\0';
+            }
+            _waitingLogsCount = remaining;
+        }
+        return _waitingLogsCount == 0U;
     }
 
     bool _ensureTree() {
@@ -138,6 +149,23 @@ namespace {
         ok &= _sd->dirCreate(DIR_TMP);
         return ok;
     }
+
+    bool _readFileChunk(const uint8_t* const data, const size_t length, void* const userData) {
+        if (data == nullptr || userData == nullptr) { return false; }
+
+        FileReadContext* const context =static_cast<FileReadContext*>(userData);
+        if (!context->valid || context->buffer == nullptr || context->size == 0U) { return false; }
+        if (context->length + length >= context->size) {
+            context->valid = false;
+            return false;
+        }
+
+        for (size_t index = 0U; index < length; ++index)
+            { context->buffer[context->length + index] = static_cast<char>(data[index]); }
+        context->length += length;
+        context->buffer[context->length] = '\0';
+        return true;
+    }
 }
 
 bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
@@ -148,69 +176,96 @@ bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
     do {
         if (_sd->initialize(spi, SD_CS)) {
             _ready = true;
-            if (!_ensureTree()) {
-                _ready = false;
-                _clearWaitingLogs();
-            } else { _flushWaitingLogs(); }
+            if (!_ensureTree()) { _ready = false; }
+            else { _flushWaitingLogs(); }
             return _ready;
         }
         delay(250);
     } while ((millis() - start) < timeoutSec * 1000);
 
-    _clearWaitingLogs();
     _ready = false;
     return _ready;
 }
 
-bool storage::isReady() { return _sd && _ready; }
+bool storage::isReady() {
+    return _sd && _ready;
+}
 
 bool storage::readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used) {
     if (!isReady()) { return false; }
     return _sd->cardInfos(type, size, total, used);
 }
 
-bool storage::appendErrorRecord(const char* data) {
-    if (!data || data[0] == '\0') {return false; }
-
-    char line[MAX_LOGS_LENGTH];
-    if (!_formatRecord(data, line, sizeof(line))) { return false; }
-    if (!_sd) {return _queueLogs(FILE_LOGS_ERROR, line); }
-    if (!isReady()) { return false; }
-    if (!_sd->fileWriteOrAppend(FILE_LOGS_ERROR, line)) {
-        _ready = false;
-        _clearWaitingLogs();
-        return false;
-    }
-    return true;
+bool storage::fileExists(const char* const path) {
+    if (!isReady() || path == nullptr || path[0] == '\0') { return false; }
+    return _sd->fileExists(path);
 }
 
-bool storage::appendLogRecord(const char* data) {
-    if (!data || data[0] == '\0') {return false; }
-
-    char line[MAX_LOGS_LENGTH];
-    if (!_formatRecord(data, line, sizeof(line))) { return false; }
-    if (!_sd) {return _queueLogs(FILE_LOGS_SYSTEM, line); }
-    if (!isReady()) { return false; }
-    if (!_sd->fileWriteOrAppend(FILE_LOGS_SYSTEM, line)) {
-        _ready = false;
-        _clearWaitingLogs();
-        return false;
-    }
-    return true;
-}
-
-bool storage::appendQTHRecord(const char* data) {
-    if (!data || data[0] == '\0' || !isReady()) { return false; }
-
-    char line[1032];
-    const int written = std::snprintf(line, sizeof(line), "%s\n", data);
-
-    if (written <= 0 || static_cast<size_t>(written) >= sizeof(line))
+bool storage::readFile(const char* const path, char* const buffer, const size_t size) {
+    if (!isReady() || path == nullptr || path[0] == '\0' || buffer == nullptr || size == 0U)
         { return false; }
-    if (!_sd->fileWriteOrAppend(FILE_QTH, line)) {
-        _ready = false;
-        _clearWaitingLogs();
+    buffer[0] = '\0';
+
+    FileReadContext context {buffer, size, 0U, true};
+    const bool read = _sd->fileRead(path, _readFileChunk, &context);
+    if (!read || !context.valid) {
+        buffer[0] = '\0';
         return false;
     }
+    return true;
+}
+
+bool storage::readFileLines(const char* const path, const LineCallback callback, void* const userData) {
+    if (!isReady() || path == nullptr || path[0] == '\0' || callback == nullptr) { return false; }
+    if (!_sd->fileReadLines( path, callback, userData))                          { return false; }
+    return true;
+}
+
+bool storage::writeFile(const char* const path, const char* const data) {
+    if (!isReady() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
+    return _sd->fileWrite(path, data);
+}
+
+bool storage::appendFile(const char* const path, const char* const data) {
+    if (!isReady() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
+    return _sd->fileWriteOrAppend(path, data);
+}
+
+bool storage::renameFile(const char* const source, const char* const destination) {
+    if (!isReady()             ||
+        source == nullptr      || source[0] == '\0'      ||
+        destination == nullptr || destination[0] == '\0'
+    ) { return false; }
+    return _sd->fileRename(source, destination);
+}
+
+bool storage::deleteFile(const char* const path) {
+    if (!isReady() || path == nullptr || path[0] == '\0') { return false; }
+    return _sd->fileDelete(path);
+}
+
+bool storage::appendErrorRecord(const char* const data) {
+    if (data == nullptr || data[0] == '\0') { return false; }
+
+    char line[MAX_LOGS_LENGTH];
+    if (!_formatRecord(data, line, sizeof(line))) { return false; }
+
+    if (!isReady())                                     { return _queueLogs(FILE_LOGS_ERROR, line); }
+    if (_waitingLogsCount > 0U && !_flushWaitingLogs()) { return _queueLogs(FILE_LOGS_ERROR, line); }
+    if (!_sd->fileWriteOrAppend(FILE_LOGS_ERROR, line)) { return _queueLogs(FILE_LOGS_ERROR, line); }
+
+    return true;
+}
+
+bool storage::appendLogRecord(const char* const data) {
+    if (data == nullptr || data[0] == '\0') { return false; }
+
+    char line[MAX_LOGS_LENGTH];
+    if (!_formatRecord(data, line, sizeof(line))) { return false; }
+
+    if (!isReady())                                      { return _queueLogs(FILE_LOGS_SYSTEM, line); }
+    if (_waitingLogsCount > 0U && !_flushWaitingLogs())  { return _queueLogs(FILE_LOGS_SYSTEM, line); }
+    if (!_sd->fileWriteOrAppend(FILE_LOGS_SYSTEM, line)) { return _queueLogs(FILE_LOGS_SYSTEM, line); }
+
     return true;
 }
