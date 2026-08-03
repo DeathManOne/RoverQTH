@@ -26,14 +26,15 @@
 namespace text = utilities::text;
 
 bool text::copy(char* const destination, const size_t destinationSize, const char* const source) {
-    if (destination == nullptr || destinationSize == 0) { return false; }
-    if (source == nullptr) {
-        destination[0] = '\0';
-        return true;
-    }
+    if (destination == nullptr || destinationSize == 0U)
+        { return false; }
+    destination[0] = '\0';
 
-    size_t index = 0;
-    while (index + 1 < destinationSize && source[index] != '\0') {
+    if (source == nullptr)
+        { return false; }
+    size_t index = 0U;
+
+    while (index + 1U < destinationSize && source[index] != '\0') {
         destination[index] = source[index];
         ++index;
     }

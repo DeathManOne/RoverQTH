@@ -33,6 +33,28 @@ namespace {
     uint32_t _syncMillis = 0;
     uint32_t _syncEpoch  = 0;
 
+    bool _isLeapYear(const int year);
+    bool _getUTC(uint32_t utcEpoch, tm &utc);
+    uint8_t _daysInMonth(const int year, const int month);
+    int64_t _daysFromCivil(int year, unsigned month, unsigned day);
+
+    bool _isLeapYear(const int year) {
+        return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    }
+
+    bool _getUTC(uint32_t utcEpoch, tm &utc) {
+        if (utcEpoch == 0) { return false; }
+        const time_t rawTime = static_cast<time_t>(utcEpoch);
+        return gmtime_r(&rawTime, &utc) != nullptr;
+    }
+
+    uint8_t _daysInMonth(const int year, const int month) {
+        static constexpr uint8_t DAYS[] = {31U, 28U, 31U, 30U, 31U, 30U, 31U, 31U, 30U, 31U, 30U, 31U};
+        if (month < 1 || month > 12)         { return 0U; }
+        if (month == 2 && _isLeapYear(year)) { return 29U; }
+        return DAYS[month - 1];
+    }
+
     int64_t _daysFromCivil(int year, unsigned month, unsigned day) {
         year -= month <= 2;
 
@@ -43,39 +65,42 @@ namespace {
 
         return (static_cast<int64_t>(era) * 146097 + static_cast<int64_t>(dayOfEra) - 719468);
     }
-
-    bool _getUTC(uint32_t utcEpoch, tm &utc) {
-        if (utcEpoch == 0)
-            { return false; }
-        const time_t rawTime = static_cast<time_t>(utcEpoch);
-        return gmtime_r(&rawTime, &utc) != nullptr;
-    }
 }
 
-bool uClock::isSynced() { return _synced; }
-
 bool uClock::formatISO8601(const uint32_t utcEpoch, char* const buffer, const size_t size) {
-    if (buffer == nullptr || size < 21 || utcEpoch == 0) { return false; }
+    if (buffer == nullptr || size == 0U) { return false; }
+    buffer[0] = '\0';
 
+    if (size < 21U || utcEpoch == 0U) { return false; }
     tm utc {};
-    if (!_getUTC(utcEpoch, utc)) { return false; }
 
+    if (!_getUTC(utcEpoch, utc)) { return false; }
     const int written = std::snprintf(buffer, size,
         "%04d-%02d-%02dT%02d:%02d:%02dZ",
         utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
         utc.tm_hour,        utc.tm_min,     utc.tm_sec
     );
-    return written == 20;
+
+    if (written != 20) {
+        buffer[0] = '\0';
+        return false;
+    }
+    return true;
 }
 
-uint32_t uClock::toEpochUTC(int year, int month, int day, int hour, int minute, int second) {
+uint32_t uClock::toEpochUTC(
+    int year, int month,  int day,
+    int hour, int minute, int second
+) {
     if (year   < 1970 ||
-        month  < 1    || month > 12  ||
-        day    < 1    || day   > 31  ||
-        hour   < 0    || hour  > 23  ||
+        month  < 1    || month  > 12 ||
+        hour   < 0    || hour   > 23 ||
         minute < 0    || minute > 59 ||
-        second < 0    || second > 60
-    ) { return 0; }
+        second < 0    || second > 59
+    ) { return 0U; }
+
+    const uint8_t daysInMonth =_daysInMonth(year, month);
+    if (day < 1 || day > static_cast<int>(daysInMonth)) { return 0U; }
 
     const int64_t days  = _daysFromCivil(year, static_cast<unsigned>(month), static_cast<unsigned>(day));
     const int64_t epoch = days * 86400LL + hour * 3600LL + minute * 60LL + second;
@@ -86,22 +111,38 @@ uint32_t uClock::toEpochUTC(int year, int month, int day, int hour, int minute, 
 }
 
 void uClock::sync(const uint32_t utcEpoch) {
-    if (utcEpoch == 0)                { return; }
-    if (_synced && utcEpoch <= now()) { return; }
+    if (utcEpoch == 0U)              { return; }
+    if (_synced && utcEpoch < now()) { return; }
+
     _syncEpoch  = utcEpoch;
     _syncMillis = millis();
     _synced     = true;
 }
 
-uint32_t uClock::now() {
-    if (!_synced) { return 0; }
-    return _syncEpoch + ((millis() - _syncMillis) / 1000);
+bool uClock::isSynced() {
+    return _synced;
 }
 
-bool uClock::formatTime(const uint8_t hour, const uint8_t minute, const uint8_t second, const bool valid, char* const buffer, const size_t size, const bool withSecond) {
+uint32_t uClock::now() {
+    if (!_synced) { return 0U; }
+
+    const uint32_t elapsedSeconds = (millis() - _syncMillis) / 1000U;
+    const uint64_t currentEpoch   =
+        static_cast<uint64_t>(_syncEpoch)     +
+        static_cast<uint64_t>(elapsedSeconds);
+
+    if (currentEpoch > UINT32_MAX) { return UINT32_MAX; }
+    return static_cast<uint32_t>(currentEpoch);
+}
+
+bool uClock::formatTime(
+    const uint8_t hour, const uint8_t minute, const uint8_t second,
+    const bool valid,   char* const buffer,   const size_t size,
+    const bool withSecond
+) {
     if (buffer == nullptr || size == 0) { return false; }
 
-    if (!valid || hour > 23U || minute > 59U || second > 60U) {
+    if (!valid || hour > 23U || minute > 59U || second > 59U) {
         const int written = std::snprintf(buffer, size, withSecond ? "-- : -- : --" : "-- : --");
         return written >= 0 && static_cast<size_t>(written) < size;
     }
@@ -119,22 +160,32 @@ bool uClock::formatTime(const uint8_t hour, const uint8_t minute, const uint8_t 
     return written >= 0 && static_cast<size_t>(written) < size;
 }
 
-void uClock::getDate(char* buffer, size_t size) {
-    if (buffer == nullptr || size == 0) { return; }
+bool uClock::getDate(char* const buffer, const size_t size) {
+    if (buffer == nullptr || size == 0U) { return false; }
+    buffer[0] = '\0';
 
-    tm utc = {};
+    tm utc {};
     if (!_getUTC(now(), utc)) {
-        snprintf(buffer, size, "---- -- --");
-        return;
+        const int written = std::snprintf(buffer, size, "---- -- --");
+        return written >= 0 && static_cast<size_t>(written) < size;
     }
 
-    snprintf(buffer, size, "%04d %02d %02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
+    const int written = std::snprintf(
+        buffer, size, "%04d %02d %02d",
+        utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday
+    );
+
+    if (written < 0 || static_cast<size_t>(written) >= size) {
+        buffer[0] = '\0';
+        return false;
+    }
+    return true;
 }
 
-void uClock::getTime(char* const buffer, const size_t size, const bool withSecond) {
+bool uClock::getTime(char* const buffer, const size_t size, const bool withSecond) {
     tm utc {};
     const bool valid = _getUTC(now(), utc);
-    formatTime(
+    return formatTime(
         valid ? static_cast<uint8_t>(utc.tm_hour) : 0U,
         valid ? static_cast<uint8_t>(utc.tm_min)  : 0U,
         valid ? static_cast<uint8_t>(utc.tm_sec)  : 0U,
