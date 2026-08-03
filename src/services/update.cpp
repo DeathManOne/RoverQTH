@@ -22,8 +22,8 @@
  */
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <limits>
 #include <Update.h>
 #include <WiFiClientSecure.h>
 
@@ -31,6 +31,7 @@
 #include "services/update.h"
 #include "services/wifi.h"
 #include "utilities/hash.h"
+#include "utilities/json.h"
 #include "utilities/text.h"
 #include "utilities/version.h"
 
@@ -38,11 +39,13 @@ namespace update   = services::update;
 namespace storage  = services::storage;
 namespace wifi     = services::wifi;
 namespace hash     = utilities::hash;
+namespace json     = utilities::json;
 namespace text     = utilities::text;
 namespace uVersion = utilities::version;
 
 namespace {
     constexpr size_t DOWNLOAD_BUFFER_SIZE = 4096;
+    constexpr size_t MANIFEST_BUFFER_SIZE = 512U;
     constexpr uint32_t HTTP_TIMEOUT_MS    = 15000;
     constexpr uint32_t STREAM_TIMEOUT_MS  = 20000;
 
@@ -60,6 +63,7 @@ namespace {
     void _setProgress(uint8_t value);
     void _setError(const char* value, const char* logCode);
     bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url);
+    bool _readResponseBody(HTTPClient& http, char* buffer, size_t size);
     void _finishTask();
     void _checkTask(void*);
     void _installTask(void*);
@@ -105,6 +109,64 @@ namespace {
         return httpCode == HTTP_CODE_OK;
     }
 
+    bool _readResponseBody(HTTPClient& http, char* const buffer, const size_t size) {
+        if (buffer == nullptr || size < 2U) { return false; }
+
+        buffer[0] = '\0';
+        const int announcedSize = http.getSize();
+        if (announcedSize >= 0 && static_cast<size_t>(announcedSize) >= size) { return false; }
+
+        WiFiClient* const stream = http.getStreamPtr();
+        if (stream == nullptr) { return false; }
+
+        size_t received     = 0U;
+        uint32_t lastDataAt = millis();
+
+        while (true) {
+            const int available = stream->available();
+            if (available > 0) {
+                size_t toRead          = static_cast<size_t>(available);
+                const size_t remaining = size - 1U - received;
+
+                if (remaining == 0U) {
+                    buffer[0] = '\0';
+                    return false;
+                }
+
+                if (toRead > remaining)
+                    { toRead = remaining; }
+                const int read = stream->readBytes(reinterpret_cast<uint8_t*>(buffer + received), toRead);
+
+                if (read <= 0)
+                    { continue; }
+                received += static_cast<size_t>(read);
+                lastDataAt = millis();
+
+                if (announcedSize >= 0 && received == static_cast<size_t>(announcedSize))
+                    { break; }
+                continue;
+            }
+
+            if (announcedSize >= 0 && received == static_cast<size_t>(announcedSize))
+                { break; }
+            if (!http.connected())
+                { break; }
+            if (millis() - lastDataAt > STREAM_TIMEOUT_MS) {
+                buffer[0] = '\0';
+                return false;
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+
+        if (received == 0U || (announcedSize >= 0 && received != static_cast<size_t>(announcedSize))) {
+            buffer[0] = '\0';
+            return false;
+        }
+
+        buffer[received] = '\0';
+        return true;
+    }
+
     void _finishTask() {
         portENTER_CRITICAL(&_lock);
         _taskRunning = false;
@@ -123,25 +185,39 @@ namespace {
             return;
         }
 
-        StaticJsonDocument<384> document;
-        const DeserializationError jsonError = deserializeJson(document, http.getStream());
+        char manifest[MANIFEST_BUFFER_SIZE];
+        const bool manifestRead =_readResponseBody(http, manifest, sizeof(manifest));
         http.end();
 
-        if (jsonError) {
+        if (!manifestRead) {
             _setError("Invalid manifest", "OTA_MANIFEST_INVALID");
             _finishTask();
             return;
         }
 
-        const char* const remoteVersion = document["version"].as<const char*>();
-        const char* const sha256        = document["sha256"].as<const char*>();
-        const uint32_t size             = document["size"] | 0U;
+        json::Reader reader(manifest);
+        char remoteVersion[update::VERSION_SIZE];
+        char sha256[hash::SHA256_TEXT_SIZE];
+        uint64_t manifestSize = 0U;
 
+        if (!reader.valid()                                                 ||
+            !reader.string("version", remoteVersion, sizeof(remoteVersion)) ||
+            !reader.string("sha256",  sha256,        sizeof(sha256))        ||
+            !reader.unsignedInteger("size", manifestSize)                   ||
+            manifestSize == 0U                                              ||
+            manifestSize > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())
+        ) {
+            _setError("Invalid manifest", "OTA_MANIFEST_FIELDS_INVALID");
+            _finishTask();
+            return;
+        }
+
+        const uint32_t size = static_cast<uint32_t>(manifestSize);
         uVersion::Comparison comparison;
+    
         if (
             !uVersion::compare(remoteVersion, PROJECT_VERSION, comparison) ||
-            size == 0                                                      ||
-            !hash::isSha256Text(sha256)
+            size == 0 || !hash::isSha256Text(sha256)
         ) {
             _setError("Invalid manifest", "OTA_MANIFEST_FIELDS_INVALID");
             _finishTask();
