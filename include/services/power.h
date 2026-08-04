@@ -27,8 +27,21 @@
 namespace services::power {
     enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
 
+    /**
+     * Initializes the power management service.
+     * @param buttonPin GPIO connected to the power button.
+     * @return true if the service was successfully initialized, false otherwise.
+     */
     bool begin(uint8_t buttonPin);
+
+    /**
+     * Updates the power management service.
+     */
     void update();
 
+    /**
+     * Shuts down the device.
+     * @param reason Reason for shutting down the device.
+     */
     void shutdown(ShutdownReason reason);
 }

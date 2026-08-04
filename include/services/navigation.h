@@ -28,6 +28,7 @@
 
 namespace services::navigation {
     enum class MarkState : uint8_t {IDLE, RECORDING, READY_TO_SAVE};
+
     struct Coordinate {
         double latitude;
         double longitude;
@@ -57,20 +58,79 @@ namespace services::navigation {
         double bearingDeg       = -1.0;
     };
 
+    /**
+     * Initializes the navigation service.
+     */
     void begin();
+
+    /**
+     * Updates the navigation service with the latest GPS position.
+     * @param coordinate Current geographic coordinate.
+     * @param fixValid   true if the GPS fix is valid, false otherwise.
+     */
     void updateGPSFix(const Coordinate& coordinate, bool fixValid);
 
+    /**
+     * Retrieves the next pending trace point without removing it.
+     * @param point Receives the pending trace point.
+     * @return true if a trace point is available, false otherwise.
+     */
     bool peekPendingTracePoint(TracePoint& point);
+
+    /**
+     * Removes the current pending trace point.
+     * @return true if a trace point was discarded, false otherwise.
+     */
     bool discardPendingTracePoint();
 
+    /**
+     * Starts a new mark.
+     * @return true if the mark was successfully started, false otherwise.
+     */
     bool startMark();
+
+    /**
+     * Restores a previously started mark.
+     * @param start    Starting coordinate.
+     * @param startUTC UTC timestamp of the mark start.
+     * @return true if the mark was successfully restored, false otherwise.
+     */
     bool restoreMark(const Coordinate& start, uint32_t startUTC);
+
+    /**
+     * Stops the current mark.
+     * @return true if the mark was successfully stopped, false otherwise.
+     */
     bool stopMark();
+
+    /**
+     * Clears the current mark.
+     */
     void clearMark();
 
+    /**
+     * Returns the current mark state.
+     * @return Current mark state.
+     */
     MarkState markState();
+
+    /**
+     * Returns the current mark duration.
+     * @return Elapsed duration in seconds.
+     */
     uint32_t markDurationSeconds();
 
+    /**
+     * Retrieves a complete snapshot of the current mark.
+     * @param snapshot Receives the mark snapshot.
+     * @return true if a snapshot is available, false otherwise.
+     */
     bool getMarkSnapshot(MarkSnapshot& snapshot);
+
+    /**
+     * Retrieves the information required to display the current mark.
+     * @param snapshot Receives the display snapshot.
+     * @return true if a display snapshot is available, false otherwise.
+     */
     bool getMarkDisplaySnapshot(MarkDisplaySnapshot& snapshot);
 }

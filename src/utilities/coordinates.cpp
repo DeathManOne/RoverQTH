@@ -28,18 +28,37 @@
 namespace coordinates = utilities::coordinates;
 
 namespace {
+    bool _isValidAxis(const coordinates::Axis axis) {
+        return
+            axis == coordinates::Axis::LATITUDE  ||
+            axis == coordinates::Axis::LONGITUDE;
+    }
+
     char _getHemisphere(const double value, const coordinates::Axis axis) {
-        if (axis == coordinates::Axis::LATITUDE) { return value >= 0.0 ? 'N' : 'S'; }
-        return value >= 0.0 ? 'E' : 'W';
+        const bool negative = std::signbit(value);
+        if (axis == coordinates::Axis::LATITUDE)
+            { return negative ? 'S' : 'N'; }
+        return negative ? 'W' : 'E';
     }
 
     bool _prepare(const double value, const coordinates::Axis axis, char* const buffer, const size_t size) {
-        if (buffer == nullptr || size == 0) { return false; }
-
+        if (buffer == nullptr || size == 0U) { return false; }
         buffer[0] = '\0';
+
+        if (!_isValidAxis(axis))   { return false; }
         if (!std::isfinite(value)) { return false; }
         const double limit = axis == coordinates::Axis::LATITUDE ? 90.0 : 180.0;
+
         return value >= -limit && value <= limit;
+    }
+
+    bool _validateWritten(char* const buffer, const size_t size, const int written) {
+        if (written < 0 || static_cast<size_t>(written) >= size) {
+            if (buffer != nullptr && size > 0U)
+                { buffer[0] = '\0'; }
+            return false;
+        }
+        return true;
     }
 }
 
@@ -51,7 +70,7 @@ bool coordinates::formatDD(const double value, const Axis axis, char* const buff
     const int written     = axis == Axis::LATITUDE
         ? std::snprintf(buffer, size, "%09.6f° %c",  absolute, hemisphere)
         : std::snprintf(buffer, size, "%010.6f° %c", absolute, hemisphere);
-    return written >= 0 && static_cast<size_t>(written) < size;
+    return _validateWritten(buffer, size, written);
 }
 
 bool coordinates::formatDDM(const double value, const Axis axis, char* const buffer, const size_t size) {
@@ -70,7 +89,7 @@ bool coordinates::formatDDM(const double value, const Axis axis, char* const buf
     const int written = axis == Axis::LATITUDE
         ? std::snprintf(buffer, size, "%02d°%07.4f' %c", degrees, minutes, hemisphere)
         : std::snprintf(buffer, size, "%03d°%07.4f' %c", degrees, minutes, hemisphere);
-    return written >= 0 && static_cast<size_t>(written) < size;
+    return _validateWritten(buffer, size, written);
 }
 
 bool coordinates::formatDMS(const double value, const Axis axis, char* const buffer, const size_t size) {
@@ -96,5 +115,5 @@ bool coordinates::formatDMS(const double value, const Axis axis, char* const buf
     const int written = axis == Axis::LATITUDE
         ? std::snprintf(buffer, size, "%02d°%02d'%05.2f\" %c", degrees, minutes, seconds, hemisphere)
         : std::snprintf(buffer, size, "%03d°%02d'%05.2f\" %c", degrees, minutes, seconds, hemisphere);
-    return written >= 0 && static_cast<size_t>(written) < size;
+    return _validateWritten(buffer, size, written);
 }

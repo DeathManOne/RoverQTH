@@ -28,8 +28,12 @@
 namespace distance = utilities::distance;
 
 namespace {
-    constexpr double PI              = 3.14159265358979323846;
-    constexpr double EARTH_RADIUS_KM = 6371.0;
+    constexpr double PI                = 3.14159265358979323846;
+    constexpr double EARTH_RADIUS_KM   = 6371.0;
+    constexpr const char* DIRECTIONS[] = {
+        "N", "NE", "E", "SE",
+        "S", "SW", "W", "NW"
+    };
 
     double _toRadians(const double degrees) {
         return degrees * PI / 180.0;
@@ -82,7 +86,6 @@ double distance::bearingDegrees(const double latitudeFrom, const double longitud
 
 const char* distance::cardinal(const double degrees) {
     if (std::isnan(degrees)) { return ""; }
-    static constexpr const char* DIRECTIONS[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
     const double normalized = _normalizeDegrees(degrees + 22.5);
     const size_t index = static_cast<size_t>(normalized / 45.0) % 8;
     return DIRECTIONS[index];

@@ -27,20 +27,105 @@
 #include <cstdint>
 
 namespace utilities::format {
+    /**
+     * Formats a duration using a compact representation.
+     * @param seconds Duration in seconds.
+     * @param buffer  Destination buffer.
+     * @param size    Size of the destination buffer in bytes.
+     * @return true if the formatted duration was successfully written, false otherwise.
+     */
     bool durationCompact(uint32_t seconds, char* buffer, size_t size);
-    bool durationHMS    (uint32_t seconds, char* buffer, size_t size);
 
-    bool speed   (double kilometersPerHour, bool imperial, char* buffer, size_t size);
-    bool altitude(double meters,            bool imperial, char* buffer, size_t size);
-    bool distance(double kilometers,        bool imperial, char* buffer, size_t size);
+    /**
+     * Formats a duration as hours, minutes and seconds.
+     * @param seconds Duration in seconds.
+     * @param buffer  Destination buffer.
+     * @param size    Size of the destination buffer in bytes.
+     * @return true if the formatted duration was successfully written, false otherwise.
+     */
+    bool durationHMS(uint32_t seconds, char* buffer, size_t size);
 
+    /**
+     * Formats a speed.
+     * @param kilometersPerHour Speed in kilometers per hour.
+     * @param imperial          true to use imperial units, false for metric units.
+     * @param buffer            Destination buffer.
+     * @param size              Size of the destination buffer in bytes.
+     * @return true if the formatted speed was successfully written, false otherwise.
+     */
+    bool speed(double kilometersPerHour, bool imperial, char* buffer, size_t size);
+
+    /**
+     * Formats an altitude.
+     * @param meters   Altitude in meters.
+     * @param imperial true to use imperial units, false for metric units.
+     * @param buffer   Destination buffer.
+     * @param size     Size of the destination buffer in bytes.
+     * @return true if the formatted altitude was successfully written, false otherwise.
+     */
+    bool altitude(double meters, bool imperial, char* buffer, size_t size);
+
+    /**
+     * Formats a distance.
+     * @param kilometers Distance in kilometers.
+     * @param imperial   true to use imperial units, false for metric units.
+     * @param buffer     Destination buffer.
+     * @param size       Size of the destination buffer in bytes.
+     * @return true if the formatted distance was successfully written, false otherwise.
+     */
+    bool distance(double kilometers, bool imperial, char* buffer, size_t size);
+
+    /**
+     * Formats a bearing.
+     * @param degrees Bearing in degrees.
+     * @param buffer  Destination buffer.
+     * @param size    Size of the destination buffer in bytes.
+     * @return true if the formatted bearing was successfully written, false otherwise.
+     */
     bool bearing(double degrees, char* buffer, size_t size);
+
+    /**
+     * Formats a heading.
+     * @param degrees Heading in degrees.
+     * @param buffer  Destination buffer.
+     * @param size    Size of the destination buffer in bytes.
+     * @return true if the formatted heading was successfully written, false otherwise.
+     */
     bool heading(double degrees, char* buffer, size_t size);
 
+    /**
+     * Formats a percentage.
+     * @param value  Percentage value.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return true if the formatted percentage was successfully written, false otherwise.
+     */
     bool percentage(uint64_t value, char* buffer, size_t size);
-    bool voltage   (double volts,   char* buffer, size_t size);
 
+    /**
+     * Formats a voltage.
+     * @param volts  Voltage in volts.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return true if the formatted voltage was successfully written, false otherwise.
+     */
+    bool voltage(double volts, char* buffer, size_t size);
+
+    /**
+     * Formats a battery capacity.
+     * @param milliAmpHours Capacity in milliampere-hours.
+     * @param buffer        Destination buffer.
+     * @param size          Size of the destination buffer in bytes.
+     * @return true if the formatted capacity was successfully written, false otherwise.
+     */
     bool capacityMilliAmpHours(uint32_t milliAmpHours, char* buffer, size_t size);
 
+    /**
+     * Formats a storage capacity.
+     * @param bytes  Capacity in bytes.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return true if the formatted storage capacity was successfully written, false otherwise.
+     */
     bool storageCapacity(uint64_t bytes, char* buffer, size_t size);
 }

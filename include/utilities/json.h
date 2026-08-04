@@ -52,7 +52,6 @@ namespace utilities::json {
         public:
             /**
              * Creates a JSON Reader from a null-terminated object string.
-             *
              * The source string must remain valid for the entire lifetime
              * of the Reader. The complete JSON object is validated during
              * construction. No dynamic memory allocation is performed.
@@ -63,73 +62,57 @@ namespace utilities::json {
 
             /**
              * Indicates whether the complete JSON object is structurally valid.
-             *
              * @return True if the object is valid, otherwise false.
              */
             bool valid() const;
 
             /**
              * Reads a nested JSON object.
-             *
              * The output Reader is modified only when the property exists
              * and contains a valid object.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value Reader receiving the nested object.
-             *
              * @return True on success, otherwise false.
              */
             bool object(const char* key, Reader& value) const;
 
             /**
              * Reads a finite floating-point value.
-             *
              * The output value is modified only after successful validation.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value Variable receiving the number.
-             *
              * @return True on success, otherwise false.
              */
             bool number(const char* key, double& value) const;
 
             /**
              * Reads a JSON boolean value.
-             *
              * The output value is modified only when the property contains
              * exactly true or false.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value Variable receiving the boolean.
-             *
              * @return True on success, otherwise false.
              */
             bool boolean(const char* key, bool& value) const;
 
             /**
              * Reads and decodes a JSON string.
-             *
              * The destination buffer is cleared before reading and remains
              * empty if the operation fails. The buffer size includes the
              * null terminator.
-             *
-             * @param key Property name.
+             * @param key    Property name.
              * @param buffer Destination buffer.
-             * @param size Total destination buffer capacity.
-             *
+             * @param size   Total destination buffer capacity.
              * @return True on success, otherwise false.
              */
             bool string(const char* key, char* buffer, size_t size) const;
 
             /**
              * Reads an unsigned integer value.
-             *
              * Negative, fractional and out-of-range values are rejected.
              * The output value is modified only after successful validation.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value Variable receiving the unsigned integer.
-             *
              * @return True on success, otherwise false.
              */
             bool unsignedInteger(const char* key, uint64_t& value) const;
@@ -158,70 +141,56 @@ namespace utilities::json {
         public:
             /**
              * Creates a JSON Writer using a caller-provided buffer.
-             *
              * The buffer must remain valid for the entire lifetime of the Writer.
              * No dynamic memory allocation is performed.
-             *
              * @param buffer Destination buffer for the generated JSON.
-             * @param size Total buffer capacity, including the null terminator.
+             * @param size   Total buffer capacity, including the null terminator.
              */
             Writer(char* buffer, size_t size);
 
             /**
              * Creates a JSON object.
-             *
              * @param key Optional object key when creating a nested object.
-             *
              * @return True on success, false if the Writer becomes invalid.
              */
             bool beginObject(const char* key = nullptr);
 
             /**
              * Closes the current JSON object.
-             *
              * @return True on success, false on invalid nesting.
              */
             bool endObject();
 
             /**
              * Writes a JSON string value.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value UTF-8 string to serialize.
-             *
              * @return True on success, false if the Writer becomes invalid.
              */
             bool string(const char* key, const char* value);
 
             /**
              * Writes a JSON boolean value.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value Boolean value.
-             *
              * @return True on success, false if the Writer becomes invalid.
              */
             bool boolean(const char* key, bool value);
 
             /**
              * Writes an unsigned integer value.
-             *
-             * @param key Property name.
+             * @param key   Property name.
              * @param value Unsigned integer.
-             *
              * @return True on success, false if the Writer becomes invalid.
              */
             bool unsignedInteger(const char* key, uint64_t value);
 
             /**
              * Writes a floating-point value.
-             *
              * Only finite values are accepted.
-             *
-             * @param key Property name.
-             * @param value Floating-point value.
+             * @param key      Property name.
+             * @param value    Floating-point value.
              * @param decimals Number of decimal places (0-9).
-             *
              * @return True on success, false if the Writer becomes invalid.
              */
             bool number(const char* key, double value, uint8_t decimals);
@@ -233,14 +202,12 @@ namespace utilities::json {
 
             /**
              * Returns the length of the generated JSON.
-             *
              * Returns zero until complete() is true.
              */
             size_t length() const;
 
             /**
              * Returns the generated JSON string.
-             *
              * Returns nullptr until complete() is true.
              */
             const char* c_str() const;

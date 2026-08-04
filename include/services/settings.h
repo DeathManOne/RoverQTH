@@ -69,32 +69,159 @@ namespace services::settings {
         bool lastEnabled      = false;
     };
 
+    /**
+     * Initializes the settings service.
+     * @return true if the settings were successfully loaded, false otherwise.
+     */
     bool begin();
 
+    /**
+     * Retrieves the touchscreen calibration.
+     * @param calibration Receives the calibration parameters.
+     * @return true if the calibration was successfully retrieved, false otherwise.
+     */
     bool getTouchCalibration(Calibration &calibration);
+
+    /**
+     * Stores the touchscreen calibration.
+     * @param normal   Calibration for the normal display orientation.
+     * @param reversed Calibration for the reversed display orientation.
+     * @return true if the calibration was successfully stored, false otherwise.
+     */
     bool setTouchCalibration(const Calibration &normal, const Calibration &reversed);
+
+    /**
+     * Restores the default touchscreen calibration.
+     * @return true if the calibration was successfully reset, false otherwise.
+     */
     bool resetTouchCalibration();
 
+    /**
+     * Returns the battery settings.
+     * @return Current battery settings.
+     */
     Battery battery();
+
+    /**
+     * Sets the minimum battery voltage.
+     * @param voltage Minimum battery voltage.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setBatteryMinimal(float voltage);
+
+    /**
+     * Sets the maximum battery voltage.
+     * @param voltage Maximum battery voltage.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setBatteryMaximal(float voltage);
+
+    /**
+     * Sets the high battery level threshold.
+     * @param ratio Battery percentage considered as high.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setBatteryRatioHigh(uint8_t ratio);
 
+    /**
+     * Returns the general settings.
+     * @return Current general settings.
+     */
     General general();
+
+    /**
+     * Builds the complete callsign.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return true if the callsign was successfully generated, false otherwise.
+     */
     bool getFullCallsign(char* buffer, size_t size);
+
+    /**
+     * Sets the callsign.
+     * @param callsign Callsign.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setCallsign(const char* callsign);
+
+    /**
+     * Sets the callsign suffix.
+     * @param callsignSuffix Callsign suffix.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setCallsignSuffix(CallsignSuffix callsignSuffix);
+
+    /**
+     * Sets the unit system.
+     * @param units Unit system.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setUnits(Units units);
+
+    /**
+     * Sets the coordinate display format.
+     * @param format Coordinate format.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setCoordinateFormat(CoordinateFormat format);
+
+    /**
+     * Returns the text associated with a callsign suffix.
+     * @param suffix Callsign suffix.
+     * @return Null-terminated suffix text.
+     */
     const char* callsignSuffixText(CallsignSuffix suffix);
 
+    /**
+     * Returns the current TFT rotation.
+     * @return Current TFT rotation.
+     */
     TFTRotation getTFTRotation();
+
+    /**
+     * Sets the TFT rotation.
+     * @param rotation TFT rotation.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setTFTRotation(TFTRotation rotation);
 
+    /**
+     * Returns the Wi-Fi settings.
+     * @return Current Wi-Fi settings.
+     */
     Wifi wifi();
+
+    /**
+     * Sets the Wi-Fi SSID.
+     * @param ssid Wi-Fi SSID.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setWifiSSID(const char* ssid);
+
+    /**
+     * Sets the Wi-Fi password.
+     * @param password Wi-Fi password.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setWifiPassword(const char* password);
+
+    /**
+     * Sets the Wi-Fi boot mode.
+     * @param mode Wi-Fi boot mode.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setWifiBootMode(WifiBootMode mode);
+
+    /**
+     * Stores the last Wi-Fi enabled state.
+     * @param enabled true if Wi-Fi was enabled, false otherwise.
+     * @return true if the setting was successfully updated, false otherwise.
+     */
     bool setWifiLastEnabled(bool enabled);
+
+    /**
+     * Indicates whether Wi-Fi should be enabled during startup.
+     * @return true if Wi-Fi should be enabled, false otherwise.
+     */
     bool shouldConnectWifiAtBoot();
 }

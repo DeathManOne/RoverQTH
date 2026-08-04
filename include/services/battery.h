@@ -25,10 +25,32 @@
 #include <cstdint>
 
 namespace services::battery {
+    /**
+     * Initializes the battery monitoring service.
+     * @param pin ADC pin connected to the battery voltage divider.
+     */
     void begin(uint8_t pin);
+
+    /**
+     * Updates the battery measurements.
+     */
     void update();
 
+    /**
+     * Indicates whether a battery is currently detected.
+     * @return true if a battery is present, false otherwise.
+     */
     bool isPresent();
+
+    /**
+     * Indicates whether the battery level is critical.
+     * @return true if the battery level is critical, false otherwise.
+     */
     bool isCritical();
+
+    /**
+     * Returns the current battery level.
+     * @return Battery level as a percentage.
+     */
     uint8_t getPercent();
 }

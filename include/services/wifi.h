@@ -25,13 +25,46 @@
 #include <cstdint>
 
 namespace services::wifi {
+    /**
+     * Initializes the Wi-Fi service.
+     * @return true if the service was successfully initialized, false otherwise.
+     */
     bool begin();
+
+    /**
+     * Indicates whether the Wi-Fi service has been initialized.
+     * @return true if the service is initialized, false otherwise.
+     */
     bool isInitialized();
+
+    /**
+     * Indicates whether the device is connected to a Wi-Fi network.
+     * @return true if the device is connected, false otherwise.
+     */
     bool isConnected();
+
+    /**
+     * Indicates whether a Wi-Fi connection attempt is in progress.
+     * @return true if a connection attempt is in progress, false otherwise.
+     */
     bool isConnecting();
 
+    /**
+     * Connects to a Wi-Fi network.
+     * @param ssid       Wi-Fi network SSID.
+     * @param password   Wi-Fi network password.
+     * @param timeoutSec Connection timeout in seconds.
+     * @return true if the connection was successfully established, false otherwise.
+     */
     bool connect(const char* ssid, const char* password, uint32_t timeoutSec = 15);
 
+    /**
+     * Updates the Wi-Fi service.
+     */
     void update();
+
+    /**
+     * Disconnects from the current Wi-Fi network.
+     */
     void disconnect();
 }

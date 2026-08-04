@@ -50,12 +50,39 @@ namespace services::update {
         char error[ERROR_SIZE] {};
     };
 
+    /**
+     * Initializes the update service.
+     * @return true if the service was successfully initialized, false otherwise.
+     */
     bool begin();
+
+    /**
+     * Indicates whether an update operation is currently running.
+     * @return true if an operation is in progress, false otherwise.
+     */
     bool isBusy();
 
+    /**
+     * Starts checking for a new firmware version.
+     * @return true if the check was successfully started, false otherwise.
+     */
     bool checkUpdate();
+
+    /**
+     * Starts the firmware update.
+     * @return true if the update was successfully started, false otherwise.
+     */
     bool startUpdate();
 
+    /**
+     * Returns a snapshot of the current update state.
+     * @return Current update snapshot.
+     */
     Snapshot snapshot();
+
+    /**
+     * Returns the current firmware version.
+     * @return Null-terminated firmware version string.
+     */
     const char* currentVersion();
 }

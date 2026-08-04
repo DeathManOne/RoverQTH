@@ -57,8 +57,10 @@ bool hash::isSha256Text(const char* const value) {
 }
 
 bool hash::normalizeSha256Text(const char* const input, char* const output, const size_t size) {
-    if (!isSha256Text(input) || output == nullptr || size < SHA256_TEXT_SIZE) { return false; }
+    if (output == nullptr || size == 0) { return false; }
+    output[0] = '\0';
 
+    if (!isSha256Text(input) || size < SHA256_TEXT_SIZE) { return false; }
     for (size_t index = 0; index < SHA256_TEXT_SIZE - 1; ++index)
         { output[index] = static_cast<char>(std::tolower(static_cast<unsigned char>(input[index]))); }
     output[SHA256_TEXT_SIZE - 1] = '\0';
@@ -90,8 +92,10 @@ bool hash::Sha256::update(const uint8_t* const data, const size_t size) {
 }
 
 bool hash::Sha256::finish(char* const output, const size_t size) {
-    if (!_active || output == nullptr || size < SHA256_TEXT_SIZE) { return false; }
+    if (output == nullptr || size == 0) { return false; }
+    output[0] = '\0';
 
+    if (!_active || size < SHA256_TEXT_SIZE) { return false; }
     uint8_t digest[SHA256_DIGEST_SIZE];
     const bool success = mbedtls_sha256_finish_ret(&_context, digest) == 0;
 
@@ -100,5 +104,8 @@ bool hash::Sha256::finish(char* const output, const size_t size) {
         output[0] = '\0';
         return false;
     }
-    return _digestToText(digest, output, size);
+
+    const bool result = _digestToText(digest, output, size);
+    std::memset(digest, 0, sizeof(digest));
+    return result;
 }

@@ -7,6 +7,29 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.7.0] - 2026-08-04
+
+### Added
+
+- Display shutdown support
+- Centralized display power-off through `display::shutdown()`
+
+### Changed
+
+- Display shutdown now delegates to the underlying ST7796S display driver
+- Display is cleared before hardware shutdown
+- Improved robustness across all `services::*` and `utilities::*` modules
+
+### Internal
+
+- Reviewed and hardened all `services::*` and `utilities::*` components
+- Improved defensive programming throughout the project
+- Improved error handling across internal modules
+- Improved overall code consistency and maintainability
+- Prepared the display layer for future power management features
+
+---
+
 ## [1.6.2] - 2026-07-25
 
 ### Added

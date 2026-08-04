@@ -25,5 +25,13 @@
 #include <cstddef>
 
 namespace utilities::locator {
+    /**
+     * Converts geographic coordinates to a Maidenhead locator.
+     * @param latitude  Latitude in decimal degrees.
+     * @param longitude Longitude in decimal degrees.
+     * @param buffer    Destination buffer.
+     * @param size      Size of the destination buffer in bytes.
+     * @return true if the locator was successfully generated, false otherwise.
+     */
     bool fromCoordinates(double latitude, double longitude, char* buffer, size_t size);
 }

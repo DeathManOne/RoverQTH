@@ -24,8 +24,31 @@
 #pragma once
 
 namespace utilities::units {
+    /**
+     * Converts kilometers to meters.
+     * @param kilometers Distance in kilometers.
+     * @return Distance in meters.
+     */
     double kilometersToMeters(double kilometers);
+
+    /**
+     * Converts kilometers to miles.
+     * @param kilometers Distance in kilometers.
+     * @return Distance in miles.
+     */
     double kilometersToMiles(double kilometers);
+
+    /**
+     * Converts meters to feet.
+     * @param meters Distance in meters.
+     * @return Distance in feet.
+     */
     double metersToFeet(double meters);
+
+    /**
+     * Converts a speed from kilometers per hour to miles per hour.
+     * @param kilometersPerHour Speed in kilometers per hour.
+     * @return Speed in miles per hour.
+     */
     double kilometersPerHourToMilesPerHour(double kilometersPerHour);
 }

@@ -30,6 +30,20 @@ namespace utilities::version {
     constexpr size_t TEXT_SIZE = 16;
     enum class Comparison : uint8_t {OLDER, EQUAL, NEWER};
 
+    /**
+     * Converts a version string to its numeric build representation.
+     * @param value Version string.
+     * @param build Receives the converted build number.
+     * @return true if the conversion succeeded, false otherwise.
+     */
     bool toBuild(const char* value, uint32_t& build);
+
+    /**
+     * Compares two version strings.
+     * @param left   Left version string.
+     * @param right  Right version string.
+     * @param result Receives the comparison result.
+     * @return true if both version strings are valid, false otherwise.
+     */
     bool compare(const char* left, const char* right, Comparison& result);
 }

@@ -29,7 +29,42 @@
 namespace utilities::coordinates {
     enum class Axis : uint8_t {LATITUDE, LONGITUDE};
 
-    bool formatDD (double value, Axis axis, char* buffer, size_t size);
+    /**
+     * Formats a coordinate in decimal degrees.
+     * Output format:
+     *   Latitude : DD.dddddd° H
+     *   Longitude: DDD.dddddd° H
+     * @param value  Coordinate in decimal degrees.
+     * @param axis   Coordinate axis.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return True if the formatted coordinate fits in the destination buffer, otherwise false.
+     */
+    bool formatDD(double value, Axis axis, char* buffer, size_t size);
+
+    /**
+     * Formats a coordinate in degrees and decimal minutes.
+     * Output format:
+     *   Latitude : DD°MM.mmmm' H
+     *   Longitude: DDD°MM.mmmm' H
+     * @param value  Coordinate in decimal degrees.
+     * @param axis   Coordinate axis.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return True if the formatted coordinate fits in the destination buffer, otherwise false.
+     */
     bool formatDDM(double value, Axis axis, char* buffer, size_t size);
+
+    /**
+     * Formats a coordinate in degrees, minutes and seconds.
+     * Output format:
+     *   Latitude : DD°MM'SS.ss" H
+     *   Longitude: DDD°MM'SS.ss" H
+     * @param value  Coordinate in decimal degrees.
+     * @param axis   Coordinate axis.
+     * @param buffer Destination buffer.
+     * @param size   Size of the destination buffer in bytes.
+     * @return if the formatted coordinate fits in the destination buffer, otherwise false.
+     */
     bool formatDMS(double value, Axis axis, char* buffer, size_t size);
 }

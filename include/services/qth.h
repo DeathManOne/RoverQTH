@@ -34,18 +34,59 @@ namespace services::qth {
         double altitude  = 0.0;
     };
 
+    /**
+     * Indicates whether the current record is long enough to be saved.
+     * @return true if the current record is long enough, false otherwise.
+     */
     bool isCurrentRecordLongEnough();
-    
+
+    /**
+     * Saves the current record as a temporary record.
+     * @return true if the temporary record was successfully saved, false otherwise.
+     */
     bool saveTemporaryRecord();
+
+    /**
+     * Discards the current temporary record.
+     * @return true if the temporary record was successfully discarded, false otherwise.
+     */
     bool discardTemporaryRecord();
+
+    /**
+     * Recovers a previously saved temporary record.
+     * @return Recovery result.
+     */
     RecoveryStatus recoverTemporaryRecord();
 
+    /**
+     * Discards the current temporary trace.
+     * @return true if the temporary trace was successfully discarded, false otherwise.
+     */
     bool discardTemporaryTrace();
 
-    bool appendTracePoint     (const TracePoint& point);
+    /**
+     * Appends a trace point to the current trace.
+     * @param point Trace point to append.
+     * @return true if the trace point was successfully appended, false otherwise.
+     */
+    bool appendTracePoint(const TracePoint& point);
+
+    /**
+     * Appends the final trace point to the current trace.
+     * @param point Final trace point to append.
+     * @return true if the trace point was successfully appended, false otherwise.
+     */
     bool appendFinalTracePoint(const TracePoint& point);
+
+    /**
+     * Clears the current trace.
+     * @return true if the trace was successfully cleared, false otherwise.
+     */
     bool resetTrace();
 
+    /**
+     * Saves the current QTH record.
+     * @return true if the record was successfully saved, false otherwise.
+     */
     bool saveCurrentRecord();
-
 }

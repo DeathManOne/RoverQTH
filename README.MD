@@ -41,6 +41,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 
 ### GNSS Information Display
 
+* Maidenhead locator
 * Latitude
 * Longitude
 * Speed
@@ -112,7 +113,7 @@ Each file contains:
 * Start position and UTC timestamp
 * End position and UTC timestamp
 * Altitude
-* Recorded movement trace
+* Recorded GNSS movement trace
 
 Derived information such as Maidenhead locators, duration, distance, bearing and altitude statistics can be recalculated from the stored positions and trace.
 
@@ -180,7 +181,7 @@ The OTA system provides:
 * Automatic reboot after successful update
 * Detailed error reporting
 
-Firmware updates are performed asynchronously without blocking the user interface.
+Firmware updates run asynchronously without blocking the user interface.
 
 ## Hardware Requirements
 
@@ -385,7 +386,7 @@ Implemented features:
 * Operational WiFi connectivity
 * OTA firmware updates
 * Online firmware update system
-* Persistent SD storage
+* Persistent SD card storage
 * Persistent QTH session recording
 * Independent JSON file for each QTH session
 * Automatic SD directory management

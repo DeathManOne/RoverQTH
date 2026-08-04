@@ -27,29 +27,23 @@
 namespace utilities::text {
     /**
      * Copies a null-terminated string into a fixed-size buffer.
-     *
      * The destination is always null-terminated when it is valid.
      * If the source does not fit, the copied value is truncated and
      * the function returns false. A null source is rejected and clears
      * the destination.
-     *
-     * @param destination Destination buffer.
+     * @param destination     Destination buffer.
      * @param destinationSize Total destination capacity.
-     * @param source Null-terminated source string.
-     *
+     * @param source          Null-terminated source string.
      * @return True if the complete source was copied, otherwise false.
      */
     bool copy(char* destination, size_t destinationSize, const char* source);
 
     /**
      * Compares two null-terminated strings.
-     *
      * Two identical pointers, including two null pointers, are considered
      * equal. A single null pointer is never equal to a valid string.
-     *
-     * @param left First string.
+     * @param left  First string.
      * @param right Second string.
-     *
      * @return True if both strings are equal, otherwise false.
      */
     bool equals(const char* left, const char* right);
