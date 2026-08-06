@@ -54,17 +54,19 @@ namespace services::wifi {
      * @param ssid       Wi-Fi network SSID.
      * @param password   Wi-Fi network password.
      * @param timeoutSec Connection timeout in seconds.
-     * @return true if the connection was successfully established, false otherwise.
+     * @return true if the connection attempt was started successfully,
+     *         false if the parameters are invalid or startup failed.
      */
     bool connect(const char* ssid, const char* password, uint32_t timeoutSec = 15);
 
     /**
-     * Updates the Wi-Fi service.
+     * @brief Polls the active connection attempt and handles success, failure, or timeout.
      */
     void update();
 
     /**
-     * Disconnects from the current Wi-Fi network.
+     * @brief Cancels any active connection attempt and disconnects
+     *        from the current Wi-Fi network.
      */
     void disconnect();
 }

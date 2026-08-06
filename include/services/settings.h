@@ -27,9 +27,11 @@
 #include <cstdint>
 
 namespace services::settings {
-    constexpr size_t CALLSIGN_SIZE      = 32;
-    constexpr size_t WIFI_SSID_SIZE     = 33;
-    constexpr size_t WIFI_PASSWORD_SIZE = 64;
+    constexpr size_t CALLSIGN_SIZE           = 32;
+    constexpr size_t CALLSIGN_SUFFIX_LENGTH  = 3;
+    constexpr size_t FULL_CALLSIGN_SIZE      = CALLSIGN_SIZE + CALLSIGN_SUFFIX_LENGTH;
+    constexpr size_t WIFI_SSID_SIZE          = 33;
+    constexpr size_t WIFI_PASSWORD_SIZE      = 64;
 
     enum class Units            : uint8_t {METRIC, IMPERIAL};
     enum class TFTRotation      : uint8_t {NORMAL = 1, REVERSED = 3};
@@ -71,7 +73,7 @@ namespace services::settings {
 
     /**
      * Initializes the settings service.
-     * @return true if the settings were successfully loaded, false otherwise.
+     * @return true if the persistent NVS backend was initialized successfully, false otherwise.
      */
     bool begin();
 
@@ -117,8 +119,8 @@ namespace services::settings {
     bool setBatteryMaximal(float voltage);
 
     /**
-     * Sets the high battery level threshold.
-     * @param ratio Battery percentage considered as high.
+     * @brief Sets the high-side share of the battery voltage-divider ratio.
+     * @param ratio Ratio percentage from 1 to 99.
      * @return true if the setting was successfully updated, false otherwise.
      */
     bool setBatteryRatioHigh(uint8_t ratio);
@@ -131,16 +133,17 @@ namespace services::settings {
 
     /**
      * Builds the complete callsign.
-     * @param buffer Destination buffer.
-     * @param size   Size of the destination buffer in bytes.
-     * @return true if the callsign was successfully generated, false otherwise.
+     * @param buffer Destination buffer, preferably FULL_CALLSIGN_SIZE bytes.
+     * @param size Destination buffer size.
+     * @return true if the full callsign fits in the buffer, false otherwise.
+     *         The buffer is cleared on failure when possible.
      */
     bool getFullCallsign(char* buffer, size_t size);
 
     /**
      * Sets the callsign.
      * @param callsign Callsign.
-     * @return true if the setting was successfully updated, false otherwise.
+     * @return true if the value fits in CALLSIGN_SIZE and was saved successfully, false otherwise. An empty value restores the default.
      */
     bool setCallsign(const char* callsign);
 
@@ -194,14 +197,16 @@ namespace services::settings {
     /**
      * Sets the Wi-Fi SSID.
      * @param ssid Wi-Fi SSID.
-     * @return true if the setting was successfully updated, false otherwise.
+     * @return true if the value fits in WIFI_SSID_SIZE and was saved successfully,
+     *         false otherwise. An empty value clears the stored SSID.
      */
     bool setWifiSSID(const char* ssid);
 
     /**
      * Sets the Wi-Fi password.
      * @param password Wi-Fi password.
-     * @return true if the setting was successfully updated, false otherwise.
+     * @return true if the value fits in WIFI_PASSWORD_SIZE and was saved successfully,
+     *         false otherwise. An empty value clears the stored password.
      */
     bool setWifiPassword(const char* password);
 

@@ -25,6 +25,7 @@
 #include <cstdio>
 
 #include "services/battery.h"
+#include "services/settings.h"
 #include "screens/main/title.h"
 #include "ui/fonts/RobotoMono_Bold_16.h"
 #include "ui/mockup/header.h"
@@ -33,23 +34,23 @@
 #include "utilities/format.h"
 #include "utilities/text.h"
 
-namespace battery = services::battery;
-namespace title   = screens::main::title;
-namespace header  = ui::mockup::header;
-namespace mockup  = ui::settings::mockup;
-namespace theme   = ui::settings::themes::defaults;
-namespace format  = utilities::format;
-namespace text    = utilities::text;
+namespace battery  = services::battery;
+namespace settings = services::settings;
+namespace title    = screens::main::title;
+namespace header   = ui::mockup::header;
+namespace mockup   = ui::settings::mockup;
+namespace theme    = ui::settings::themes::defaults;
+namespace format   = utilities::format;
+namespace text     = utilities::text;
 
 namespace {
-    constexpr size_t VALUE_SIZE = 32;
     struct Field {
         int outerX = 0;
         int outerW = 0;
         int innerX = 0;
         int innerW = 0;
 
-        char value[VALUE_SIZE] = {};
+        char value[settings::FULL_CALLSIGN_SIZE] = {};
 
         Field(const char* initial) {
             text::copy(value, sizeof(value), initial);

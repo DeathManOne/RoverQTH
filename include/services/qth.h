@@ -65,16 +65,19 @@ namespace services::qth {
     bool discardTemporaryTrace();
 
     /**
-     * Appends a trace point to the current trace.
-     * @param point Trace point to append.
-     * @return true if the trace point was successfully appended, false otherwise.
+     * @brief Processes a point for the active trace.
+     * A valid point is written only if it passes the timestamp, distance, and position-change filters.
+     * @param point Trace point to process.
+     * @return true if the point was accepted, whether written or filtered out;
+     *         false if the point is invalid or the write failed.
      */
     bool appendTracePoint(const TracePoint& point);
 
     /**
      * Appends the final trace point to the current trace.
      * @param point Final trace point to append.
-     * @return true if the trace point was successfully appended, false otherwise.
+     * @return true if the final point was accepted, written, or already present;
+     *         false if it is invalid, older than the last point, or cannot be written.
      */
     bool appendFinalTracePoint(const TracePoint& point);
 

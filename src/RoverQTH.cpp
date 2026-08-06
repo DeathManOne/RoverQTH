@@ -142,7 +142,7 @@ void app::loop() {
     }
 
     const uint32_t now = millis();
-    if (now >= _nextBatteryRefresh) {
+    if (static_cast<int32_t>(now - _nextBatteryRefresh) >= 0) {
         battery::update();
         if (battery::isCritical())
             { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
@@ -151,7 +151,7 @@ void app::loop() {
 
     manager::handleTouch();
 
-    if (now < _nextScreenRefresh) { return; }
+    if (static_cast<int32_t>(now - _nextScreenRefresh) < 0) { return; }
     uint32_t nextRefreshIn = SCREEN_REFRESH_MS;
 
     manager::update(nextRefreshIn);

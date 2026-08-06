@@ -29,8 +29,15 @@
 #include <mbedtls/sha256.h>
 
 namespace utilities::hash {
+    /**
+     * Size of a SHA-256 digest in bytes.
+     */
     constexpr size_t SHA256_DIGEST_SIZE = 32;
-    constexpr size_t SHA256_TEXT_SIZE   = 65;
+
+    /**
+     * Size of a null-terminated SHA-256 hexadecimal string.
+     */
+    constexpr size_t SHA256_TEXT_SIZE   = SHA256_DIGEST_SIZE * 2 + 1;
 
     /**
      * Checks whether a string is a valid SHA-256 hash.
@@ -40,7 +47,7 @@ namespace utilities::hash {
     bool isSha256Text(const char* value);
 
     /**
-     * Normalizes a SHA-256 hash string to lowercase.
+     * Validates and normalizes a SHA-256 hash string to lowercase.
      * @param input  Source SHA-256 hash.
      * @param output Destination buffer.
      * @param size   Size of the destination buffer in bytes.
@@ -48,15 +55,18 @@ namespace utilities::hash {
      */
     bool normalizeSha256Text(const char* input, char* output, size_t size);
 
+    /**
+     * Incremental SHA-256 hashing context.
+     */
     class Sha256 final {
         public:
             /**
-             * Creates a new SHA-256 calculator.
+             * Constructs a new SHA-256 context.
              */
             Sha256();
 
             /**
-             * Releases the SHA-256 calculator.
+             * Releases the SHA-256 context.
              */
             ~Sha256();
 
@@ -81,7 +91,7 @@ namespace utilities::hash {
             Sha256& operator = (Sha256&&) = delete;
 
             /**
-             * Starts a new incremental SHA-256 computation.
+             * Initializes a new incremental SHA-256 computation.
              * @return true if the context was successfully initialized, false otherwise.
              */
             bool begin();
@@ -95,9 +105,9 @@ namespace utilities::hash {
             bool update(const uint8_t* data, size_t size);
 
             /**
-             * Finalizes the current SHA-256 computation.
+             * Finalizes the current SHA-256 computation and writes the hexadecimal digest.
              * @param output Destination buffer.
-             * @param length Size of the destination buffer in bytes.
+             * @param size Size of the destination buffer in bytes.
              * @return true if the hash was successfully written, false otherwise.
              */
             bool finish(char* output, size_t size);

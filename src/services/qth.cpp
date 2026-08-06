@@ -60,8 +60,10 @@ namespace {
     constexpr const char* FILE_QTH_FINAL_TEMPORARY = "/RoverQTH/qth/QTH.final.tmp";
 
     struct TraceMergeContext {
-        bool first = true;
-        bool valid = true;
+        uint32_t lastUTC = 0U;
+        bool first       = true;
+        bool hasPoint    = false;
+        bool valid       = true;
     };
 
     struct LastTraceContext {
@@ -205,6 +207,11 @@ namespace {
             return false;
         }
 
+        if (context->hasPoint && point.utc < context->lastUTC) {
+            context->valid = false;
+            return false;
+        }
+
         if (!context->first && !storage::appendFile(FILE_QTH_FINAL_TEMPORARY, ",")) {
             context->valid = false;
             return false;
@@ -215,7 +222,9 @@ namespace {
             return false;
         }
 
-        context->first = false;
+        context->lastUTC  = point.utc;
+        context->first    = false;
+        context->hasPoint = true;
         return true;
     }
 
@@ -358,6 +367,11 @@ namespace {
             return false;
         }
 
+        if (context->hasPoint && point.utc < context->point.utc) {
+            context->valid = false;
+            return false;
+        }
+
         context->point    = point;
         context->hasPoint = true;
         return true;
@@ -395,7 +409,8 @@ namespace {
     }
 
     bool _writeTracePoint(const qth::TracePoint& point) {
-        if (!_validateTracePoint(point)) { return false; }
+        if (!_validateTracePoint(point))                           { return false; }
+        if (_hasLastTracePoint && point.utc < _lastTracePoint.utc) { return false; }
 
         char jsonBuffer[TRACE_JSON_SIZE];
         json::Writer writer(jsonBuffer, sizeof(jsonBuffer));

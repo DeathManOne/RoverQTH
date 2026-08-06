@@ -63,10 +63,12 @@ namespace services::navigation {
      */
     void begin();
 
-    /**
-     * Updates the navigation service with the latest GPS position.
-     * @param coordinate Current geographic coordinate.
-     * @param fixValid   true if the GPS fix is valid, false otherwise.
+   /**
+     * @brief Updates the current GPS fix.
+     * A fix marked as valid is ignored if either coordinate is non-finite
+     * or outside its geographic range.
+     * @param coordinate Current coordinate. Its latitude must be from -90 to 90 and its longitude from -180 to 180.
+     * @param fixValid Whether the receiver reports a valid fix.
      */
     void updateGPSFix(const Coordinate& coordinate, bool fixValid);
 
@@ -93,7 +95,7 @@ namespace services::navigation {
      * Restores a previously started mark.
      * @param start    Starting coordinate.
      * @param startUTC UTC timestamp of the mark start.
-     * @return true if the mark was successfully restored, false otherwise.
+     * @return true if the mark was restored, false if its timestamps, coordinates, or state are invalid.
      */
     bool restoreMark(const Coordinate& start, uint32_t startUTC);
 
@@ -115,8 +117,8 @@ namespace services::navigation {
     MarkState markState();
 
     /**
-     * Returns the current mark duration.
-     * @return Elapsed duration in seconds.
+     * @brief Returns the duration of the completed mark.
+     * @return Mark duration in seconds, or zero while idle or recording.
      */
     uint32_t markDurationSeconds();
 

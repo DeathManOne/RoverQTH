@@ -56,7 +56,7 @@ namespace services::gps {
      * @param rx        UART RX pin.
      * @param tx        UART TX pin.
      * @param finalBaud Target baud rate.
-     * @param timeout   Initialization timeout in milliseconds.
+     * @param timeout Initialization timeout in seconds.
      * @return true if the GPS was successfully initialized, false otherwise.
      */
     bool begin  (HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
@@ -67,22 +67,22 @@ namespace services::gps {
      * @param rx        UART RX pin.
      * @param tx        UART TX pin.
      * @param finalBaud Target baud rate.
-     * @param timeout   Restart timeout in milliseconds.
+     * @param timeout Restart timeout in seconds.
      * @return true if the GPS was successfully restarted, false otherwise.
      */
     bool restart(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
 
     /**
-     * Updates the GPS state.
-     * @param timeoutMs Maximum processing time in milliseconds.
-     * @return true if new GPS data was processed, false otherwise.
+     * @brief Reads and processes new GPS data.
+     * @param timeoutMs Maximum receiver polling time in milliseconds.
+     * @return true if a snapshot with a valid GNSS fix was processed, false otherwise.
      */
     bool update(uint32_t timeoutMs = 10);
 
     /**
      * Retrieves the latest GPS data snapshot.
      * @param snapshot Receives the current GPS data.
-     * @return true if a valid snapshot was retrieved, false otherwise.
+     * @return true if receiver data has been cached, false otherwise.
      */
     bool getSnapshot(Snapshot& snapshot);
 

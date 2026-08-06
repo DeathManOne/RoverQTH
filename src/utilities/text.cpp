@@ -47,7 +47,7 @@ bool text::equals(const char* const left, const char* const right) {
     if (left == right)                       { return true; }
     if (left == nullptr || right == nullptr) { return false; }
 
-    size_t index = 0;
+    size_t index = 0U;
     while (left[index] != '\0' && right[index] != '\0') {
         if (left[index] != right[index])
             { return false; }

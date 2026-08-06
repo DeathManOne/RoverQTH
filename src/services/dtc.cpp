@@ -1,5 +1,5 @@
 /*
- * src/utilities/clock.cpp
+ * src/services/dtc.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,11 +24,15 @@
 #include <Arduino.h>
 #include <cstdio>
 #include <ctime>
-#include "utilities/clock.h"
+#include <sys/time.h>
 
-namespace uClock = utilities::clock;
+#include "services/dtc.h"
+
+namespace dtc = services::dtc;
 
 namespace {
+    portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
+
     bool _synced         = false;
     uint32_t _syncMillis = 0;
     uint32_t _syncEpoch  = 0;
@@ -37,6 +41,7 @@ namespace {
     bool _getUTC(uint32_t utcEpoch, tm &utc);
     uint8_t _daysInMonth(const int year, const int month);
     int64_t _daysFromCivil(int year, unsigned month, unsigned day);
+    uint32_t _currentEpoch(uint32_t syncEpoch, uint32_t syncMillis, uint32_t currentMillis);
 
     bool _isLeapYear(const int year) {
         return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
@@ -65,9 +70,18 @@ namespace {
 
         return (static_cast<int64_t>(era) * 146097 + static_cast<int64_t>(dayOfEra) - 719468);
     }
+
+    uint32_t _currentEpoch(const uint32_t syncEpoch, const uint32_t syncMillis, const uint32_t currentMillis) {
+        const uint32_t elapsedSeconds = (currentMillis - syncMillis) / 1000U;
+        const uint64_t currentEpoch   = static_cast<uint64_t>(syncEpoch) + static_cast<uint64_t>(elapsedSeconds);
+
+        if (currentEpoch > UINT32_MAX)
+            { return UINT32_MAX; }
+        return static_cast<uint32_t>(currentEpoch);
+    }
 }
 
-bool uClock::formatISO8601(const uint32_t utcEpoch, char* const buffer, const size_t size) {
+bool dtc::formatISO8601(const uint32_t utcEpoch, char* const buffer, const size_t size) {
     if (buffer == nullptr || size == 0U) { return false; }
     buffer[0] = '\0';
 
@@ -88,7 +102,7 @@ bool uClock::formatISO8601(const uint32_t utcEpoch, char* const buffer, const si
     return true;
 }
 
-uint32_t uClock::toEpochUTC(
+uint32_t dtc::toEpochUTC(
     int year, int month,  int day,
     int hour, int minute, int second
 ) {
@@ -110,32 +124,50 @@ uint32_t uClock::toEpochUTC(
     return static_cast<uint32_t>(epoch);
 }
 
-void uClock::sync(const uint32_t utcEpoch) {
-    if (utcEpoch == 0U)              { return; }
-    if (_synced && utcEpoch < now()) { return; }
+void dtc::sync(const uint32_t utcEpoch) {
+    if (utcEpoch == 0U) { return; }
+
+    portENTER_CRITICAL(&_lock);
+    const uint32_t currentMillis = millis();
+
+    if (_synced) {
+        const uint32_t currentEpoch = _currentEpoch(_syncEpoch, _syncMillis, currentMillis);
+        if (utcEpoch < currentEpoch) {
+            portEXIT_CRITICAL(&_lock);
+            return;
+        }
+    }
 
     _syncEpoch  = utcEpoch;
-    _syncMillis = millis();
+    _syncMillis = currentMillis;
     _synced     = true;
+    portEXIT_CRITICAL(&_lock);
+
+    timeval systemTime {};
+    systemTime.tv_sec = static_cast<time_t>(utcEpoch);
+    settimeofday(&systemTime, nullptr);
 }
 
-bool uClock::isSynced() {
-    return _synced;
+bool dtc::isSynced() {
+    portENTER_CRITICAL(&_lock);
+    const bool synced = _synced;
+    portEXIT_CRITICAL(&_lock);
+    return synced;
 }
 
-uint32_t uClock::now() {
-    if (!_synced) { return 0U; }
+uint32_t dtc::now() {
+    portENTER_CRITICAL(&_lock);
+    const bool synced         = _synced;
+    const uint32_t syncMillis = _syncMillis;
+    const uint32_t syncEpoch  = _syncEpoch;
+    portEXIT_CRITICAL(&_lock);
 
-    const uint32_t elapsedSeconds = (millis() - _syncMillis) / 1000U;
-    const uint64_t currentEpoch   =
-        static_cast<uint64_t>(_syncEpoch)     +
-        static_cast<uint64_t>(elapsedSeconds);
-
-    if (currentEpoch > UINT32_MAX) { return UINT32_MAX; }
-    return static_cast<uint32_t>(currentEpoch);
+    if (!synced)
+        { return 0U; }
+    return _currentEpoch(syncEpoch, syncMillis, millis());
 }
 
-bool uClock::formatTime(
+bool dtc::formatTime(
     const uint8_t hour, const uint8_t minute, const uint8_t second,
     const bool valid,   char* const buffer,   const size_t size,
     const bool withSecond
@@ -160,7 +192,7 @@ bool uClock::formatTime(
     return written >= 0 && static_cast<size_t>(written) < size;
 }
 
-bool uClock::getDate(char* const buffer, const size_t size) {
+bool dtc::getDate(char* const buffer, const size_t size) {
     if (buffer == nullptr || size == 0U) { return false; }
     buffer[0] = '\0';
 
@@ -182,7 +214,7 @@ bool uClock::getDate(char* const buffer, const size_t size) {
     return true;
 }
 
-bool uClock::getTime(char* const buffer, const size_t size, const bool withSecond) {
+bool dtc::getTime(char* const buffer, const size_t size, const bool withSecond) {
     tm utc {};
     const bool valid = _getUTC(now(), utc);
     return formatTime(
@@ -193,8 +225,10 @@ bool uClock::getTime(char* const buffer, const size_t size, const bool withSecon
     );
 }
 
-void uClock::reset() {
+void dtc::reset() {
+    portENTER_CRITICAL(&_lock);
     _synced      = false;
     _syncMillis  = 0;
     _syncEpoch   = 0;
+    portEXIT_CRITICAL(&_lock);
 }

@@ -22,17 +22,24 @@
  */
 
 #include <cstdio>
+#include <new>
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
+#include "services/dtc.h"
 #include "services/storage.h"
-#include "utilities/clock.h"
 #include "utilities/text.h"
 
+namespace dtc     = services::dtc;
 namespace storage = services::storage;
-namespace uClock  = utilities::clock;
 namespace text    = utilities::text;
 
 namespace {
-    constexpr size_t MAX_LOGS_WAITING   = 20;
-    constexpr size_t MAX_LOGS_LENGTH    = 256;
+    SemaphoreHandle_t _mutex = nullptr;
+
+    constexpr size_t MAX_LOGS_WAITING = 20;
+    constexpr size_t MAX_LOGS_LENGTH  = 256;
 
     constexpr const char* DIR_ROOT             = "/RoverQTH";
 
@@ -81,9 +88,9 @@ namespace {
         if (!data || data[0] == '\0' || !buffer || size == 0) { return false; }
 
         int written = 0;
-        if (uClock::isSynced()) {
+        if (dtc::isSynced()) {
             char timestamp[21];
-            if (!uClock::formatISO8601(uClock::now(), timestamp, sizeof(timestamp)))
+            if (!dtc::formatISO8601(dtc::now(), timestamp, sizeof(timestamp)))
                 { return false; }
             written = std::snprintf(buffer, size, "%s | %s\n", timestamp, data);
         } else {
@@ -166,11 +173,45 @@ namespace {
         context->buffer[context->length] = '\0';
         return true;
     }
+
+    class StorageGuard {
+        public:
+            StorageGuard() {
+                if (_mutex == nullptr) {
+                    _locked = true;
+                    return;
+                }
+                _locked = xSemaphoreTakeRecursive(_mutex, portMAX_DELAY) == pdTRUE;
+            }
+
+            ~StorageGuard() {
+                if (_locked && _mutex != nullptr)
+                    { xSemaphoreGiveRecursive(_mutex); }
+            }
+
+            explicit operator bool() const {
+                return _locked;
+            }
+
+        private:
+            bool _locked = false;
+    };
 }
 
 bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
+    if (_mutex == nullptr) {
+        _mutex = xSemaphoreCreateRecursiveMutex();
+        if (_mutex == nullptr) { return false; }
+    }
+
+    StorageGuard guard;
+    if (!guard) { return false; }
+
     spi.begin(SD_CLK, SD_MISO, SD_MOSI);
-    if (!_sd) { _sd = new SDCard(); }
+    if (!_sd) {
+        _sd = new (std::nothrow) SDCard();
+        if (!_sd) { return false; }
+    }
 
     const uint32_t start = millis();
     do {
@@ -188,20 +229,28 @@ bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
 }
 
 bool storage::isReady() {
+    StorageGuard guard;
+    if (!guard) { return false; }
     return _sd && _ready;
 }
 
 bool storage::readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used) {
+    StorageGuard guard;
+    if (!guard)     { return false; }
     if (!isReady()) { return false; }
     return _sd->cardInfos(type, size, total, used);
 }
 
 bool storage::fileExists(const char* const path) {
+    StorageGuard guard;
+    if (!guard)                                           { return false; }
     if (!isReady() || path == nullptr || path[0] == '\0') { return false; }
     return _sd->fileExists(path);
 }
 
 bool storage::readFile(const char* const path, char* const buffer, const size_t size) {
+    StorageGuard guard;
+    if (!guard) { return false; }
     if (!isReady() || path == nullptr || path[0] == '\0' || buffer == nullptr || size == 0U)
         { return false; }
     buffer[0] = '\0';
@@ -216,22 +265,30 @@ bool storage::readFile(const char* const path, char* const buffer, const size_t 
 }
 
 bool storage::readFileLines(const char* const path, const LineCallback callback, void* const userData) {
+    StorageGuard guard;
+    if (!guard) { return false; }
     if (!isReady() || path == nullptr || path[0] == '\0' || callback == nullptr) { return false; }
     if (!_sd->fileReadLines( path, callback, userData))                          { return false; }
     return true;
 }
 
 bool storage::writeFile(const char* const path, const char* const data) {
+    StorageGuard guard;
+    if (!guard) { return false; }
     if (!isReady() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
     return _sd->fileWrite(path, data);
 }
 
 bool storage::appendFile(const char* const path, const char* const data) {
+    StorageGuard guard;
+    if (!guard) { return false; }
     if (!isReady() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
     return _sd->fileWriteOrAppend(path, data);
 }
 
 bool storage::renameFile(const char* const source, const char* const destination) {
+    StorageGuard guard;
+    if (!guard) { return false; }
     if (!isReady()             ||
         source == nullptr      || source[0] == '\0'      ||
         destination == nullptr || destination[0] == '\0'
@@ -240,6 +297,8 @@ bool storage::renameFile(const char* const source, const char* const destination
 }
 
 bool storage::deleteFile(const char* const path) {
+    StorageGuard guard;
+    if (!guard) { return false; }
     if (!isReady() || path == nullptr || path[0] == '\0') { return false; }
     return _sd->fileDelete(path);
 }
@@ -249,6 +308,9 @@ bool storage::appendErrorRecord(const char* const data) {
 
     char line[MAX_LOGS_LENGTH];
     if (!_formatRecord(data, line, sizeof(line))) { return false; }
+
+    StorageGuard guard;
+    if (!guard) { return false; }
 
     if (!isReady())                                     { return _queueLogs(FILE_LOGS_ERROR, line); }
     if (_waitingLogsCount > 0U && !_flushWaitingLogs()) { return _queueLogs(FILE_LOGS_ERROR, line); }
@@ -262,6 +324,9 @@ bool storage::appendLogRecord(const char* const data) {
 
     char line[MAX_LOGS_LENGTH];
     if (!_formatRecord(data, line, sizeof(line))) { return false; }
+
+    StorageGuard guard;
+    if (!guard) { return false; }
 
     if (!isReady())                                      { return _queueLogs(FILE_LOGS_SYSTEM, line); }
     if (_waitingLogsCount > 0U && !_flushWaitingLogs())  { return _queueLogs(FILE_LOGS_SYSTEM, line); }

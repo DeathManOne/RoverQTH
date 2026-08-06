@@ -32,8 +32,8 @@
 #include "screens/menu/page.h"
 #include "screens/menu/storage.h"
 #include "screens/menu/updates.h"
+#include "services/dtc.h"
 #include "ui/mockup/buttons.h"
-#include "utilities/clock.h"
 
 using screens::menu::About;
 using screens::menu::Battery;
@@ -47,8 +47,8 @@ using screens::menu::Updates;
 namespace title      = screens::main::title;
 namespace menu       = screens::menu;
 namespace navigation = screens::menu::navigation;
+namespace dtc        = services::dtc;
 namespace buttons    = ui::mockup::buttons;
-namespace uClock     = utilities::clock;
 
 namespace {
     menu::Item _currentItem = menu::Item::GENERAL;
@@ -112,8 +112,8 @@ void menu::update(ST7796S::MSP4021 &tft) {
     char time[16];
     char battery[8];
 
-    uClock::getDate(date, sizeof(date));
-    uClock::getTime(time, sizeof(time));
+    dtc::getDate(date, sizeof(date));
+    dtc::getTime(time, sizeof(time));
     title::getBatteryLevel(battery, sizeof(battery));
     title::updateDate(tft, date);
     title::updateTime(tft, time);

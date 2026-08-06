@@ -61,13 +61,23 @@ bool wifi::isConnected  () { return (_initialized && WiFi.status() == WL_CONNECT
 bool wifi::isConnecting () { return (_initialized && _connecting); }
 
 bool wifi::connect(const char* ssid, const char* password, uint32_t timeoutSec) {
-    if (!_initialized || !ssid || ssid[0] == '\0' || timeoutSec == 0) { return false; }
-    if (!password) { password = ""; }
-    
+    if (!_initialized || ssid == nullptr || ssid[0] == '\0' || timeoutSec == 0U)
+        { return false; }
+    if (timeoutSec > UINT32_MAX / 1000U)
+        { return false; }
+    if (password == nullptr)
+        { password = ""; }
     WiFi.disconnect();
-    WiFi.begin(ssid, password);
+
+    const wl_status_t status = WiFi.begin(ssid, password);
+    if (status == WL_CONNECT_FAILED) {
+        _resetConnectionState();
+        storage::appendErrorRecord("WIFI_CONNECTION_START_FAILED");
+        return false;
+    }
+
     _connectionStartedAt = millis();
-    _connectionTimeoutMs = timeoutSec * 1000;
+    _connectionTimeoutMs = timeoutSec * 1000U;
     _connecting          = true;
 
     storage::appendLogRecord("WIFI_CONNECTING");

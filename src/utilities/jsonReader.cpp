@@ -536,7 +536,11 @@ bool Reader::string(const char* const key, char* const buffer, const size_t size
     const char* end   = nullptr;
 
     if (!_findValue(key, begin, end)) { return false; }
-    return _decodeString(begin, end, buffer, size);
+    if (!_decodeString(begin, end, buffer, size)) {
+        buffer[0] = '\0';
+        return false;
+    }
+    return true;
 }
 
 bool Reader::unsignedInteger(const char* const key, uint64_t& value) const {

@@ -29,40 +29,54 @@ namespace battery  = services::battery;
 namespace settings = services::settings;
 
 namespace {
-    constexpr float BATTERY_PRESENT             = 2.50f;
-    constexpr float BATTERY_LOW_PERCENT         = 20.0f;
-    constexpr float BATTERY_CRITICAL_PERCENT    = 10.0f;
+    portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
 
-    constexpr float ADC_VREF              = 3.3f;
-    constexpr int ADC_MAX                 = 4095;
-    constexpr uint8_t ADC_SAMPLE_COUNT    = 8U;
+    constexpr float BATTERY_PRESENT          = 2.50f;
+    constexpr float BATTERY_CRITICAL_PERCENT = 10.0f;
+    constexpr float MILLIVOLTS_PER_VOLT      = 1000.0f;
+    constexpr uint8_t ADC_SAMPLE_COUNT       = 8U;
 
-    uint8_t _batteryPin  = 0;
-    uint8_t _percent     = 0;
-    float _voltage       = 0.0f;
-    bool _critical       = false;
-    bool _present        = false;
-    bool _low            = false;
+    uint8_t _batteryPin = 0;
+    uint8_t _percent    = 0;
+    bool _critical      = false;
+    bool _present       = false;
 
     void _resetState() {
-        _voltage  = 0.0f;
+        portENTER_CRITICAL(&_lock);
         _percent  = 0;
         _present  = false;
-        _low      = false;
         _critical = false;
+        portEXIT_CRITICAL(&_lock);
     }
 
-    uint16_t _readAverageADC() {
+    uint32_t _readAverageMillivolts() {
         uint32_t total = 0;
         for (uint8_t sample = 0; sample < ADC_SAMPLE_COUNT; ++sample)
-            { total += static_cast<uint32_t>(analogRead(_batteryPin)); }
-        return static_cast<uint16_t>(total / ADC_SAMPLE_COUNT);
+            { total += analogReadMilliVolts(_batteryPin); }
+        return total / ADC_SAMPLE_COUNT;
     }
 }
 
-uint8_t battery::getPercent() { return _percent; }
-bool    battery::isPresent () { return _present; }
-bool    battery::isCritical() { return _critical; }
+uint8_t battery::getPercent() {
+    portENTER_CRITICAL(&_lock);
+    const uint8_t value = _percent;
+    portEXIT_CRITICAL(&_lock);
+    return value;
+}
+
+bool battery::isPresent () {
+    portENTER_CRITICAL(&_lock);
+    const bool value = _present;
+    portEXIT_CRITICAL(&_lock);
+    return value;
+}
+
+bool battery::isCritical() {
+    portENTER_CRITICAL(&_lock);
+    const bool value = _critical;
+    portEXIT_CRITICAL(&_lock);
+    return value;
+}
 
 void battery::begin(uint8_t pin) {
     _batteryPin = pin;
@@ -94,22 +108,20 @@ void battery::update() {
         return;
     }
 
-    const float lowVoltage      = min + (range * BATTERY_LOW_PERCENT / 100.0f);
     const float criticalVoltage = min + (range * BATTERY_CRITICAL_PERCENT / 100.0f);
-    const uint16_t adcValue     = _readAverageADC();
+    const uint32_t millivolts   = _readAverageMillivolts();
+    const float voltage         = (static_cast<float>(millivolts) / MILLIVOLTS_PER_VOLT) / ratioLow;
+    const bool present          = voltage > BATTERY_PRESENT;
+    const bool critical         = present && voltage <= criticalVoltage;
 
-    _voltage  = (static_cast<float>(adcValue) / static_cast<float>(ADC_MAX)) * ADC_VREF / ratioLow;
-    _present  = _voltage > BATTERY_PRESENT;
-    _low      = _present && _voltage <= lowVoltage;
-    _critical = _present && _voltage <= criticalVoltage;
+    uint8_t percent     = 0;
+    if      (voltage <= min || !present) { percent = 0; }
+    else if (voltage >= max)             { percent = 100; }
+    else { percent = static_cast<uint8_t>(((voltage - min) * 100.0f) / range); }
 
-    if (!_present || _voltage <= min) {
-        _percent = 0;
-        return;
-    }
-    if (_voltage >= max) {
-        _percent = 100;
-        return;
-    }
-    _percent = static_cast<uint8_t>(((_voltage - min) * 100.0f) / range);
+    portENTER_CRITICAL(&_lock);
+    _present  = present;
+    _critical = critical;
+    _percent  = percent;
+    portEXIT_CRITICAL(&_lock);
 }

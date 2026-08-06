@@ -1,5 +1,5 @@
 /*
- * include/utilities/clock.h
+ * include/services/dtc.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -26,12 +26,10 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace utilities::clock {
+namespace services::dtc {
     /**
-     * Converts a UTC calendar date and time to a Unix epoch.
-     * The date must be valid and within the range supported by
-     * uint32_t Unix timestamps. Invalid values return zero.
-     * @param year   Full year, starting from 1970.
+     * @brief Converts a calendar date and time to a non-zero UTC epoch.
+     * @param year Full year, greater than or equal to 1970.
      * @param month  Month from 1 to 12.
      * @param day    Day valid for the selected month and year.
      * @param hour   Hour from 0 to 23.
@@ -56,10 +54,10 @@ namespace utilities::clock {
     bool formatISO8601(uint32_t utcEpoch, char* buffer, size_t size);
 
     /**
-     * Synchronizes the monotonic UTC clock.
-     * A zero or older epoch is ignored. An identical or newer
-     * epoch refreshes the internal millis() reference.
-     * @param utcEpoch UTC Unix epoch in seconds.
+     * @brief Synchronizes the internal UTC clock and the ESP32 system clock.
+     * A zero or older epoch is ignored. An identical or newer epoch refreshes
+     * the internal millis() reference and updates the system clock used by TLS.
+     * @param utcEpoch UTC epoch in seconds.
      */
     void sync(uint32_t utcEpoch);
 

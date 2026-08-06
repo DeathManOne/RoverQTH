@@ -28,13 +28,13 @@
 #include "screens/main/locator.h"
 #include "screens/main/title.h"
 #include "services/battery.h"
+#include "services/dtc.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/settings.h"
 #include "ui/mockup/buttons.h"
 #include "ui/settings/gps.h"
 #include "ui/settings/themes/defaults.h"
-#include "utilities/clock.h"
 #include "utilities/coordinates.h"
 #include "utilities/format.h"
 #include "utilities/locator.h"
@@ -45,13 +45,13 @@ namespace datas       = screens::main::datas;
 namespace locator     = screens::main::locator;
 namespace title       = screens::main::title;
 namespace battery     = services::battery;
+namespace dtc         = services::dtc;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
 namespace settings    = services::settings;
 namespace buttons     = ui::mockup::buttons;
 namespace uiGps       = ui::settings::gps;
 namespace theme       = ui::settings::themes::defaults;
-namespace uClock      = utilities::clock;
 namespace coordinates = utilities::coordinates;
 namespace format      = utilities::format;
 namespace uLocator    = utilities::locator;
@@ -129,15 +129,15 @@ void main::preloadGPS() {
     char hdgBuffer[16];
     char aslBuffer[16];
     char gpsStatus[32];
-    char callsign[32];
+    char callsign[settings::FULL_CALLSIGN_SIZE];
 
     gps::Snapshot gpsData {};
     gps::getSnapshot(gpsData);
 
-    uClock::getDate(date, sizeof(date));
-    uClock::getTime(time, sizeof(time));
+    dtc::getDate(date, sizeof(date));
+    dtc::getTime(time, sizeof(time));
 
-    uClock::formatTime(gpsData.hour, gpsData.minute, gpsData.second, gpsData.timeValid, gpsTime, sizeof(gpsTime));
+    dtc::formatTime(gpsData.hour, gpsData.minute, gpsData.second, gpsData.timeValid, gpsTime, sizeof(gpsTime));
 
     masl     = gpsData.altitude;
     hdop     = gpsData.hdop;
@@ -252,10 +252,10 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     gps::Snapshot gpsData {};
     gps::getSnapshot(gpsData);
 
-    uClock::getDate(date, sizeof(date));
-    uClock::getTime(time, sizeof(time));
+    dtc::getDate(date, sizeof(date));
+    dtc::getTime(time, sizeof(time));
 
-    uClock::formatTime(gpsData.hour, gpsData.minute, gpsData.second, gpsData.timeValid, gpsTime, sizeof(gpsTime));
+    dtc::formatTime(gpsData.hour, gpsData.minute, gpsData.second, gpsData.timeValid, gpsTime, sizeof(gpsTime));
 
     masl     = gpsData.altitude;
     hdop     = gpsData.hdop;

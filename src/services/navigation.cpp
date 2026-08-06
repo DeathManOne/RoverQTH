@@ -22,16 +22,19 @@
  */
 
 #include <Arduino.h>
+#include <cmath>
 
+#include "services/dtc.h"
 #include "services/navigation.h"
-#include "utilities/clock.h"
 #include "utilities/distance.h"
 
+namespace dtc        = services::dtc;
 namespace navigation = services::navigation;
-namespace uClock     = utilities::clock;
 namespace distance   = utilities::distance;
 
 namespace {
+    portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
+
     constexpr size_t TRACE_QUEUE_SIZE         = 8U;
     constexpr uint32_t TRACE_INTERVAL_SECONDS = 1U;
 
@@ -53,7 +56,6 @@ namespace {
     uint32_t _lastTraceUTC           = 0U;
     bool _hasCurrent                 = false;
     bool _currentFixValid            = false;
-    portMUX_TYPE _lock               = portMUX_INITIALIZER_UNLOCKED;
     navigation::MarkState _markState = navigation::MarkState::IDLE;
 
     void _copyNavigationData(NavigationData& data) {
@@ -81,6 +83,15 @@ namespace {
         ++_traceQueueCount;
         return true;
     }
+
+    bool _isValidCoordinate(const navigation::Coordinate& coordinate) {
+        return
+            std::isfinite(coordinate.latitude)  &&
+            std::isfinite(coordinate.longitude) &&
+            std::isfinite(coordinate.altitude)  &&
+            coordinate.latitude  >= -90.0       && coordinate.latitude  <= 90.0  &&
+            coordinate.longitude >= -180.0      && coordinate.longitude <= 180.0;
+    }
 }
 
 void navigation::begin() {
@@ -96,10 +107,12 @@ void navigation::begin() {
 }
 
 void navigation::updateGPSFix(const Coordinate& coordinate, const bool fixValid) {
-    portENTER_CRITICAL(&_lock);
-    _currentFixValid = fixValid;
+    const bool coordinateValid = fixValid && _isValidCoordinate(coordinate);
 
-    if (!fixValid) {
+    portENTER_CRITICAL(&_lock);
+    _currentFixValid = coordinateValid;
+
+    if (!coordinateValid) {
         portEXIT_CRITICAL(&_lock);
         return;
     }
@@ -108,7 +121,7 @@ void navigation::updateGPSFix(const Coordinate& coordinate, const bool fixValid)
     _hasCurrent = true;
 
     if (_markState == MarkState::RECORDING) {
-        const uint32_t utc = uClock::now();
+        const uint32_t utc = dtc::now();
         if (utc != 0U && (_lastTraceUTC == 0U || utc - _lastTraceUTC >= TRACE_INTERVAL_SECONDS)) {
             TracePoint point {};
             point.coordinate = coordinate;
@@ -150,9 +163,9 @@ bool navigation::discardPendingTracePoint() {
 }
 
 bool navigation::startMark() {
-    if (!uClock::isSynced()) { return false; }
+    if (!dtc::isSynced()) { return false; }
 
-    const uint32_t utc = uClock::now();
+    const uint32_t utc = dtc::now();
     if (utc == 0U) { return false; }
 
     const uint32_t startedAt = millis();
@@ -187,9 +200,10 @@ bool navigation::startMark() {
 }
 
 bool navigation::restoreMark(const Coordinate& start, const uint32_t startUTC) {
-    if (!uClock::isSynced() || startUTC == 0U) { return false; }
+    if (!_isValidCoordinate(start))         { return false; }
+    if (!dtc::isSynced() || startUTC == 0U) { return false; }
 
-    const uint32_t currentUTC = uClock::now();
+    const uint32_t currentUTC = dtc::now();
     if (currentUTC == 0U || currentUTC < startUTC) { return false; }
 
     const uint32_t elapsedSeconds = currentUTC - startUTC;
@@ -217,9 +231,9 @@ bool navigation::restoreMark(const Coordinate& start, const uint32_t startUTC) {
 }
 
 bool navigation::stopMark() {
-    if (!uClock::isSynced()) { return false; }
+    if (!dtc::isSynced()) { return false; }
 
-    const uint32_t utc = uClock::now();
+    const uint32_t utc = dtc::now();
     if (utc == 0U) { return false; }
 
     const uint32_t stoppedAt = millis();

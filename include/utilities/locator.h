@@ -26,7 +26,7 @@
 
 namespace utilities::locator {
     /**
-     * Converts geographic coordinates to a Maidenhead locator.
+     * Converts geographic coordinates to a 10-character Maidenhead locator.
      * @param latitude  Latitude in decimal degrees.
      * @param longitude Longitude in decimal degrees.
      * @param buffer    Destination buffer.

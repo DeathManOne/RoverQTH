@@ -157,8 +157,9 @@ namespace {
         while (true) {
             delay(CHECK_INTERVAL_MS);
             const uint8_t currentProgress = gps::getAcquisitionProgress();
+            
             if (currentProgress > progress) {
-                progress = currentProgress;
+                progress       = currentProgress;
                 lastProgressAt = millis();
 
                 dBoot::updateGPSProgress(progress);
@@ -169,7 +170,7 @@ namespace {
                 continue;
             }
 
-            if (progress == 0) { continue; }
+            if (progress == 0U) { continue; }
             if ((millis() - lastProgressAt) >= STALL_TIMEOUT_MS) {
                 storage::appendErrorRecord("GPS_ACQUISITION_STALLED");
                 dBoot::updateGPS(nullptr);

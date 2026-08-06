@@ -115,17 +115,23 @@ bool nvs::getTouchCalibrationNormal(bool &swapXY, bool &invertX, bool &invertY, 
 
 bool nvs::setTouchCalibrationNormal(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
     if (!_ready && !begin()) { return false; }
-    _prefs.putBool(KEY_TN_SWAP_XY,  swapXY);
-    _prefs.putBool(KEY_TN_INVERT_X, invertX);
-    _prefs.putBool(KEY_TN_INVERT_Y, invertY);
-    _prefs.putFloat(KEY_TN_CXA,     cxa);
-    _prefs.putFloat(KEY_TN_CXB,     cxb);
-    _prefs.putFloat(KEY_TN_CXC,     cxc);
-    _prefs.putFloat(KEY_TN_CYA,     cya);
-    _prefs.putFloat(KEY_TN_CYB,     cyb);
-    _prefs.putFloat(KEY_TN_CYC,     cyc);
-    _prefs.putBool(KEY_TN_TOUCH_OK, true);
-    return true;
+
+    bool success = true;
+    success = _prefs.putBool (KEY_TN_SWAP_XY,  swapXY)  > 0U && success;
+    success = _prefs.putBool (KEY_TN_INVERT_X, invertX) > 0U && success;
+    success = _prefs.putBool (KEY_TN_INVERT_Y, invertY) > 0U && success;
+    success = _prefs.putFloat(KEY_TN_CXA,      cxa)     > 0U && success;
+    success = _prefs.putFloat(KEY_TN_CXB,      cxb)     > 0U && success;
+    success = _prefs.putFloat(KEY_TN_CXC,      cxc)     > 0U && success;
+    success = _prefs.putFloat(KEY_TN_CYA,      cya)     > 0U && success;
+    success = _prefs.putFloat(KEY_TN_CYB,      cyb)     > 0U && success;
+    success = _prefs.putFloat(KEY_TN_CYC,      cyc)     > 0U && success;
+
+    if (!success) {
+        _prefs.remove(KEY_TN_TOUCH_OK);
+        return false;
+    }
+    return _prefs.putBool(KEY_TN_TOUCH_OK, true) > 0U;
 }
 
 bool nvs::resetTouchCalibrationNormal() {
@@ -160,17 +166,23 @@ bool nvs::getTouchCalibrationReversed(bool &swapXY, bool &invertX, bool &invertY
 
 bool nvs::setTouchCalibrationReversed(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
     if (!_ready && !begin()) { return false; }
-    _prefs.putBool(KEY_TR_SWAP_XY,  swapXY);
-    _prefs.putBool(KEY_TR_INVERT_X, invertX);
-    _prefs.putBool(KEY_TR_INVERT_Y, invertY);
-    _prefs.putFloat(KEY_TR_CXA,     cxa);
-    _prefs.putFloat(KEY_TR_CXB,     cxb);
-    _prefs.putFloat(KEY_TR_CXC,     cxc);
-    _prefs.putFloat(KEY_TR_CYA,     cya);
-    _prefs.putFloat(KEY_TR_CYB,     cyb);
-    _prefs.putFloat(KEY_TR_CYC,     cyc);
-    _prefs.putBool(KEY_TR_TOUCH_OK, true);
-    return true;
+
+    bool success = true;
+    success = _prefs.putBool (KEY_TR_SWAP_XY,  swapXY)  > 0U && success;
+    success = _prefs.putBool (KEY_TR_INVERT_X, invertX) > 0U && success;
+    success = _prefs.putBool (KEY_TR_INVERT_Y, invertY) > 0U && success;
+    success = _prefs.putFloat(KEY_TR_CXA,      cxa)     > 0U && success;
+    success = _prefs.putFloat(KEY_TR_CXB,      cxb)     > 0U && success;
+    success = _prefs.putFloat(KEY_TR_CXC,      cxc)     > 0U && success;
+    success = _prefs.putFloat(KEY_TR_CYA,      cya)     > 0U && success;
+    success = _prefs.putFloat(KEY_TR_CYB,      cyb)     > 0U && success;
+    success = _prefs.putFloat(KEY_TR_CYC,      cyc)     > 0U && success;
+
+    if (!success) {
+        _prefs.remove(KEY_TR_TOUCH_OK);
+        return false;
+    }
+    return _prefs.putBool(KEY_TR_TOUCH_OK, true) > 0U;
 }
 
 bool nvs::resetTouchCalibrationReversed() {
@@ -225,12 +237,11 @@ bool nvs::setBatteryRatioHigh(uint8_t ratio) {
 }
 
 bool nvs::getCallsign(char* buffer, size_t size) {
-    if (!_ready && !begin())            { return false; }
-    if (buffer == nullptr || size == 0) { return false; }
+    if (!_ready && !begin())              { return false; }
+    if (buffer == nullptr || size == 0U)  { return false; }
 
     const String value = _prefs.getString(KEY_CALLSIGN, DEFAULT_CALLSIGN);
-    value.toCharArray(buffer, size);
-    return true;
+    return text::copy(buffer, size, value.c_str());
 }
 
 bool nvs::setCallsign(const char* callsign) {
@@ -362,6 +373,5 @@ bool nvs::getWifiLastEnabled() {
 bool nvs::setWifiLastEnabled(bool enabled) {
     if (!_ready && !begin())
         { return false; }
-    _prefs.putBool(KEY_WIFI_LAST_ENABLED, enabled);
-    return true;
+    return _prefs.putBool(KEY_WIFI_LAST_ENABLED, enabled) > 0U;
 }

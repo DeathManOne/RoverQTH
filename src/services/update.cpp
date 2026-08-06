@@ -27,6 +27,7 @@
 #include <Update.h>
 #include <WiFiClientSecure.h>
 
+#include "security/otaRootCA.h"
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
@@ -35,22 +36,24 @@
 #include "utilities/text.h"
 #include "utilities/version.h"
 
-namespace update   = services::update;
-namespace storage  = services::storage;
-namespace wifi     = services::wifi;
-namespace hash     = utilities::hash;
-namespace json     = utilities::json;
-namespace text     = utilities::text;
-namespace uVersion = utilities::version;
+namespace otaRootCA = security::otaRootCA;
+namespace update    = services::update;
+namespace storage   = services::storage;
+namespace wifi      = services::wifi;
+namespace hash      = utilities::hash;
+namespace json      = utilities::json;
+namespace text      = utilities::text;
+namespace uVersion  = utilities::version;
 
 namespace {
+    portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
+
     constexpr size_t DOWNLOAD_BUFFER_SIZE = 4096;
     constexpr size_t MANIFEST_BUFFER_SIZE = 512U;
     constexpr uint32_t HTTP_TIMEOUT_MS    = 15000;
     constexpr uint32_t STREAM_TIMEOUT_MS  = 20000;
 
     update::Status _status = update::Status::IDLE;
-    portMUX_TYPE _lock     = portMUX_INITIALIZER_UNLOCKED;
     uint8_t _progress      = 0;
     uint32_t _expectedSize = 0;
     bool _taskRunning      = false;
@@ -94,7 +97,7 @@ namespace {
     }
 
     bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url) {
-        client.setInsecure();
+        client.setCACert(otaRootCA::OTA_ROOT_CA);
         client.setTimeout(HTTP_TIMEOUT_MS);
 
         http.setConnectTimeout(HTTP_TIMEOUT_MS);
@@ -102,10 +105,8 @@ namespace {
 
         http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
-        if (!http.begin(client, url))
-            { return false; }
+        if (!http.begin(client, url)) { return false; }
         const int httpCode = http.GET();
-
         return httpCode == HTTP_CODE_OK;
     }
 
@@ -292,8 +293,16 @@ namespace {
             return;
         }
 
+        WiFiClient* const stream = http.getStreamPtr();
+        if (stream == nullptr) {
+            ::Update.abort();
+            http.end();
+            _setError("Invalid firmware stream", "OTA_STREAM_UNAVAILABLE");
+            _finishTask();
+            return;
+        }
+
         uint8_t buffer[DOWNLOAD_BUFFER_SIZE];
-        WiFiClient* stream  = http.getStreamPtr();
         uint32_t received   = 0;
         uint32_t lastDataAt = millis();
         bool transferOk     = true;
@@ -359,7 +368,7 @@ namespace {
         }
 
         _setStatus(update::Status::INSTALLING);
-        if (!::Update.end(true)) {
+        if (!::Update.end(false)) {
             _setError("Firmware rejected", "OTA_END_FAILED");
             _finishTask();
             return;

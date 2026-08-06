@@ -75,5 +75,10 @@ bool locator::fromCoordinates(const double latitude, const double longitude, cha
         grid[6], grid[7],
         grid[8], grid[9]
     );
-    return written > 0 && static_cast<size_t>(written) < size;
+
+    if (written < 0 || static_cast<size_t>(written) >= size) {
+        buffer[0] = '\0';
+        return false;
+    }
+    return true;
 }

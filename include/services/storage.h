@@ -81,8 +81,9 @@ namespace services::storage {
      * Reads the content of a file.
      * @param path   File path.
      * @param buffer Destination buffer.
-     * @param size   Size of the destination buffer in bytes.
-     * @return true if the file was successfully read, false otherwise.
+     * @param size Destination buffer size, including the null terminator.
+     * @return true if the entire file fits and was read successfully,
+     *         false otherwise. The buffer is cleared on failure when possible.
      */
     bool readFile(const char* path, char* buffer, size_t size);
 
@@ -120,14 +121,16 @@ namespace services::storage {
     /**
      * Appends a record to the system log.
      * @param data Null-terminated log record.
-     * @return true if the record was successfully appended, false otherwise.
+     * @return true if the record was written immediately or queued for later,
+     *         false if it could not be accepted.
      */
     bool appendLogRecord(const char* data);
 
     /**
      * Appends a record to the error log.
      * @param data Null-terminated error record.
-     * @return true if the record was successfully appended, false otherwise.
+     * @return true if the record was written immediately or queued for later,
+     *         false if it could not be accepted.
      */
     bool appendErrorRecord(const char* data);
 }

@@ -51,8 +51,8 @@ namespace services::update {
     };
 
     /**
-     * Initializes the update service.
-     * @return true if the service was successfully initialized, false otherwise.
+     * @brief Initializes the update service and resets its runtime state.
+     * @return true when the service state has been initialized.
      */
     bool begin();
 
@@ -64,13 +64,15 @@ namespace services::update {
 
     /**
      * Starts checking for a new firmware version.
-     * @return true if the check was successfully started, false otherwise.
+     * @return true if the asynchronous check was started, false if Wi-Fi is
+     *         unavailable or another update task is already running.
      */
     bool checkUpdate();
 
     /**
      * Starts the firmware update.
-     * @return true if the update was successfully started, false otherwise.
+     * @return true if the asynchronous installation was started, false if Wi-Fi
+     *         is unavailable, no update is available, or another task is running.
      */
     bool startUpdate();
 

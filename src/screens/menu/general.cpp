@@ -154,7 +154,7 @@ void General::draw(ST7796S::MSP4021 &tft) {
 }
 
 void General::update(ST7796S::MSP4021 &tft) {
-    char callsign[32] = "";
+    char callsign[settings::FULL_CALLSIGN_SIZE] = "";
     if (!settings::getFullCallsign(callsign, sizeof(callsign)))
         { text::copy(callsign, sizeof(callsign), "ERROR"); }
     title::updateCallsign(tft, callsign);

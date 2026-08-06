@@ -265,7 +265,7 @@ ST7796 MSP4020/MSP4021 Display Library
 
 Version:
 
-* v1.3.8
+* v1.4.0
 
 Repository:
 

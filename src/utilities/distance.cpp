@@ -85,8 +85,8 @@ double distance::bearingDegrees(const double latitudeFrom, const double longitud
 }
 
 const char* distance::cardinal(const double degrees) {
-    if (std::isnan(degrees)) { return ""; }
+    if (!std::isfinite(degrees)) { return ""; }
     const double normalized = _normalizeDegrees(degrees + 22.5);
-    const size_t index = static_cast<size_t>(normalized / 45.0) % 8;
+    const size_t index      = static_cast<size_t>(normalized / 45.0) % 8;
     return DIRECTIONS[index];
 }

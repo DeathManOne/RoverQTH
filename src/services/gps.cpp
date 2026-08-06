@@ -21,18 +21,20 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <new>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
+#include "services/dtc.h"
 #include "services/gps.h"
 #include "ui/settings/gps.h"
-#include "utilities/clock.h"
 
+namespace dtc      = services::dtc;
 namespace gps      = services::gps;
 namespace settings = ui::settings::gps;
-namespace uClock   = utilities::clock;
 
 namespace {
-    portMUX_TYPE _snapshotLock = portMUX_INITIALIZER_UNLOCKED;
+    portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
+
     SFE_UBLOX_GNSS *_gps       = nullptr;
     int _dateYear              = 0;
     int _dateMonth             = 0;
@@ -42,10 +44,6 @@ namespace {
 
     bool _readCache() {
         gps::Snapshot next {};
-        portENTER_CRITICAL(&_snapshotLock);
-        next = _snapshot;
-        portEXIT_CRITICAL(&_snapshotLock);
-
         next.fixValid   = _gps->getGnssFixOk();
         next.fixType    = static_cast<uint8_t>(_gps->getFixType());
         next.satellites = static_cast<uint8_t>(_gps->getSIV());
@@ -75,25 +73,25 @@ namespace {
         }
 
         if (_gps->getDateValid() && _gps->getTimeValid()) {
-            const uint32_t utcEpoch = uClock::toEpochUTC(
+            const uint32_t utcEpoch = dtc::toEpochUTC(
                     _dateYear, _dateMonth,  _dateDay,
                     next.hour, next.minute, next.second
                 );
-            if (utcEpoch != 0) { uClock::sync(utcEpoch); }
+            if (utcEpoch != 0) { dtc::sync(utcEpoch); }
         }
 
-        portENTER_CRITICAL(&_snapshotLock);
+        portENTER_CRITICAL(&_lock);
         _snapshot    = next;
         _hasSnapshot = true;
-        portEXIT_CRITICAL(&_snapshotLock);
+        portEXIT_CRITICAL(&_lock);
         return next.fixValid;
     }
 
     void _resetCache() {
-        portENTER_CRITICAL(&_snapshotLock);
+        portENTER_CRITICAL(&_lock);
         _snapshot    = {};
         _hasSnapshot = false;
-        portEXIT_CRITICAL(&_snapshotLock);
+        portEXIT_CRITICAL(&_lock);
 
         _dateYear    = 0;
         _dateMonth   = 0;
@@ -102,7 +100,10 @@ namespace {
 }
 
 bool gps::begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
-    if (!_gps) { _gps = new SFE_UBLOX_GNSS(); }
+    if (!_gps) {
+        _gps = new (std::nothrow) SFE_UBLOX_GNSS();
+        if (!_gps) { return false; }
+    }
 
     static constexpr uint32_t BAUD_COUNT    = 4;
     static const uint32_t bauds[BAUD_COUNT] = {9600, 38400, 57600, 115200};
@@ -159,10 +160,10 @@ bool gps::update(uint32_t timeoutMs) {
 }
 
 bool gps::getSnapshot(Snapshot& snapshot) {
-    portENTER_CRITICAL(&_snapshotLock);
+    portENTER_CRITICAL(&_lock);
     const bool available = _hasSnapshot;
     snapshot             = _snapshot;
-    portEXIT_CRITICAL(&_snapshotLock);
+    portEXIT_CRITICAL(&_lock);
 
     return available;
 }

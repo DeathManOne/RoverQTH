@@ -32,6 +32,16 @@ namespace settings = services::settings;
 namespace storage  = services::storage;
 
 namespace {
+    bool _fits(const char* const value, const size_t capacity) {
+        if (value == nullptr || capacity == 0U) { return false; }
+
+        for (size_t index = 0U; index < capacity; ++index) {
+            if (value[index] == '\0')
+                { return true; }
+        }
+        return false;
+    }
+
     bool _checkWrite(const bool result, const char* const errorCode) {
         if (!result) { storage::appendErrorRecord(errorCode); }
         return result;
@@ -194,11 +204,16 @@ bool settings::getFullCallsign(char* const buffer, const size_t size) {
 
     const char* const suffix = callsignSuffixText(value.suffix);
     const int written = std::snprintf(buffer, size, "%s%s", value.callsign, suffix);
-    return written >= 0 && static_cast<size_t>(written) < size;
+
+    if (written < 0 || static_cast<size_t>(written) >= size) {
+        buffer[0] = '\0';
+        return false;
+    }
+    return true;
 }
 
 bool settings::setCallsign(const char* const callsign) {
-    if (callsign == nullptr) { return false; }
+    if (!_fits(callsign, CALLSIGN_SIZE)) { return false; }
 
     if (callsign[0] == '\0')
         { return _checkWrite(nvs::resetCallsign(), "CALLSIGN_RESET_FAILED"); }
@@ -260,13 +275,13 @@ settings::Wifi settings::wifi() {
 }
 
 bool settings::setWifiSSID(const char* const ssid) {
-    if (ssid == nullptr) { return false; }
+    if (!_fits(ssid, WIFI_SSID_SIZE)) { return false; }
     if (ssid[0] == '\0') { return _checkWrite(nvs::resetWifiSSID(), "WIFI_SSID_RESET_FAILED"); }
     return _checkWrite(nvs::setWifiSSID(ssid), "WIFI_SSID_SAVE_FAILED");
 }
 
 bool settings::setWifiPassword(const char* const password) {
-    if (password == nullptr) { return false; }
+    if (!_fits(password, WIFI_PASSWORD_SIZE)) { return false; }
     if (password[0] == '\0') { return _checkWrite(nvs::resetWifiPassword(), "WIFI_PASSWORD_RESET_FAILED"); }
     return _checkWrite(nvs::setWifiPassword(password), "WIFI_PASSWORD_SAVE_FAILED");
 }
