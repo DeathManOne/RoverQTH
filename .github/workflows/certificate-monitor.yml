@@ -1,0 +1,119 @@
+name: Certificate monitor
+
+on:
+  schedule:
+    - cron: "23 7 * * 1"
+      timezone: "Europe/Paris"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: certificate-monitor
+  cancel-in-progress: false
+
+jobs:
+  certificate-trust:
+    name: Certificate trust check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Fetch repository revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git init .
+          git remote add origin \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "${GITHUB_SHA}"
+          git checkout --detach FETCH_HEAD
+
+      - name: Validate embedded certificates
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          header="include/security/otaRootCA.h"
+          bundle="/tmp/ota-root-ca.pem"
+
+          test -f "${header}"
+
+          awk '
+            /-----BEGIN CERTIFICATE-----/ {
+              count++
+              active = 1
+              file = sprintf("/tmp/ota-cert-%d.pem", count)
+            }
+
+            active {
+              print > file
+            }
+
+            /-----END CERTIFICATE-----/ {
+              active = 0
+              close(file)
+            }
+
+            END {
+              if (count < 1 || active) {
+                exit 1
+              }
+            }
+          ' "${header}"
+
+          cat /tmp/ota-cert-*.pem > "${bundle}"
+
+          begin_count="$(
+            grep -c -- "-----BEGIN CERTIFICATE-----" "${bundle}"
+          )"
+          end_count="$(
+            grep -c -- "-----END CERTIFICATE-----" "${bundle}"
+          )"
+
+          test "${begin_count}" -eq "${end_count}"
+          test "${begin_count}" -ge 1
+
+          for certificate in /tmp/ota-cert-*.pem; do
+            echo "Checking ${certificate}"
+            openssl x509 \
+              -in "${certificate}" \
+              -noout \
+              -subject \
+              -issuer \
+              -dates
+
+            openssl x509 \
+              -in "${certificate}" \
+              -checkend 15552000 \
+              -noout
+          done
+
+      - name: Validate current GitHub TLS chains
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bundle="/tmp/ota-root-ca.pem"
+
+          for host in \
+            github.com \
+            release-assets.githubusercontent.com
+          do
+            echo "Checking ${host}"
+
+            result="$(
+              timeout 30 openssl s_client \
+                -connect "${host}:443" \
+                -servername "${host}" \
+                -verify_hostname "${host}" \
+                -verify_return_error \
+                -CAfile "${bundle}" \
+                </dev/null 2>&1
+            )"
+
+            printf '%s\n' "${result}"
+            grep -q "Verify return code: 0 (ok)" <<< "${result}"
+          done

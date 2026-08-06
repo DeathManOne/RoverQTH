@@ -1,0 +1,6 @@
+# Sensitive legal and security files
+/LICENSE                            @DeathManOne
+/include/security/otaRootCA.h       @DeathManOne
+
+# Protect workflows and this CODEOWNERS file
+/.github/**                         @DeathManOne

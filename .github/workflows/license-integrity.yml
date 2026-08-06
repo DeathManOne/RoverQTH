@@ -1,0 +1,70 @@
+name: License integrity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: license-integrity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  license-integrity:
+    name: License integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      EXPECTED_LICENSE_SHA256: ${{ vars.LICENSE_SHA256 }}
+
+    steps:
+      - name: Fetch repository revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git init .
+          git remote add origin \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "${GITHUB_SHA}"
+          git checkout --detach FETCH_HEAD
+
+      - name: Verify license integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${EXPECTED_LICENSE_SHA256}" =~ ^[A-Fa-f0-9]{64}$ ]]; then
+            echo "::error::LICENSE_SHA256 is missing or invalid"
+            exit 1
+          fi
+
+          if [[ ! -f "LICENSE" ]]; then
+            echo "::error::LICENSE is missing"
+            exit 1
+          fi
+
+          expected="$(
+            printf '%s' "${EXPECTED_LICENSE_SHA256}" |
+              tr '[:upper:]' '[:lower:]'
+          )"
+
+          actual="$(
+            sha256sum LICENSE |
+              awk '{ print $1 }'
+          )"
+
+          if [[ "${actual}" != "${expected}" ]]; then
+            echo "::error::LICENSE has been modified"
+            echo "Expected: ${expected}"
+            echo "Actual:   ${actual}"
+            exit 1
+          fi
+
+          echo "LICENSE integrity verified: ${actual}"
