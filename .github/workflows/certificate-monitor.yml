@@ -1,6 +1,7 @@
 name: Certificate monitor
 
 on:
+  pull_request:
   schedule:
     - cron: "23 7 * * 1"
       timezone: "Europe/Paris"
