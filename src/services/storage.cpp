@@ -78,11 +78,16 @@ namespace {
     size_t _waitingLogsCount = 0;
     WaitingLog _waitingLogs[MAX_LOGS_WAITING] {};
 
+    bool _isReadyUnlocked();
     bool _formatRecord(const char* data, char* buffer, size_t size);
     bool _queueLogs(const char* path, const char* data);
     bool _flushWaitingLogs();
     bool _ensureTree();
     bool _readFileChunk(const uint8_t* const data, const size_t length, void* const userData);
+
+    bool _isReadyUnlocked() {
+        return (_sd != nullptr && _ready);
+    }
 
     bool _formatRecord(const char* data, char* buffer, size_t size) {
         if (!data || data[0] == '\0' || !buffer || size == 0) { return false; }
@@ -231,27 +236,27 @@ bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
 bool storage::isReady() {
     StorageGuard guard;
     if (!guard) { return false; }
-    return _sd && _ready;
+    return _isReadyUnlocked();
 }
 
 bool storage::readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used) {
     StorageGuard guard;
-    if (!guard)     { return false; }
-    if (!isReady()) { return false; }
+    if (!guard)              { return false; }
+    if (!_isReadyUnlocked()) { return false; }
     return _sd->cardInfos(type, size, total, used);
 }
 
 bool storage::fileExists(const char* const path) {
     StorageGuard guard;
-    if (!guard)                                           { return false; }
-    if (!isReady() || path == nullptr || path[0] == '\0') { return false; }
+    if (!guard)                                                    { return false; }
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0') { return false; }
     return _sd->fileExists(path);
 }
 
 bool storage::readFile(const char* const path, char* const buffer, const size_t size) {
     StorageGuard guard;
     if (!guard) { return false; }
-    if (!isReady() || path == nullptr || path[0] == '\0' || buffer == nullptr || size == 0U)
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || buffer == nullptr || size == 0U)
         { return false; }
     buffer[0] = '\0';
 
@@ -266,30 +271,30 @@ bool storage::readFile(const char* const path, char* const buffer, const size_t 
 
 bool storage::readFileLines(const char* const path, const LineCallback callback, void* const userData) {
     StorageGuard guard;
-    if (!guard) { return false; }
-    if (!isReady() || path == nullptr || path[0] == '\0' || callback == nullptr) { return false; }
-    if (!_sd->fileReadLines( path, callback, userData))                          { return false; }
+    if (!guard)                                                                           { return false; }
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || callback == nullptr) { return false; }
+    if (!_sd->fileReadLines( path, callback, userData))                                   { return false; }
     return true;
 }
 
 bool storage::writeFile(const char* const path, const char* const data) {
     StorageGuard guard;
-    if (!guard) { return false; }
-    if (!isReady() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
+    if (!guard)                                                                       { return false; }
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
     return _sd->fileWrite(path, data);
 }
 
 bool storage::appendFile(const char* const path, const char* const data) {
     StorageGuard guard;
-    if (!guard) { return false; }
-    if (!isReady() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
+    if (!guard)                                                                       { return false; }
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
     return _sd->fileWriteOrAppend(path, data);
 }
 
 bool storage::renameFile(const char* const source, const char* const destination) {
     StorageGuard guard;
     if (!guard) { return false; }
-    if (!isReady()             ||
+    if (!_isReadyUnlocked()    ||
         source == nullptr      || source[0] == '\0'      ||
         destination == nullptr || destination[0] == '\0'
     ) { return false; }
@@ -299,7 +304,7 @@ bool storage::renameFile(const char* const source, const char* const destination
 bool storage::deleteFile(const char* const path) {
     StorageGuard guard;
     if (!guard) { return false; }
-    if (!isReady() || path == nullptr || path[0] == '\0') { return false; }
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0') { return false; }
     return _sd->fileDelete(path);
 }
 
@@ -312,7 +317,7 @@ bool storage::appendErrorRecord(const char* const data) {
     StorageGuard guard;
     if (!guard) { return false; }
 
-    if (!isReady())                                     { return _queueLogs(FILE_LOGS_ERROR, line); }
+    if (!_isReadyUnlocked())                            { return _queueLogs(FILE_LOGS_ERROR, line); }
     if (_waitingLogsCount > 0U && !_flushWaitingLogs()) { return _queueLogs(FILE_LOGS_ERROR, line); }
     if (!_sd->fileWriteOrAppend(FILE_LOGS_ERROR, line)) { return _queueLogs(FILE_LOGS_ERROR, line); }
 
@@ -328,7 +333,7 @@ bool storage::appendLogRecord(const char* const data) {
     StorageGuard guard;
     if (!guard) { return false; }
 
-    if (!isReady())                                      { return _queueLogs(FILE_LOGS_SYSTEM, line); }
+    if (!_isReadyUnlocked())                             { return _queueLogs(FILE_LOGS_SYSTEM, line); }
     if (_waitingLogsCount > 0U && !_flushWaitingLogs())  { return _queueLogs(FILE_LOGS_SYSTEM, line); }
     if (!_sd->fileWriteOrAppend(FILE_LOGS_SYSTEM, line)) { return _queueLogs(FILE_LOGS_SYSTEM, line); }
 

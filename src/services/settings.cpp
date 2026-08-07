@@ -32,6 +32,8 @@ namespace settings = services::settings;
 namespace storage  = services::storage;
 
 namespace {
+    SemaphoreHandle_t _mutex = nullptr;
+
     bool _fits(const char* const value, const size_t capacity) {
         if (value == nullptr || capacity == 0U) { return false; }
 
@@ -101,13 +103,47 @@ namespace {
                 return false;
         }
     }
+
+    class SettingsGuard {
+        public:
+            SettingsGuard(){
+                if (_mutex == nullptr) {
+                    _locked = true;
+                    return;
+                }
+                _locked = xSemaphoreTakeRecursive(_mutex, portMAX_DELAY) == pdTRUE;
+            }
+
+            ~SettingsGuard() {
+                if (_locked && _mutex != nullptr)
+                    { xSemaphoreGiveRecursive(_mutex); }
+            }
+
+            explicit operator bool() const {
+                return _locked;
+            }
+
+        private:
+            bool _locked = false;
+        };
 }
 
 bool settings::begin() {
+    if (_mutex == nullptr) {
+        _mutex = xSemaphoreCreateRecursiveMutex();
+        if (_mutex == nullptr) { return false; }
+    }
+
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
     return nvs::begin();
 }
 
 bool settings::getTouchCalibration(Calibration &calibration) {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
     switch (getTFTRotation()) {
         case TFTRotation::NORMAL:
             return nvs::getTouchCalibrationNormal(
@@ -127,6 +163,9 @@ bool settings::getTouchCalibration(Calibration &calibration) {
 }
 
 bool settings::setTouchCalibration(const Calibration &normal, const Calibration &reversed) {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
     bool ok = true;
     ok = nvs::setTouchCalibrationNormal(
         normal.swapXY,     normal.invertX, normal.invertY,
@@ -142,6 +181,9 @@ bool settings::setTouchCalibration(const Calibration &normal, const Calibration 
 }
 
 bool settings::resetTouchCalibration() {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
     bool ok = true;
     ok = nvs::resetTouchCalibrationNormal()   && ok;
     ok = nvs::resetTouchCalibrationReversed() && ok;
@@ -149,6 +191,9 @@ bool settings::resetTouchCalibration() {
 }
 
 settings::Battery settings::battery() {
+    SettingsGuard guard;
+    if (!guard) { return {}; }
+
     Battery value;
     value.minimal   = nvs::getBatteryMinimal();
     value.maximal   = nvs::getBatteryMaximal();
@@ -157,6 +202,9 @@ settings::Battery settings::battery() {
 }
 
 bool settings::setBatteryMinimal(const float voltage) {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
     const Battery configuration = battery();
     if (voltage <= 0.0f || voltage >= configuration.maximal)
         { return false; }
@@ -164,6 +212,9 @@ bool settings::setBatteryMinimal(const float voltage) {
 }
 
 bool settings::setBatteryMaximal(const float voltage) {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
     const Battery configuration = battery();
     if (voltage <= 0.0f || voltage <= configuration.minimal)
         { return false; }
@@ -171,13 +222,17 @@ bool settings::setBatteryMaximal(const float voltage) {
 }
 
 bool settings::setBatteryRatioHigh(uint8_t ratio) {
+    SettingsGuard guard;
+    if (!guard)                     { return false; }
     if (ratio == 0 || ratio >= 100) { return false; }
     return _checkWrite(nvs::setBatteryRatioHigh(ratio), "BATTERY_RATIO_SAVE_FAILED");
 }
 
 settings::General settings::general() {
-    General value;
+    SettingsGuard guard;
+    if (!guard) { return {}; }
 
+    General value;
     if (!nvs::getCallsign(value.callsign, sizeof(value.callsign)))
         { value.callsign[0] = '\0'; }
 
@@ -194,6 +249,8 @@ settings::General settings::general() {
 }
 
 bool settings::getFullCallsign(char* const buffer, const size_t size) {
+    SettingsGuard guard;
+    if (!guard)                         { return false; }
     if (buffer == nullptr || size == 0) { return false; }
 
     const General value = general();
@@ -213,6 +270,8 @@ bool settings::getFullCallsign(char* const buffer, const size_t size) {
 }
 
 bool settings::setCallsign(const char* const callsign) {
+    SettingsGuard guard;
+    if (!guard)                          { return false; }
     if (!_fits(callsign, CALLSIGN_SIZE)) { return false; }
 
     if (callsign[0] == '\0')
@@ -221,21 +280,30 @@ bool settings::setCallsign(const char* const callsign) {
 }
 
 bool settings::setCallsignSuffix(const CallsignSuffix suffix) {
+    SettingsGuard guard;
+    if (!guard)            { return false; }
     if (!_isValid(suffix)) { return false; }
     return _checkWrite(nvs::setCallsignSuffix(static_cast<uint8_t>(suffix)), "CALLSIGN_SUFFIX_SAVE_FAILED");
 }
 
 bool settings::setUnits(const Units units) {
+    SettingsGuard guard;
+    if (!guard)           { return false; }
     if (!_isValid(units)) { return false; }
     return _checkWrite(nvs::setUnits(static_cast<uint8_t>(units)), "UNITS_SAVE_FAILED");
 }
 
 bool settings::setCoordinateFormat(const CoordinateFormat format) {
+    SettingsGuard guard;
+    if (!guard)            { return false; }
     if (!_isValid(format)) { return false; }
     return _checkWrite(nvs::setCoordinateFormat(static_cast<uint8_t>(format)), "COORDINATE_FORMAT_SAVE_FAILED");
 }
 
 const char* settings::callsignSuffixText(const CallsignSuffix suffix) {
+    SettingsGuard guard;
+    if (!guard) { return ""; }
+
     switch (suffix) {
         case CallsignSuffix::P:    return "/P";
         case CallsignSuffix::M:    return "/M";
@@ -247,6 +315,9 @@ const char* settings::callsignSuffixText(const CallsignSuffix suffix) {
 }
 
 settings::TFTRotation settings::getTFTRotation() {
+    SettingsGuard guard;
+    if (!guard) { return {}; }
+
     uint8_t value = nvs::getTFTRotation();
     switch (static_cast<TFTRotation>(value)) {
         case TFTRotation::NORMAL:
@@ -258,13 +329,17 @@ settings::TFTRotation settings::getTFTRotation() {
 }
 
 bool settings::setTFTRotation(const TFTRotation rotation) {
+    SettingsGuard guard;
+    if (!guard)              { return false; }
     if (!_isValid(rotation)) { return false; }
     return _checkWrite(nvs::setTFTRotation(static_cast<uint8_t>(rotation)), "TFT_ROTATION_SAVE_FAILED");
 }
 
 settings::Wifi settings::wifi() {
-    Wifi value;
+    SettingsGuard guard;
+    if (!guard) { return {}; }
 
+    Wifi value;
     if (!nvs::getWifiSSID(value.ssid, sizeof(value.ssid)))             { value.ssid[0] = '\0'; }
     if (!nvs::getWifiPassword(value.password, sizeof(value.password))) { value.password[0] = '\0'; }
 
@@ -275,29 +350,39 @@ settings::Wifi settings::wifi() {
 }
 
 bool settings::setWifiSSID(const char* const ssid) {
+    SettingsGuard guard;
+    if (!guard)                       { return false; }
     if (!_fits(ssid, WIFI_SSID_SIZE)) { return false; }
     if (ssid[0] == '\0') { return _checkWrite(nvs::resetWifiSSID(), "WIFI_SSID_RESET_FAILED"); }
     return _checkWrite(nvs::setWifiSSID(ssid), "WIFI_SSID_SAVE_FAILED");
 }
 
 bool settings::setWifiPassword(const char* const password) {
+    SettingsGuard guard;
+    if (!guard)                               { return false; }
     if (!_fits(password, WIFI_PASSWORD_SIZE)) { return false; }
     if (password[0] == '\0') { return _checkWrite(nvs::resetWifiPassword(), "WIFI_PASSWORD_RESET_FAILED"); }
     return _checkWrite(nvs::setWifiPassword(password), "WIFI_PASSWORD_SAVE_FAILED");
 }
 
 bool settings::setWifiBootMode(const WifiBootMode mode) {
+    SettingsGuard guard;
+    if (!guard)          { return false; }
     if (!_isValid(mode)) { return false; }
     return _checkWrite(nvs::setWifiBootMode(static_cast<uint8_t>(mode)), "WIFI_BOOT_MODE_SAVE_FAILED");
 }
 
 bool settings::setWifiLastEnabled(const bool enabled) {
+    SettingsGuard guard;
+    if (!guard) { return false; }
     return _checkWrite(nvs::setWifiLastEnabled(enabled), "WIFI_LAST_STATE_SAVE_FAILED");
 }
 
 bool settings::shouldConnectWifiAtBoot() {
-    const Wifi value = wifi();
+    SettingsGuard guard;
+    if (!guard) { return false; }
 
+    const Wifi value = wifi();
     if (value.ssid[0] == '\0') { return false; }
     switch (value.bootMode) {
         case WifiBootMode::ALWAYS:     return true;

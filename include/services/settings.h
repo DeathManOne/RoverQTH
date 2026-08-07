@@ -149,7 +149,7 @@ namespace services::settings {
 
     /**
      * Sets the callsign suffix.
-     * @param callsignSuffix Callsign suffix.
+     * @param suffix Callsign suffix.
      * @return true if the setting was successfully updated, false otherwise.
      */
     bool setCallsignSuffix(CallsignSuffix callsignSuffix);
