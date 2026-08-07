@@ -128,17 +128,17 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 
 ```text
 /RoverQTH/
-├── database/
-├── export/
-├── logs/
-│   ├── system.log
-│   └── error.log
-├── qth/
-│   ├── <QTH-ID>.json
-│   ├── QTH.tmp
-│   ├── QTH.trace.tmp
-│   └── QTH.final.tmp
-└── tmp/     ← temporary downloads
+|-- database/
+|-- export/
+|-- logs/
+|   |-- system.log
+|   `-- error.log
+|-- qth/
+|   |-- <QTH-ID>.json
+|   |-- QTH.tmp
+|   |-- QTH.trace.tmp
+|   `-- QTH.final.tmp
+`-- tmp/     <- temporary downloads
 ```
 
 The `QTH.tmp`, `QTH.trace.tmp` and `QTH.final.tmp` files exist only while recording, recovering or finalizing a QTH.
@@ -195,7 +195,7 @@ Firmware updates run asynchronously without blocking the user interface.
 
 ### Supported Display
 
-* ST7796S 480×320 touchscreen display (clone)
+* ST7796S 480x320 touchscreen display (clone)
 * MSP4020 / MSP4021 compatible hardware
 
 ### Supported SD Reader
@@ -231,7 +231,7 @@ Using the same components is recommended to ensure identical behavior and compat
 
 ### Display
 
-- MSP4021 4-inch 480×320 ST7796S touchscreen display
+- MSP4021 4-inch 480x320 ST7796S touchscreen display
 - Amazon: [4" LCD TFT Touch Display Binghe](https://www.amazon.fr/dp/B0CZRV3Q8T)
 
 ### SD Reader
