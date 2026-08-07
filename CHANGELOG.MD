@@ -7,6 +7,32 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.7.1] - 2026-08-07
+
+### Added
+
+- Embedded TLS root certificates for secure GitHub OTA connections
+- Automated certificate-expiration and TLS trust-chain monitoring
+- Automated repository license-integrity verification
+- GitHub ownership rules for sensitive legal, security and workflow files
+
+### Changed
+
+- Moved centralized date and time management into `services::dtc`
+- Improved full callsign handling and display
+- Hardened OTA manifest parsing and firmware verification
+- Improved GPS initialization and acquisition reliability
+- Strengthened NVS, settings and storage error handling
+- Added synchronized access to settings and SD-card storage operations
+
+### Fixed
+
+- Fixed OTA TLS failures caused by malformed embedded PEM certificates
+- Fixed GPS initialization failures caused by serial-port interference
+- Fixed recursive locking deadlocks in settings and storage services
+
+---
+
 ## [1.7.0] - 2026-08-04
 
 ### Added
