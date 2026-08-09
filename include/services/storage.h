@@ -38,6 +38,15 @@ namespace services::storage {
     using LineCallback = bool (*)(const char* line, void* userData);
 
     /**
+     * Callback invoked for each chunk read from a binary file.
+     * @param data     Pointer to the chunk data.
+     * @param length   Number of bytes contained in the chunk.
+     * @param userData User-defined context pointer.
+     * @return true to continue reading, false to stop.
+     */
+    using ChunkCallback = bool (*)(const uint8_t* data, size_t length, void* userData);
+
+    /**
      * Initializes the storage service.
      * @param spi        SPI bus used to access the SD card.
      * @param timeoutSec Maximum initialization time in seconds.
@@ -71,6 +80,15 @@ namespace services::storage {
     bool readFileLines(const char* path, LineCallback callback, void* userData = nullptr);
 
     /**
+     * Reads a file sequentially by binary chunks.
+     * @param path     File path.
+     * @param callback Callback invoked for each chunk.
+     * @param userData User-defined context passed to the callback.
+     * @return true if the file was successfully processed, false otherwise.
+     */
+    bool readFileChunks(const char* path, ChunkCallback callback, void* userData = nullptr);
+
+    /**
      * Indicates whether a file exists.
      * @param path File path.
      * @return true if the file exists, false otherwise.
@@ -78,12 +96,18 @@ namespace services::storage {
     bool fileExists(const char* path);
 
     /**
+     * Returns the size of a file.
+     * @param path File path.
+     * @return File size in bytes, or 0 if the file is unavailable or empty.
+     */
+    size_t fileSize(const char* path);
+
+    /**
      * Reads the content of a file.
      * @param path   File path.
      * @param buffer Destination buffer.
      * @param size Destination buffer size, including the null terminator.
-     * @return true if the entire file fits and was read successfully,
-     *         false otherwise. The buffer is cleared on failure when possible.
+     * @return true if the entire file fits and was read successfully, false otherwise. The buffer is cleared on failure when possible.
      */
     bool readFile(const char* path, char* buffer, size_t size);
 
@@ -96,12 +120,34 @@ namespace services::storage {
     bool writeFile(const char* path, const char* data);
 
     /**
+     * Writes binary data to a file, replacing its existing content.
+     * @param path   File path.
+     * @param data   Pointer to the data to write.
+     * @param length Number of bytes to write.
+     * @return true if the complete data buffer was successfully written, false otherwise.
+     */
+    bool writeFile(const char* path, const uint8_t* data, size_t length);
+
+    /**
      * Appends data to a file.
      * @param path File path.
      * @param data Null-terminated data to append.
      * @return true if the data was successfully appended, false otherwise.
      */
     bool appendFile(const char* path, const char* data);
+
+    /**
+     * Appends binary data to a file.
+     * @param path   File path.
+     * @param data   Pointer to the data to append.
+     * @param length Number of bytes to append.
+     * @return true if the complete data buffer was successfully appended, false otherwise.
+     */
+    bool appendFile(const char* path, const uint8_t* data, size_t length);
+
+    bool beginFileWrite(const char* path);
+    bool writeFileChunk(const uint8_t* data, size_t length);
+    void endFileWrite();
 
     /**
      * Renames a file.

@@ -27,11 +27,13 @@
 #include <cstdint>
 
 namespace services::update {
-    constexpr size_t VERSION_SIZE = 16;
-    constexpr size_t ERROR_SIZE   = 48;
+    constexpr size_t FIRMWARE_VERSION_SIZE = 16;
+    constexpr size_t SOTA_VERSION_SIZE     = 16;
+    constexpr size_t ERROR_SIZE            = 48;
 
     enum class Status : uint8_t {
         IDLE,
+        NOT_INSTALLED,
         CHECKING,
         UP_TO_DATE,
         AVAILABLE,
@@ -42,11 +44,19 @@ namespace services::update {
         ERROR
     };
 
-    struct Snapshot {
+    struct FirmwareSnapshot {
         Status status    = Status::IDLE;
         uint8_t progress = 0;
+        char latestVersion[FIRMWARE_VERSION_SIZE] {};
+        char error[ERROR_SIZE] {};
+    };
 
-        char latestVersion[VERSION_SIZE] {};
+    struct SotaSnapshot {
+        Status status    = Status::IDLE;
+        uint8_t progress = 0;
+        uint32_t records = 0;
+        char installedVersion[SOTA_VERSION_SIZE] {};
+        char latestVersion[SOTA_VERSION_SIZE] {};
         char error[ERROR_SIZE] {};
     };
 
@@ -67,24 +77,30 @@ namespace services::update {
      * @return true if the asynchronous check was started, false if Wi-Fi is
      *         unavailable or another update task is already running.
      */
-    bool checkUpdate();
+    bool checkFirmwareUpdate();
+
+    bool checkSotaUpdate();
 
     /**
      * Starts the firmware update.
      * @return true if the asynchronous installation was started, false if Wi-Fi
      *         is unavailable, no update is available, or another task is running.
      */
-    bool startUpdate();
+    bool startFirmwareUpdate();
+
+    bool startSotaUpdate();
 
     /**
      * Returns a snapshot of the current update state.
      * @return Current update snapshot.
      */
-    Snapshot snapshot();
+    FirmwareSnapshot firmwareSnapshot();
+
+    SotaSnapshot sotaSnapshot();
 
     /**
      * Returns the current firmware version.
      * @return Null-terminated firmware version string.
      */
-    const char* currentVersion();
+    const char* firmwareVersion();
 }

@@ -38,8 +38,8 @@ namespace theme    = ui::settings::themes::defaults;
 namespace text     = utilities::text;
 
 void Updates::_prepareFirmwareFields() {
-    const update::Snapshot snapshot  = update::snapshot();
-    const char* const currentVersion = update::currentVersion();
+    const update::FirmwareSnapshot snapshot  = update::firmwareSnapshot();
+    const char* const currentVersion = update::firmwareVersion();
     const char* const latestVersion  = snapshot.latestVersion[0] != '\0' ? snapshot.latestVersion : nullptr;
 
     switch (snapshot.status) {
@@ -49,7 +49,13 @@ void Updates::_prepareFirmwareFields() {
             break;
         case update::Status::CHECKING:
             _setFirmwareVersion(currentVersion);
-            _setFirmwareStatus("Checking...", _Action::NONE, theme::GREY);
+            std::snprintf(
+                _firmwareStatusValue, sizeof(_firmwareStatusValue),
+                "Checking %u%%",      static_cast<unsigned int>(snapshot.progress)
+            );
+            _firmwareStatusField.value  = _firmwareStatusValue;
+            _firmwareStatusField.action = _Action::NONE;
+            _firmwareStatusField.color  = theme::GREY;
             break;
         case update::Status::UP_TO_DATE:
             _setFirmwareVersion(currentVersion);
@@ -115,12 +121,12 @@ void Updates::_setFirmwareVersion(const char* currentVersion, const char* latest
 }
 
 void Updates::_actionCheckFirmware(ST7796S::MSP4021 &tft) {
-    update::checkUpdate();
+    update::checkFirmwareUpdate();
     _updateFirmwareFields(tft);
 }
 
 void Updates::_actionDownloadFirmware(ST7796S::MSP4021 &tft) {
-    if (update::startUpdate()) {
+    if (update::startFirmwareUpdate()) {
         _setFirmwareStatus("Starting...", _Action::NONE, theme::YELLOW);
         _updateField(tft, _firmwareStatusField);
         return;
@@ -128,8 +134,125 @@ void Updates::_actionDownloadFirmware(ST7796S::MSP4021 &tft) {
     _updateFirmwareFields(tft);
 }
 
+void Updates::_prepareSotaFields() {
+    const update::SotaSnapshot snapshot = update::sotaSnapshot();
+    const char* const installedVersion  = snapshot.installedVersion[0] != '\0'
+        ? snapshot.installedVersion
+        : nullptr;
+    const char* const latestVersion     = snapshot.latestVersion[0]    != '\0'
+        ? snapshot.latestVersion
+        : nullptr;
+
+    switch (snapshot.status) {
+        case update::Status::NOT_INSTALLED:
+            _setSotaVersion(nullptr);
+            _setSotaStatus("Check", _Action::CHECK_SOTA, theme::CYAN);
+            break;
+        case update::Status::IDLE:
+            _setSotaVersion(installedVersion);
+            _setSotaStatus("Check", _Action::CHECK_SOTA, theme::CYAN);
+            break;
+        case update::Status::CHECKING:
+            _setSotaVersion(installedVersion);
+            std::snprintf(
+                _sotaStatusValue, sizeof(_sotaStatusValue),
+                "Checking %u%%",  static_cast<unsigned int>(snapshot.progress)
+            );
+            _sotaStatusField.value  = _sotaStatusValue;
+            _sotaStatusField.action = _Action::NONE;
+            _sotaStatusField.color  = theme::GREY;
+            break;
+        case update::Status::UP_TO_DATE:
+            _setSotaVersion(installedVersion);
+            _setSotaStatus("Up to date", _Action::CHECK_SOTA, theme::GREEN);
+            break;
+        case update::Status::AVAILABLE:
+            _setSotaVersion(installedVersion, latestVersion);
+            _setSotaStatus("Download", _Action::DOWNLOAD_SOTA, theme::CYAN);
+            break;
+        case update::Status::DOWNLOADING:
+            _setSotaVersion(installedVersion, latestVersion);
+            std::snprintf(
+                _sotaStatusValue,   sizeof(_sotaStatusValue),
+                "Downloading %u%%", static_cast<unsigned int>(snapshot.progress)
+            );
+            _sotaStatusField.value  = _sotaStatusValue;
+            _sotaStatusField.action = _Action::NONE;
+            _sotaStatusField.color  = theme::YELLOW;
+            break;
+        case update::Status::VERIFYING:
+            _setSotaVersion(installedVersion, latestVersion);
+            _setSotaStatus("Verifying...", _Action::NONE, theme::YELLOW);
+            break;
+        case update::Status::INSTALLING:
+            _setSotaVersion(installedVersion, latestVersion);
+            std::snprintf(
+                _sotaStatusValue,  sizeof(_sotaStatusValue),
+                "Installing %u%%", static_cast<unsigned int>(snapshot.progress)
+            );
+            _sotaStatusField.value  = _sotaStatusValue;
+            _sotaStatusField.action = _Action::NONE;
+            _sotaStatusField.color  = theme::ORANGE;
+            break;
+        case update::Status::SUCCESS:
+            _setSotaVersion(installedVersion);
+            _setSotaStatus("Installed", _Action::CHECK_SOTA, theme::GREEN);
+            break;
+        case update::Status::ERROR:
+            _setSotaVersion(installedVersion, latestVersion);
+            _setSotaStatus(snapshot.error[0] != '\0'
+                ? snapshot.error
+                : "Update failed", _Action::CHECK_SOTA, theme::RED
+            );
+            break;
+        default:
+            _setSotaVersion(installedVersion);
+            _setSotaStatus("Unknown state", _Action::NONE, theme::RED);
+            break;
+    }
+}
+
+void Updates::_updateSotaFields(ST7796S::MSP4021 &tft) {
+    _prepareSotaFields();
+    _updateField(tft, _sotaVersionField);
+    _updateField(tft, _sotaStatusField);
+}
+
+void Updates::_setSotaStatus(const char* const value, const _Action action, const uint16_t color) {
+    text::copy(_sotaStatusValue, sizeof(_sotaStatusValue), value);
+
+    _sotaStatusField.value  = _sotaStatusValue;
+    _sotaStatusField.action = action;
+    _sotaStatusField.color  = color;
+}
+
+void Updates::_setSotaVersion(const char* installedVersion, const char* latestVersion) {
+    if (installedVersion == nullptr || installedVersion[0] == '\0') { installedVersion = "Not installed"; }
+
+    if (latestVersion != nullptr && latestVersion[0] != '\0' && !text::equals(installedVersion, latestVersion))
+        { std::snprintf(_sotaVersionValue, sizeof(_sotaVersionValue), "%s -> %s", installedVersion, latestVersion); }
+    else { text::copy  (_sotaVersionValue, sizeof(_sotaVersionValue), installedVersion); }
+
+    _sotaVersionField.value = _sotaVersionValue;
+}
+
+void Updates::_actionCheckSota(ST7796S::MSP4021 &tft) {
+    update::checkSotaUpdate();
+    _updateSotaFields(tft);
+}
+
+void Updates::_actionDownloadSota(ST7796S::MSP4021 &tft) {
+    if (update::startSotaUpdate()) {
+        _setSotaStatus("Starting...", _Action::NONE, theme::YELLOW);
+        _updateField(tft, _sotaStatusField);
+        return;
+    }
+    _updateSotaFields(tft);
+}
+
 void Updates::update(ST7796S::MSP4021 &tft) {
     _updateFirmwareFields(tft);
+    _updateSotaFields(tft);
 }
 
 void Updates::draw(ST7796S::MSP4021 &tft) {
@@ -148,15 +271,13 @@ void Updates::draw(ST7796S::MSP4021 &tft) {
     }
 
     _prepareFirmwareFields();
-    text::copy(_sotaVersionValue, sizeof(_sotaVersionValue), "Not installed");
-    text::copy(_sotaStatusValue,  sizeof(_sotaStatusValue),  "Not checked");
+    _prepareSotaFields();
+
     text::copy(_potaVersionValue, sizeof(_potaVersionValue), "Not installed");
     text::copy(_potaStatusValue,  sizeof(_potaStatusValue),  "Not checked");
 
-    _sotaVersionField.value     = _sotaVersionValue;
-    _sotaStatusField.value      = _sotaStatusValue;
-    _potaVersionField.value     = _potaVersionValue;
-    _potaStatusField.value      = _potaStatusValue;
+    _potaVersionField.value = _potaVersionValue;
+    _potaStatusField.value  = _potaStatusValue;
 
     _drawTitle(tft, x, y, w, rowH, gap, "updates");
     for (Field<_Action>* field : _fields)
@@ -174,7 +295,11 @@ bool Updates::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
                 _actionDownloadFirmware(tft);
                 return true;
             case _Action::CHECK_SOTA:
+                _actionCheckSota(tft);
+                return true;
             case _Action::DOWNLOAD_SOTA:
+                _actionDownloadSota(tft);
+                return true;
             case _Action::CHECK_POTA:
             case _Action::DOWNLOAD_POTA:
             case _Action::NONE:
