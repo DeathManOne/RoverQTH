@@ -7,6 +7,60 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.8.0] - 2026-08-09
+
+### Added
+
+- Complete SOTA database update workflow
+- Secure HTTPS download of the official SOTA summit list
+- Remote SOTA database version checking
+- SOTA download and installation progress display
+- CSV validation and conversion to a compact binary database
+- Atomic SOTA database installation with backup and rollback
+- Installed SOTA database version and record-count tracking
+- Asynchronous nearest-summit search
+- Nearest SOTA summit display on the main screen:
+  - Summit code
+  - Bearing
+  - Distance
+  - Points and bonus points
+  - Altitude
+- `Searching` status while the initial nearest-summit search is running
+- Cached SOTA result with automatic refresh after one kilometer of movement
+- Automatic cache invalidation after a database update
+- Dedicated SOTA event and error logging
+- Binary chunk reading and persistent file-writing support in the storage service
+
+### Changed
+
+- Extended `services::update` to orchestrate both firmware and SOTA database updates
+- Split firmware and SOTA update states into dedicated snapshots
+- Added progress reporting during firmware and SOTA checks
+- Prevented firmware updates, SOTA updates and SOTA searches from running concurrently
+- Moved nearest-summit searches to a background FreeRTOS task
+- Updated the SDCard dependency from version `2.0.0` to `2.1.0`
+- Improved the service initialization order after SD-card startup
+
+### Fixed
+
+- Fixed user-interface blocking while searching the complete SOTA database
+- Fixed menu navigation blocking when a SOTA check was requested during a search
+- Fixed repeated search-task creation when no valid SOTA database is installed
+- Fixed repeated file opening during large SOTA downloads and binary conversion
+- Fixed incomplete SOTA download and SD-write validation
+- Fixed temporary-file cleanup after completed or failed SOTA operations
+- Preserved the previously installed database when candidate installation fails
+
+### Internal
+
+- Added `utilities::sota` for stateless SOTA parsing and validation
+- Added `database::sota` for binary database ownership and queries
+- Added `services::sota` for asynchronous search state and result caching
+- Added binary format `2` with fixed-size summit records
+- Added coordinated access between SOTA searches, storage and update tasks
+
+---
+
 ## [1.7.1] - 2026-08-07
 
 ### Added

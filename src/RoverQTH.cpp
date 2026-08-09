@@ -35,6 +35,7 @@
 #include "services/power.h"
 #include "services/qth.h"
 #include "services/settings.h"
+#include "services/sota.h"
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
@@ -50,6 +51,7 @@ namespace navigation  = services::navigation;
 namespace power       = services::power;
 namespace qth         = services::qth;
 namespace settings    = services::settings;
+namespace sota        = services::sota;
 namespace storage     = services::storage;
 namespace update      = services::update;
 namespace wifi        = services::wifi;
@@ -104,9 +106,10 @@ void app::setup() {
     navigation::begin();
     if (!wifi::begin())          { storage::appendErrorRecord("WIFI_INIT_FAILED"); }
 
-    update::begin();
     state::begin();
     boot::run(_gpsUART, _sdSPI);
+    update::begin();
+    sota::begin();
     manager::begin();
 
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
@@ -115,7 +118,6 @@ void app::setup() {
     const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0);
     if (gpsTaskResult != pdPASS) { storage::appendErrorRecord("GPS_TASK_CREATE_FAILED"); }
     else { storage::appendLogRecord("SYSTEM_READY"); }
-
 }
 
 void app::loop() {
@@ -144,8 +146,8 @@ void app::loop() {
     const uint32_t now = millis();
     if (static_cast<int32_t>(now - _nextBatteryRefresh) >= 0) {
         battery::update();
-        if (battery::isCritical())
-            { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
+        //if (battery::isCritical())
+            //{ power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
         _nextBatteryRefresh = now + BATTERY_PERIOD_MS;
     }
 

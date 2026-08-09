@@ -76,5 +76,14 @@ namespace screens::menu {
 
             void _actionCheckFirmware(ST7796S::MSP4021 &tft);
             void _actionDownloadFirmware(ST7796S::MSP4021 &tft);
+
+            void _prepareSotaFields();
+            void _updateSotaFields(ST7796S::MSP4021 &tft);
+
+            void _setSotaStatus(const char* value, _Action action, uint16_t color);
+            void _setSotaVersion(const char* installedVersion, const char* latestVersion = nullptr);
+
+            void _actionCheckSota(ST7796S::MSP4021 &tft);
+            void _actionDownloadSota(ST7796S::MSP4021 &tft);
     };
 }

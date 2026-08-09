@@ -17,9 +17,9 @@
   <strong>GNSS Assistant for Portable & Mobile Amateur Radio</strong>
 </p>
 
-RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator and operating information, allowing operators to accurately determine their current operating position in the field.
+RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator, operating information and the nearest SOTA summit, allowing operators to accurately determine their current operating position in the field.
 
-The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver and a 4-inch ST7796S touchscreen. It also provides persistent QTH session recording and onboard event logging, simplifying post-operation analysis and laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
+The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and an installable SOTA database, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
 
 ---
 
@@ -52,6 +52,18 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * HDOP precision indicator
 * UTC clock
 
+### SOTA
+
+* Secure download of the official SOTA summit list
+* On-device CSV validation and binary database conversion
+* Atomic database installation with backup and rollback
+* Installed database version tracking
+* Asynchronous nearest-summit search
+* Automatic refresh after one kilometer of movement
+* Nearest summit code, bearing and distance
+* Summit altitude, points and bonus points
+* Non-blocking `Searching` status while a search is running
+
 ### Touchscreen Interface
 
 * 4-inch ST7796S display support (clone)
@@ -83,6 +95,8 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * Real-time UTC header clock
 * OTA firmware updates
 * Online firmware version checking
+* Online SOTA database checking and installation
+* Firmware and SOTA update progress display
 
 ### Power Management
 
@@ -92,6 +106,9 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * Configurable minimal and maximal battery voltage
 * Configurable voltage divider ratio (High / Low)
 * Dynamic low and critical battery thresholds
+* Hardware power-button handling
+* Clean display shutdown before deep sleep
+* GPIO wake-up from deep sleep
 
 ---
 
@@ -129,6 +146,7 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 ```text
 /RoverQTH/
 |-- database/
+|   `-- sota.bin
 |-- export/
 |-- logs/
 |   |-- system.log
@@ -143,6 +161,8 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 
 The `QTH.tmp`, `QTH.trace.tmp` and `QTH.final.tmp` files exist only while recording, recovering or finalizing a QTH.
 
+The SOTA update process temporarily uses `sota.tmp`, `sota.bin` and `sota.bak` inside `/RoverQTH/tmp/`. Candidate and backup files are removed after a successful installation. The installed database remains in `/RoverQTH/database/sota.bin`.
+
 ### Logging
 
 Two log files are automatically maintained.
@@ -151,7 +171,7 @@ Two log files are automatically maintained.
   * System events
   * Boot sequence
   * QTH recording events
-  * OTA update events
+  * Firmware and SOTA update events
 
 * `error.log`
   * Initialization failures
@@ -182,6 +202,25 @@ The OTA system provides:
 * Detailed error reporting
 
 Firmware updates run asynchronously without blocking the user interface.
+
+## SOTA Database Updates
+
+RoverQTH can download and install the official SOTA summit list directly from the Updates settings page.
+
+The SOTA update system provides:
+
+* Secure HTTPS download
+* Database date comparison
+* Download and conversion progress display
+* CSV structure and record validation
+* Conversion to a compact fixed-record binary format
+* Atomic installation with backup and rollback
+* Automatic temporary-file cleanup
+* Detailed SOTA event and error logging
+
+The installed database stores the summit code, association name, latitude, longitude, altitude, points and bonus points. Summit names are not stored.
+
+Nearest-summit searches run in a background FreeRTOS task. The latest result is cached and remains available to the interface while a new search is running. Firmware updates, SOTA updates and SOTA searches are coordinated so that only one heavy operation runs at a time.
 
 ## Hardware Requirements
 
@@ -277,11 +316,11 @@ SDCard Library
 
 Version:
 
-* v2.0.0
+* v2.1.0
 
 Repository:
 
-* https://github.com/DeathManOne/SDCard.git#2.0.0
+* https://github.com/DeathManOne/SDCard.git#2.1.0
 
 ### OTA
 
@@ -313,6 +352,8 @@ Example configuration:
 ```ini
 -D DL_FIRMWARE="https://github.com/DeathManOne/RoverQTH/releases/latest/download/firmware.bin"
 -D DL_FIRMWARE_MANIFEST="https://github.com/DeathManOne/RoverQTH/releases/latest/download/update.json"
+-D DL_SOTA="https://storage.sota.org.uk/summitslist.csv"
+-D DL_POTA="https://pota.app/all_parks_ext.csv"
 
 -D GPS_RX=2
 -D GPS_TX=3
@@ -326,7 +367,7 @@ Example configuration:
 -D TFT_TOUCH_CS=8
 -D TFT_SCREEN_CS=9
 -D TFT_SCREEN_DC=10
--D TFT_SCREEN_RST=-1
+-D TFT_SCREEN_RST=17
 
 -D TFT_MOSI=11
 -D TFT_MISO=12
@@ -335,8 +376,11 @@ Example configuration:
 -D TFT_WIDTH=480
 -D TFT_HEIGHT=320
 
--D BATT_PIN=17
+-D BATT_PIN=18
+-D BTN_PIN=19
 ```
+
+`DL_POTA` is reserved for the future POTA database implementation.
 
 ---
 
@@ -391,16 +435,19 @@ Implemented features:
 * Independent JSON file for each QTH session
 * Automatic SD directory management
 * Persistent system logging with automatic timestamps
+* SOTA database support
+* Online SOTA database updates
+* Asynchronous nearest-SOTA search
+* Nearest-SOTA bearing and distance display
+* Power button and deep sleep
 
 Planned features:
 
-* SOTA database support
 * POTA database support
-* OTA database updates (SOTA / POTA)
+* Online POTA database updates
 * Export utilities
-* SOTA navigation
+* Dedicated SOTA screen
 * Storage actions (export, clear logs)
-* Power button / Deep sleep
 
 ---
 

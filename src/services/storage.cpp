@@ -75,6 +75,8 @@ namespace {
 
     SDCard *_sd              = nullptr;
     bool _ready              = false;
+    bool _writeSessionOpen   = false;
+    TaskHandle_t _writeOwner = nullptr;
     size_t _waitingLogsCount = 0;
     WaitingLog _waitingLogs[MAX_LOGS_WAITING] {};
 
@@ -253,6 +255,15 @@ bool storage::fileExists(const char* const path) {
     return _sd->fileExists(path);
 }
 
+size_t storage::fileSize(const char* const path) {
+    StorageGuard guard;
+    if (!guard) { return 0U; }
+
+    if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0')
+        { return 0U; }
+    return _sd->fileSize(path);
+}
+
 bool storage::readFile(const char* const path, char* const buffer, const size_t size) {
     StorageGuard guard;
     if (!guard) { return false; }
@@ -277,6 +288,15 @@ bool storage::readFileLines(const char* const path, const LineCallback callback,
     return true;
 }
 
+bool storage::readFileChunks(const char* const path, const ChunkCallback callback, void* const userData) {
+    StorageGuard guard;
+    if (!guard) { return false; }
+
+    if (!_isReadyUnlocked() || path == nullptr     || path[0] == '\0' || callback == nullptr)
+        { return false; }
+    return _sd->fileRead(path, callback, userData);
+}
+
 bool storage::writeFile(const char* const path, const char* const data) {
     StorageGuard guard;
     if (!guard)                                                                       { return false; }
@@ -284,11 +304,62 @@ bool storage::writeFile(const char* const path, const char* const data) {
     return _sd->fileWrite(path, data);
 }
 
+bool storage::writeFile(const char* const path, const uint8_t* const data, const size_t length) {
+    StorageGuard guard;
+    if (!guard) { return false; }
+
+    if (!_isReadyUnlocked() ||
+        path == nullptr     || path[0] == '\0' ||
+        data == nullptr     || length == 0U
+    ) { return false; }
+    return _sd->fileWrite(path, data, length);
+}
+
 bool storage::appendFile(const char* const path, const char* const data) {
     StorageGuard guard;
     if (!guard)                                                                       { return false; }
     if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || data == nullptr) { return false; }
     return _sd->fileWriteOrAppend(path, data);
+}
+
+bool storage::appendFile(const char* const path, const uint8_t* const data, const size_t length) {
+    StorageGuard guard;
+    if (!guard) { return false; }
+
+    if (!_isReadyUnlocked() ||
+        path == nullptr     || path[0] == '\0' ||
+        data == nullptr     || length == 0U
+    ) { return false; }
+    return _sd->fileAppend(path, data, length);
+}
+
+bool storage::beginFileWrite(const char* const path) {
+    if (_mutex == nullptr || path == nullptr || path[0] == '\0')  { return false; }
+    if (xSemaphoreTakeRecursive(_mutex, portMAX_DELAY) != pdTRUE) { return false; }
+
+    if (!_isReadyUnlocked() || _writeSessionOpen || !_sd->fileWriteOpen(path)) {
+        xSemaphoreGiveRecursive(_mutex);
+        return false;
+    }
+
+    _writeSessionOpen = true;
+    _writeOwner       = xTaskGetCurrentTaskHandle();
+    return true;
+}
+
+bool storage::writeFileChunk(const uint8_t* const data, const size_t length) {
+    if (!_writeSessionOpen || _writeOwner != xTaskGetCurrentTaskHandle() ||
+        data == nullptr    || length == 0U
+    ) { return false; }
+    return _sd->fileWriteChunk(data, length);
+}
+
+void storage::endFileWrite() {
+    if (!_writeSessionOpen || _writeOwner != xTaskGetCurrentTaskHandle()) { return; }
+    _sd->fileWriteClose();
+    _writeSessionOpen = false;
+    _writeOwner       = nullptr;
+    xSemaphoreGiveRecursive(_mutex);
 }
 
 bool storage::renameFile(const char* const source, const char* const destination) {
