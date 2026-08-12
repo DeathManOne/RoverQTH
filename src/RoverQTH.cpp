@@ -110,6 +110,8 @@ void app::setup() {
     boot::run(_gpsUART, _sdSPI);
     update::begin();
     sota::begin();
+    if (sota::snapshot().status != sota::Status::UNAVAILABLE)
+        { state::setButtonState(state::Button::SOTA, state::ButtonState::READY); }
     manager::begin();
 
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;

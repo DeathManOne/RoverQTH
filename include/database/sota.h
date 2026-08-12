@@ -22,15 +22,21 @@
  */
 
 #pragma once
+
+#include <cstddef>
 #include <cstdint>
 
 #include "utilities/sota.h"
 
 namespace database::sota {
+    constexpr size_t ETAG_SIZE = 96U;
+
     /** Information stored in the installed database header. */
     struct Info {
-        uint32_t records = 0U;
+        uint32_t records    = 0U;
+        uint64_t sourceSize = 0U;
         char version[utilities::sota::VERSION_SIZE] {};
+        char etag[ETAG_SIZE] {};
     };
 
     /** Callback invoked while a candidate database is being built. */
@@ -40,8 +46,9 @@ namespace database::sota {
     bool info(Info& value);
 
     /** Builds and validates a binary candidate database from a SOTA CSV file. */
-    bool buildCandidate(const char* csvPath, const char* version,
-        ProgressCallback callback = nullptr, void* userData = nullptr);
+    bool buildCandidate(const char* csvPath, const char* version, const char* etag,
+        uint64_t sourceSize, ProgressCallback callback = nullptr, void* userData = nullptr
+    );
 
     /** Atomically replaces the installed database with the validated candidate. */
     bool installCandidate();
@@ -51,5 +58,6 @@ namespace database::sota {
 
     /** Finds the nearest stored summit and returns its distance and bearing. */
     bool findNearest(double latitude, double longitude,
-        utilities::sota::Summit& summit, double& distanceKm, double& bearing);
+        utilities::sota::Summit& summit, double& distanceKm, double& bearing
+    );
 }

@@ -77,6 +77,11 @@ namespace {
         bool valid;
     };
 
+    struct SotaSourceInfo {
+        uint64_t size = 0U;
+        char etag[sotaDB::ETAG_SIZE] {};
+    };
+
     update::Status _firmwareStatus = update::Status::IDLE;
     update::Status _sotaStatus     = update::Status::NOT_INSTALLED;
 
@@ -96,7 +101,9 @@ namespace {
     void _setFirmwareStatus(update::Status value);
     void _setFirmwareProgress(uint8_t value);
     void _setFirmwareError(const char* value, const char* logCode);
-    bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url);
+    bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url, SotaSourceInfo* sourceInfo = nullptr);
+    bool _openHead(HTTPClient& http, WiFiClientSecure& client, const char* url, SotaSourceInfo& sourceInfo);
+    bool _readSotaSourceInfo(HTTPClient& http, SotaSourceInfo& sourceInfo);
     bool _readResponseBody(HTTPClient& http, char* buffer, size_t size, void (*progressCallback)(uint8_t) = nullptr);
     void _finishTask();
     void _checkFirmwareTask(void*);
@@ -110,7 +117,7 @@ namespace {
     bool _startTask(TaskFunction_t function, const char* name, uint32_t stackSize, OperationTarget target, update::Status initialStatus);
     bool _readSotaVersionChunk(const uint8_t* data, size_t length, void* userData);
     bool _readSotaVersion(char* version, size_t size);
-    bool _downloadSotaCsv(char* version, size_t versionSize);
+    bool _downloadSotaCsv(char* version, size_t versionSize, SotaSourceInfo& sourceInfo);
 
     void _setFirmwareStatus(update::Status value) {
         portENTER_CRITICAL(&_lock);
@@ -136,18 +143,60 @@ namespace {
             { storage::appendErrorRecord(logCode); }
     }
 
-    bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* url) {
+    bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* const url, SotaSourceInfo* const sourceInfo) {
         client.setCACert(otaRootCA::OTA_ROOT_CA);
         client.setTimeout(HTTP_TIMEOUT_MS);
 
         http.setConnectTimeout(HTTP_TIMEOUT_MS);
         http.setTimeout(HTTP_TIMEOUT_MS);
-
         http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
         if (!http.begin(client, url)) { return false; }
+
+        if (sourceInfo != nullptr) {
+            static const char* HEADERS[] = {"ETag"};
+            http.collectHeaders(HEADERS, 1U);
+        }
+
         const int httpCode = http.GET();
-        return httpCode == HTTP_CODE_OK;
+        if (httpCode != HTTP_CODE_OK) { return false; }
+
+        return sourceInfo == nullptr || _readSotaSourceInfo(http, *sourceInfo);
+    }
+
+    bool _openHead(HTTPClient& http, WiFiClientSecure& client, const char* const url, SotaSourceInfo& sourceInfo) {
+        client.setCACert(otaRootCA::OTA_ROOT_CA);
+        client.setTimeout(HTTP_TIMEOUT_MS);
+
+        http.setConnectTimeout(HTTP_TIMEOUT_MS);
+        http.setTimeout(HTTP_TIMEOUT_MS);
+        http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
+        if (!http.begin(client, url)) { return false; }
+
+        static const char* HEADERS[] = {"ETag"};
+        http.collectHeaders(HEADERS, 1U);
+
+        const int httpCode = http.sendRequest("HEAD");
+        if (httpCode != HTTP_CODE_OK) { return false; }
+
+        return _readSotaSourceInfo(http, sourceInfo);
+    }
+
+    bool _readSotaSourceInfo(HTTPClient& http, SotaSourceInfo& sourceInfo) {
+        sourceInfo = SotaSourceInfo {};
+
+        const int announcedSize = http.getSize();
+        const String etag       = http.header("ETag");
+
+        if (announcedSize <= 0 || etag.isEmpty()) { return false; }
+
+        sourceInfo.size = static_cast<uint64_t>(announcedSize);
+        return text::copy(
+            sourceInfo.etag,
+            sizeof(sourceInfo.etag),
+            etag.c_str()
+        );
     }
 
     bool _readResponseBody(HTTPClient& http, char* const buffer, const size_t size, void (*progressCallback)(uint8_t)) {
@@ -307,27 +356,36 @@ namespace {
     }
 
     void _checkSotaTask(void*) {
-        char remoteVersion[update::SOTA_VERSION_SIZE];
+        storage::deleteFile(SOTA_CSV_PATH);
+        _setSotaProgress(10U);
 
-        if (!_downloadSotaCsv(remoteVersion, sizeof(remoteVersion))) {
-            _setSotaError("SOTA download failed", nullptr);
+        WiFiClientSecure client;
+        HTTPClient http;
+        SotaSourceInfo remote;
+
+        if (!_openHead(http, client, DL_SOTA, remote)) {
+            http.end();
+            _setSotaError("SOTA check failed", "SOTA_HEAD_FAILED");
             _finishTask();
             return;
         }
 
+        http.end();
+        _setSotaProgress(75U);
+
+        sotaDB::Info installed;
+        const bool installedAvailable = sotaDB::info(installed);
+        const bool updateAvailable    =
+            !installedAvailable                        ||
+            !text::equals(installed.etag, remote.etag) ||
+            installed.sourceSize != remote.size;
+
         portENTER_CRITICAL(&_lock);
-
-        text::copy(_sotaLatestVersion, sizeof(_sotaLatestVersion), remoteVersion);
-        const bool updateAvailable = uSota::isVersionNewer(_sotaLatestVersion, _sotaInstalledVersion);
-
-        _sotaProgress = 100U;
-        _sotaStatus   = updateAvailable
-            ? update::Status::AVAILABLE
-            : update::Status::UP_TO_DATE;
-
+        _sotaLatestVersion[0] = '\0';
+        _sotaProgress         = 100U;
+        _sotaStatus           = updateAvailable ? update::Status::AVAILABLE : update::Status::UP_TO_DATE;
         portEXIT_CRITICAL(&_lock);
 
-        if (!updateAvailable) { storage::deleteFile(SOTA_CSV_PATH); }
         storage::appendLogRecord(updateAvailable ? "SOTA_UPDATE_AVAILABLE" : "SOTA_UP_TO_DATE");
         _finishTask();
     }
@@ -465,36 +523,86 @@ namespace {
     }
 
     void _sotaDatabaseProgress(const uint8_t progress, void*) {
-        _setSotaProgress(progress);
+        const uint8_t mapped = static_cast<uint8_t>(
+            60U + (static_cast<uint16_t>(progress) * 35U) / 100U
+        );
+        _setSotaProgress(mapped);
     }
 
     void _installSotaTask(void*) {
-        char version[update::SOTA_VERSION_SIZE];
+        WiFiClientSecure client;
+        HTTPClient http;
+        SotaSourceInfo remote;
+
+        if (!_openHead(http, client, DL_SOTA, remote)) {
+            http.end();
+            _setSotaError("SOTA check failed", "SOTA_HEAD_FAILED");
+            _finishTask();
+            return;
+        }
+        http.end();
+
+        sotaDB::Info current;
+        if (sotaDB::info(current)                   &&
+            text::equals(current.etag, remote.etag) &&
+            current.sourceSize == remote.size
+        ) {
+            portENTER_CRITICAL(&_lock);
+            _sotaProgress = 100U;
+            _sotaStatus   = update::Status::UP_TO_DATE;
+            portEXIT_CRITICAL(&_lock);
+
+            storage::appendLogRecord("SOTA_UP_TO_DATE");
+            _finishTask();
+            return;
+        }
+
+        storage::deleteFile(SOTA_CSV_PATH);
+
+        char version[update::SOTA_VERSION_SIZE] {};
+        SotaSourceInfo downloaded;
+
+        _setSotaStatus(update::Status::DOWNLOADING);
+        _setSotaProgress(0U);
+
+        if (!_downloadSotaCsv(version, sizeof(version), downloaded)) {
+            _setSotaError("SOTA download failed", nullptr);
+            _finishTask();
+            return;
+        }
 
         portENTER_CRITICAL(&_lock);
-        text::copy(version, sizeof(version), _sotaLatestVersion);
+        text::copy(_sotaLatestVersion, sizeof(_sotaLatestVersion), version);
+
+        _sotaProgress = 60U;
+        _sotaStatus   = update::Status::INSTALLING;
         portEXIT_CRITICAL(&_lock);
 
-        if (!sotaDB::buildCandidate(SOTA_CSV_PATH, version, _sotaDatabaseProgress)) {
+        if (!sotaDB::buildCandidate(SOTA_CSV_PATH, version, downloaded.etag, downloaded.size, _sotaDatabaseProgress)) {
+            storage::deleteFile(SOTA_CSV_PATH);
             _setSotaError("Invalid SOTA database", "SOTA_BUILD_FAILED");
             _finishTask();
             return;
         }
 
+        _setSotaProgress(95U);
         _setSotaStatus(update::Status::VERIFYING);
+
         if (!sotaDB::installCandidate()) {
             sotaDB::discardCandidate();
+            storage::deleteFile(SOTA_CSV_PATH);
             _setSotaError("SOTA install failed", "SOTA_INSTALL_FAILED");
             _finishTask();
             return;
         }
 
         sotaDB::Info installedInfo;
-        if (!sotaDB::info(installedInfo)) {
-            _setSotaError(
-                "SOTA validation failed",
-                "SOTA_VALIDATION_FAILED"
-            );
+        if (!sotaDB::info(installedInfo)                       ||
+            !text::equals(installedInfo.etag, downloaded.etag) ||
+            installedInfo.sourceSize != downloaded.size
+        ) {
+            storage::deleteFile(SOTA_CSV_PATH);
+            _setSotaError("SOTA validation failed", "SOTA_VALIDATION_FAILED");
             _finishTask();
             return;
         }
@@ -503,8 +611,9 @@ namespace {
         sota::invalidate();
 
         portENTER_CRITICAL(&_lock);
-        _sotaRecords  = installedInfo.records;
+        _sotaRecords = installedInfo.records;
         text::copy(_sotaInstalledVersion, sizeof(_sotaInstalledVersion), installedInfo.version);
+
         _sotaProgress = 100U;
         _sotaStatus   = update::Status::SUCCESS;
         portEXIT_CRITICAL(&_lock);
@@ -614,11 +723,13 @@ namespace {
             context.valid && context.parsed;
     }
 
-    bool _downloadSotaCsv(char* const version, const size_t versionSize) {
+    bool _downloadSotaCsv(char* const version, const size_t versionSize, SotaSourceInfo& sourceInfo) {
+        sourceInfo = SotaSourceInfo {};
+
         WiFiClientSecure client;
         HTTPClient http;
 
-        if (!_openGet(http, client, DL_SOTA)) {
+        if (!_openGet(http, client, DL_SOTA, &sourceInfo)) {
             http.end();
             storage::appendErrorRecord("SOTA_HTTP_FAILED");
             return false;
@@ -680,7 +791,7 @@ namespace {
             if (announcedSize > 0) {
                 _setSotaProgress(
                     static_cast<uint8_t>(
-                        (static_cast<uint64_t>(received) * 100ULL) /
+                        (static_cast<uint64_t>(received) * 60ULL) /
                         static_cast<size_t>(announcedSize)
                     )
                 );
@@ -714,7 +825,7 @@ namespace {
             storage::deleteFile(SOTA_CSV_PATH);
             return false;
         }
-        if (announcedSize >= 0 && received != static_cast<size_t>(announcedSize)) {
+        if (received != sourceInfo.size) {
             storage::appendErrorRecord("SOTA_SIZE_MISMATCH");
             storage::deleteFile(SOTA_CSV_PATH);
             return false;
@@ -801,14 +912,17 @@ bool update::startSotaUpdate() {
         return false;
     }
 
+    if (!wifi::isConnected()) {
+        _setSotaError("WiFi not connected", "SOTA_WIFI_NOT_CONNECTED");
+        return false;
+    }
+
     portENTER_CRITICAL(&_lock);
-    const bool available = !_taskRunning &&
-        _sotaStatus == Status::AVAILABLE &&
-        _sotaLatestVersion[0] != '\0';
+    const bool available = !_taskRunning && _sotaStatus == Status::AVAILABLE;
     portEXIT_CRITICAL(&_lock);
 
-    if (!available || !storage::fileExists(SOTA_CSV_PATH)) { return false; }
-    return _startTask(_installSotaTask, "SOTA install", 12288, OperationTarget::SOTA, Status::INSTALLING);
+    if (!available) { return false; }
+    return _startTask(_installSotaTask, "SOTA install", 12288, OperationTarget::SOTA, Status::DOWNLOADING);
 }
 
 bool update::isBusy() {

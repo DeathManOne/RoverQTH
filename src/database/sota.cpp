@@ -39,7 +39,7 @@ namespace {
     constexpr const char* BACKUP_PATH    = "/RoverQTH/tmp/sota.bak";
 
     constexpr uint8_t MAGIC[4] = {'R', 'Q', 'S', 'T'};
-    constexpr uint16_t FORMAT_VERSION = 2U;
+    constexpr uint16_t FORMAT_VERSION = 3U;
     constexpr uint32_t MINIMUM_RECORDS = 1000U;
     constexpr size_t RECORD_BUFFER_COUNT = 8U;
 
@@ -50,17 +50,19 @@ namespace {
         uint16_t recordSize;
         uint16_t reserved;
         uint32_t recordCount;
+        uint64_t sourceSize;
         char version[uSota::VERSION_SIZE];
+        char etag[sota::ETAG_SIZE];
     };
 
     struct __attribute__((packed)) Record {
         char code[uSota::CODE_SIZE];
-        char association[uSota::ASSOCIATION_SIZE];
+        char area[uSota::AREA_SIZE];
         float latitude;
         float longitude;
         int16_t altitude;
         uint8_t points;
-        uint8_t bonusPoints;
+        uint8_t bonus;
     };
 
     struct HeaderReadContext {
@@ -115,7 +117,10 @@ namespace {
             header.headerSize    == sizeof(Header)  &&
             header.recordSize    == sizeof(Record)  &&
             header.recordCount   >= MINIMUM_RECORDS &&
-            uSota::isVersionValid(header.version);
+            header.sourceSize    > 0U               &&
+            uSota::isVersionValid(header.version)   &&
+            header.etag[0] != '\0'                  &&
+            std::memchr(header.etag, '\0', sizeof(header.etag)) != nullptr;
     }
 
     bool _readHeaderChunk(const uint8_t* const data, const size_t length, void* const userData) {
@@ -195,14 +200,14 @@ namespace {
         Record& record = context->buffer[context->buffered++];
         record         = Record {};
 
-        text::copy(record.code,        sizeof(record.code),        summit.code);
-        text::copy(record.association, sizeof(record.association), summit.association);
+        text::copy(record.code, sizeof(record.code), summit.code);
+        text::copy(record.area, sizeof(record.area), summit.area);
 
-        record.latitude    = static_cast<float>(summit.latitude);
-        record.longitude   = static_cast<float>(summit.longitude);
-        record.altitude    = summit.altitude;
-        record.points      = summit.points;
-        record.bonusPoints = summit.bonusPoints;
+        record.latitude  = static_cast<float>(summit.latitude);
+        record.longitude = static_cast<float>(summit.longitude);
+        record.altitude  = summit.altitude;
+        record.points    = summit.points;
+        record.bonus     = summit.bonus;
         ++context->records;
 
         if (context->buffered == RECORD_BUFFER_COUNT && !_flushRecords(*context)) {
@@ -221,14 +226,14 @@ namespace {
     uSota::Summit _toSummit(const Record& record) {
         uSota::Summit summit;
 
-        text::copy(summit.code,        sizeof(summit.code),        record.code);
-        text::copy(summit.association, sizeof(summit.association), record.association);
+        text::copy(summit.code, sizeof(summit.code), record.code);
+        text::copy(summit.area, sizeof(summit.area), record.area);
 
-        summit.latitude    = record.latitude;
-        summit.longitude   = record.longitude;
-        summit.altitude    = record.altitude;
-        summit.points      = record.points;
-        summit.bonusPoints = record.bonusPoints;
+        summit.latitude  = record.latitude;
+        summit.longitude = record.longitude;
+        summit.altitude  = record.altitude;
+        summit.points    = record.points;
+        summit.bonus     = record.bonus;
         return summit;
     }
 
@@ -277,15 +282,26 @@ bool sota::info(Info& value) {
     Header header {};
     if (!_readHeader(DATABASE_PATH, header)) { return false; }
 
-    value.records = header.recordCount;
-    return text::copy(value.version, sizeof(value.version), header.version);
+    value.records    = header.recordCount;
+    value.sourceSize = header.sourceSize;
+
+    return
+        text::copy(value.version, sizeof(value.version), header.version) &&
+        text::copy(value.etag,    sizeof(value.etag),    header.etag);
 }
 
-bool sota::buildCandidate(const char* const csvPath, const char* const version,
-    const ProgressCallback callback, void* const userData
+bool sota::buildCandidate(const char* const csvPath, const char* const version, const char* const etag,
+    const uint64_t sourceSize, const ProgressCallback callback, void* const userData
 ) {
     discardCandidate();
-    if (csvPath == nullptr || csvPath[0] == '\0' || !uSota::isVersionValid(version)) { return false; }
+
+    if (
+        csvPath == nullptr      || csvPath[0] == '\0' ||
+        etag == nullptr         || etag[0] == '\0'    ||
+        sourceSize == 0U        ||
+        !uSota::isVersionValid(version)               ||
+        static_cast<uint64_t>(storage::fileSize(csvPath)) != sourceSize
+    ) { return false; }
 
     ValidateCsvContext validation {version, 0U, 0U, true};
     if (!storage::readFileLines(csvPath, _validateCsvLine, &validation) ||
@@ -301,9 +317,13 @@ bool sota::buildCandidate(const char* const csvPath, const char* const version,
     header.headerSize    = sizeof(Header);
     header.recordSize    = sizeof(Record);
     header.recordCount   = validation.records;
+    header.sourceSize    = sourceSize;
 
-    if (!text::copy(header.version, sizeof(header.version), version)) { return false; }
-    if (!storage::beginFileWrite(CANDIDATE_PATH))                     { return false; }
+    if (!text::copy(header.version, sizeof(header.version), version) ||
+        !text::copy(header.etag,    sizeof(header.etag),    etag)
+    ) { return false; }
+
+    if (!storage::beginFileWrite(CANDIDATE_PATH)) { return false; }
 
     const bool headerWritten = storage::writeFileChunk(
         reinterpret_cast<const uint8_t*>(&header),

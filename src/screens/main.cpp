@@ -341,11 +341,11 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
     if (!format::altitude(result.summit.altitude, imperial, altitude, sizeof(altitude)))
         { text::copy(altitude, sizeof(altitude), "---"); }
 
-    const int pointsWritten = result.summit.bonusPoints > 0U
+    const int pointsWritten = result.summit.bonus > 0U
         ? snprintf(
             points, sizeof(points), "%u+%u",
             static_cast<unsigned int>(result.summit.points),
-            static_cast<unsigned int>(result.summit.bonusPoints)
+            static_cast<unsigned int>(result.summit.bonus)
         )
         : snprintf(
             points, sizeof(points), "%u",

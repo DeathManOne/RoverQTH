@@ -28,19 +28,19 @@
 
 namespace utilities::sota {
     /** Maximum sizes of the null-terminated SOTA fields. */
-    constexpr size_t CODE_SIZE        = 16U;
-    constexpr size_t ASSOCIATION_SIZE = 64U;
-    constexpr size_t VERSION_SIZE     = 11U;
+    constexpr size_t CODE_SIZE    = 16U;
+    constexpr size_t AREA_SIZE    = 64U;
+    constexpr size_t VERSION_SIZE = 11U;
 
     /** Application representation of a SOTA summit. */
     struct Summit {
         char code[CODE_SIZE] {};
-        char association[ASSOCIATION_SIZE] {};
-        double latitude     = 0.0;
-        double longitude    = 0.0;
-        int16_t altitude    = 0;
-        uint8_t points      = 0;
-        uint8_t bonusPoints = 0;
+        char area[AREA_SIZE] {};
+        double latitude  = 0.0;
+        double longitude = 0.0;
+        int16_t altitude = 0;
+        uint8_t points   = 0;
+        uint8_t bonus    = 0;
     };
 
     /** Extracts and normalizes the list date from the first SOTA CSV line. */

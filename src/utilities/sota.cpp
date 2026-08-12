@@ -192,50 +192,52 @@ bool sota::parseCsvRecord(const char* const line, Summit& summit) {
     const char* cursor = line;
     char field[128];
     char code[CODE_SIZE];
-    char association[128];
+    char area[128];
     char altitude[16];
     char longitude[32];
     char latitude[32];
     char points[8];
-    char bonusPoints[8];
+    char bonus[8];
 
-    code[0] = association[0] = altitude[0] = longitude[0] = latitude[0] = points[0] = bonusPoints[0] = '\0';
+    code[0] = area[0] = altitude[0] = longitude[0] = latitude[0] = points[0] = bonus[0] = '\0';
     for (size_t index = 0U; index < CSV_FIELD_COUNT; ++index) {
         char* destination = field;
         size_t destinationSize = sizeof(field);
         if (index == 0U) { destination = code;        destinationSize = sizeof(code); }
-        if (index == 1U) { destination = association; destinationSize = sizeof(association); }
+        if (index == 1U) { destination = area;        destinationSize = sizeof(area); }
         if (index == 4U) { destination = altitude;    destinationSize = sizeof(altitude); }
         if (index == 8U) { destination = longitude;   destinationSize = sizeof(longitude); }
         if (index == 9U) { destination = latitude;    destinationSize = sizeof(latitude); }
         if (index == 10U){ destination = points;      destinationSize = sizeof(points); }
-        if (index == 11U){ destination = bonusPoints; destinationSize = sizeof(bonusPoints); }
+        if (index == 11U){ destination = bonus;       destinationSize = sizeof(bonus); }
         if (!_readField(cursor, destination, destinationSize))
             { return false; }
     }
 
-    long parsedAltitude    = 0;
-    long parsedPoints      = 0;
-    long parsedBonusPoints = 0;
-    if (code[0] == '\0' || association[0] == '\0' ||
-        !_parseLong(altitude,    std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max(), parsedAltitude) ||
-        !_parseLong(points, 0L,  std::numeric_limits<uint8_t>::max(), parsedPoints)          ||
-        !_parseLong(bonusPoints, 0L, std::numeric_limits<uint8_t>::max(), parsedBonusPoints) ||
+    long parsedAltitude = 0;
+    long parsedPoints   = 0;
+    long parsedBonus    = 0;
+    if (code[0] == '\0' || area[0] == '\0' ||
+        !_parseLong(altitude, std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max(), parsedAltitude) ||
+        !_parseLong(points, 0L, std::numeric_limits<uint8_t>::max(), parsedPoints) ||
+        !_parseLong(bonus,  0L, std::numeric_limits<uint8_t>::max(), parsedBonus)  ||
         !_parseDouble(latitude,  -90.0,  90.0,  summit.latitude)                             ||
         !_parseDouble(longitude, -180.0, 180.0, summit.longitude)
     ) { return false; }
     if (!_copyField(code, std::strlen(code), summit.code, sizeof(summit.code))) { return false; }
 
-    const size_t associationLength = std::strlen(association) < sizeof(summit.association) - 1U
-        ? std::strlen(association) : sizeof(summit.association) - 1U;
+    const size_t areaLength = std::strlen(area) < sizeof(summit.area) - 1U
+        ? std::strlen(area)
+        : sizeof(summit.area) - 1U;
+
     if (!_copyField(
-        association,        associationLength,
-        summit.association, sizeof(summit.association))
+        area,        areaLength,
+        summit.area, sizeof(summit.area))
     ) { return false; }
 
-    summit.altitude    = static_cast<int16_t>(parsedAltitude);
-    summit.points      = static_cast<uint8_t>(parsedPoints);
-    summit.bonusPoints = static_cast<uint8_t>(parsedBonusPoints);
+    summit.altitude = static_cast<int16_t>(parsedAltitude);
+    summit.points   = static_cast<uint8_t>(parsedPoints);
+    summit.bonus    = static_cast<uint8_t>(parsedBonus);
 
     return true;
 }
