@@ -1,5 +1,5 @@
 /*
- * src/services/sota.cpp
+ * src/services/pota.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -26,26 +26,26 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "database/sota.h"
-#include "services/sota.h"
+#include "database/pota.h"
+#include "services/pota.h"
 #include "services/storage.h"
 #include "services/update.h"
 #include "utilities/distance.h"
 
-namespace sota     = services::sota;
-namespace sotaDB   = database::sota;
+namespace potaDB   = database::pota;
+namespace pota     = services::pota;
 namespace storage  = services::storage;
 namespace update   = services::update;
 namespace distance = utilities::distance;
 
 namespace {
     portMUX_TYPE _lock   = portMUX_INITIALIZER_UNLOCKED;
-    sota::Status _status = sota::Status::UNAVAILABLE;
+    pota::Status _status = pota::Status::UNAVAILABLE;
 
     constexpr double REFRESH_DISTANCE_KM = 1.0;
     constexpr uint32_t TASK_STACK_SIZE   = 8192U;
 
-    utilities::sota::Summit _summit {};
+    utilities::pota::Park _park {};
     double _distanceKm         = 0.0;
     double _bearingDeg         = 0.0;
     double _requestedLatitude  = 0.0;
@@ -55,7 +55,7 @@ namespace {
     bool _hasSearchedPosition  = false;
     bool _taskRunning          = false;
 
-    bool _validPosition(double latitude, double longitude);
+    bool _validPosition(const double latitude, const double longitude);
     void _searchTask(void*);
 
     bool _validPosition(const double latitude, const double longitude) {
@@ -73,67 +73,68 @@ namespace {
         longitude = _requestedLongitude;
         portEXIT_CRITICAL(&_lock);
 
-        utilities::sota::Summit summit {};
+        utilities::pota::Park park {};
         double distanceKm = 0.0;
         double bearingDeg = 0.0;
-        const bool found = sotaDB::findNearest(
+        const bool found = potaDB::findNearest(
             latitude,
             longitude,
-            summit,
+            park,
             distanceKm,
             bearingDeg
         );
 
-        if (!found) { storage::appendErrorRecord("SOTA_SEARCH_FAILED"); }
+        if (!found) { storage::appendErrorRecord("POTA_SEARCH_FAILED"); }
         portENTER_CRITICAL(&_lock);
 
         if (found) {
-            _summit              = summit;
+            _park                = park;
             _distanceKm          = distanceKm;
             _bearingDeg          = bearingDeg;
             _searchedLatitude    = latitude;
             _searchedLongitude   = longitude;
             _hasSearchedPosition = true;
-            _status              = sota::Status::READY;
+            _status              = pota::Status::READY;
         } else {
-            _summit      = utilities::sota::Summit {};
-            _distanceKm  = 0.0;
-            _bearingDeg  = 0.0;
-            _status      = sota::Status::ERROR;
+            _park       = utilities::pota::Park {};
+            _distanceKm = 0.0;
+            _bearingDeg = 0.0;
+            _status     = pota::Status::ERROR;
         }
-
         _taskRunning = false;
         portEXIT_CRITICAL(&_lock);
+
         vTaskDelete(nullptr);
     }
 }
 
-bool sota::begin() {
-    sotaDB::Info info {};
-    const bool available  = sotaDB::info(info);
+bool pota::begin() {
+    potaDB::Info info {};
+    const bool available = potaDB::info(info);
 
     portENTER_CRITICAL(&_lock);
-    _status               = available ? Status::IDLE : Status::UNAVAILABLE;
-    _summit               = utilities::sota::Summit {};
-    _distanceKm           = 0.0;
-    _bearingDeg           = 0.0;
-    _hasSearchedPosition  = false;
-    _taskRunning          = false;
+    _status              = available ? Status::IDLE : Status::UNAVAILABLE;
+    _park                = utilities::pota::Park {};
+    _distanceKm          = 0.0;
+    _bearingDeg          = 0.0;
+    _hasSearchedPosition = false;
+    _taskRunning         = false;
     portEXIT_CRITICAL(&_lock);
+
     return true;
 }
 
-void sota::invalidate() {
+void pota::invalidate() {
     portENTER_CRITICAL(&_lock);
     _status              = Status::IDLE;
-    _summit              = utilities::sota::Summit {};
+    _park                = utilities::pota::Park {};
     _distanceKm          = 0.0;
     _bearingDeg          = 0.0;
     _hasSearchedPosition = false;
     portEXIT_CRITICAL(&_lock);
 }
 
-bool sota::requestNearest(const double latitude, const double longitude) {
+bool pota::requestNearest(const double latitude, const double longitude) {
     if (!_validPosition(latitude, longitude) || update::isBusy()) { return false; }
 
     bool hasSearchedPosition;
@@ -158,8 +159,7 @@ bool sota::requestNearest(const double latitude, const double longitude) {
             searchedLatitude, searchedLongitude,
             latitude,         longitude
         );
-        if (std::isfinite(movedKm) && movedKm < REFRESH_DISTANCE_KM)
-            { return true; }
+        if (std::isfinite(movedKm) && movedKm < REFRESH_DISTANCE_KM) { return true; }
     }
 
     portENTER_CRITICAL(&_lock);
@@ -170,43 +170,49 @@ bool sota::requestNearest(const double latitude, const double longitude) {
     _requestedLatitude   = latitude;
     _requestedLongitude  = longitude;
     _status              = Status::SEARCHING;
-    _summit              = utilities::sota::Summit {};
+    _park                = utilities::pota::Park {};
     _distanceKm          = 0.0;
     _bearingDeg          = 0.0;
     _hasSearchedPosition = false;
     _taskRunning         = true;
     portEXIT_CRITICAL(&_lock);
 
-    const BaseType_t created = xTaskCreate(_searchTask, "SOTA nearest", TASK_STACK_SIZE, nullptr, 1, nullptr);
+    const BaseType_t created = xTaskCreate(
+        _searchTask,
+        "POTA nearest",
+        TASK_STACK_SIZE,
+        nullptr,
+        1,
+        nullptr
+    );
     if (created == pdPASS) { return true; }
 
     portENTER_CRITICAL(&_lock);
-    _taskRunning          = false;
-    _status               = Status::ERROR;
-    _summit               = utilities::sota::Summit {};
-    _distanceKm           = 0.0;
-    _bearingDeg           = 0.0;
-    _hasSearchedPosition  = false;
+    _taskRunning = false;
+    _status      = Status::ERROR;
     portEXIT_CRITICAL(&_lock);
 
-    storage::appendErrorRecord("SOTA_SEARCH_TASK_CREATE_FAILED");
+    storage::appendErrorRecord("POTA_SEARCH_TASK_CREATE_FAILED");
     return false;
 }
 
-sota::Snapshot sota::snapshot() {
+pota::Snapshot pota::snapshot() {
     Snapshot value;
+
     portENTER_CRITICAL(&_lock);
     value.status     = _status;
-    value.summit     = _summit;
+    value.park       = _park;
     value.distanceKm = _distanceKm;
     value.bearingDeg = _bearingDeg;
     portEXIT_CRITICAL(&_lock);
+
     return value;
 }
 
-bool sota::isBusy() {
+bool pota::isBusy() {
     portENTER_CRITICAL(&_lock);
     const bool busy = _taskRunning;
     portEXIT_CRITICAL(&_lock);
+
     return busy;
 }

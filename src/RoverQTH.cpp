@@ -24,6 +24,9 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+#include <esp_system.h>
+#include <rom/rtc.h>
+
 #include "core/boot.h"
 #include "core/screenManager.h"
 #include "core/state.h"
@@ -32,6 +35,7 @@
 #include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
+#include "services/pota.h"
 #include "services/power.h"
 #include "services/qth.h"
 #include "services/settings.h"
@@ -48,6 +52,7 @@ namespace app         = RoverQTH;
 namespace battery     = services::battery;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
+namespace pota        = services::pota;
 namespace power       = services::power;
 namespace qth         = services::qth;
 namespace settings    = services::settings;
@@ -91,6 +96,19 @@ namespace {
 void app::setup() {
     storage::appendLogRecord("SYSTEM_START");
 
+    char resetRecord[64];
+    const int written = snprintf(
+        resetRecord, sizeof(resetRecord),
+        "RESET_REASON esp=%d cpu0=%d cpu1=%d",
+        static_cast<int>(esp_reset_reason()),
+        static_cast<int>(rtc_get_reset_reason(0)),
+        static_cast<int>(rtc_get_reset_reason(1))
+    );
+
+    if (written > 0 &&
+        static_cast<size_t>(written) < sizeof(resetRecord)
+    ) { storage::appendLogRecord(resetRecord); }
+
     if (!settings::begin())      { storage::appendErrorRecord("NVS_INIT_FAILED"); }
     if (!power::begin(BTN_PIN))  { storage::appendErrorRecord("POWER_INIT_FAILED"); }
 
@@ -109,9 +127,14 @@ void app::setup() {
     state::begin();
     boot::run(_gpsUART, _sdSPI);
     update::begin();
+
     sota::begin();
-    if (sota::snapshot().status != sota::Status::UNAVAILABLE)
-        { state::setButtonState(state::Button::SOTA, state::ButtonState::READY); }
+    pota::begin();
+
+    if (sota::snapshot().status != sota::Status::UNAVAILABLE ||
+        pota::snapshot().status != pota::Status::UNAVAILABLE
+    ) { state::setButtonState(state::Button::SOTA, state::ButtonState::READY); }
+
     manager::begin();
 
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;

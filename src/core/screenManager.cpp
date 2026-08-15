@@ -31,6 +31,7 @@
 #include "display/sota.h"
 #include "screens/menu.h"
 #include "services/navigation.h"
+#include "services/pota.h"
 #include "services/qth.h"
 #include "services/storage.h"
 #include "services/sota.h"
@@ -44,6 +45,7 @@ namespace mockup      = display::mockup;
 namespace sota        = display::sota;
 namespace sMenu       = screens::menu;
 namespace navigation  = services::navigation;
+namespace potaService = services::pota;
 namespace qth         = services::qth;
 namespace sotaService = services::sota;
 namespace storage     = services::storage;
@@ -76,8 +78,9 @@ namespace {
         if (state::buttonState(state::Button::SOTA) != state::ButtonState::UNAVAILABLE)
             { return; }
 
-        if (sotaService::snapshot().status == sotaService::Status::UNAVAILABLE)
-            { return; }
+        const bool sotaAvailable = sotaService::snapshot().status != sotaService::Status::UNAVAILABLE;
+        const bool potaAvailable = potaService::snapshot().status != potaService::Status::UNAVAILABLE;
+        if (!sotaAvailable && !potaAvailable) { return; }
 
         state::setButtonState(state::Button::SOTA, state::ButtonState::READY);
         mockup::updateSOTA();

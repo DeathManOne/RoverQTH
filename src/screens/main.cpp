@@ -31,6 +31,7 @@
 #include "services/dtc.h"
 #include "services/gps.h"
 #include "services/navigation.h"
+#include "services/pota.h"
 #include "services/settings.h"
 #include "services/sota.h"
 #include "ui/mockup/buttons.h"
@@ -49,6 +50,7 @@ namespace battery     = services::battery;
 namespace dtc         = services::dtc;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
+namespace pota        = services::pota;
 namespace settings    = services::settings;
 namespace sota        = services::sota;
 namespace buttons     = ui::mockup::buttons;
@@ -311,6 +313,76 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         return;
     }
 
+    const sota::Snapshot sotaState = sota::snapshot();
+
+    if (sotaState.status == sota::Status::UNAVAILABLE) {
+        pota::requestNearest(
+            gpsData.latitude,
+            gpsData.longitude
+        );
+
+        const pota::Snapshot result = pota::snapshot();
+
+        if (result.park.code[0] == '\0') {
+            const char* const status =
+                result.status == pota::Status::SEARCHING
+                    ? "Searching"
+                    : "---";
+
+            locator::updateSOTABearing (tft, "---");
+            locator::updateSOTADistance(tft, "---");
+            locator::updateSOTAPoints  (tft, "---");
+            locator::updateSOTAAltitude(tft, "---");
+            locator::updateSOTACode    (tft, status);
+            return;
+        }
+
+        const settings::General configuration = settings::general();
+        const bool imperial = configuration.units == settings::Units::IMPERIAL;
+
+        char bearing[16];
+        char distance[16];
+        char code[32];
+
+        if (!format::bearing(
+            result.bearingDeg,
+            bearing,
+            sizeof(bearing)
+        )) {
+            text::copy(bearing, sizeof(bearing), "---");
+        }
+
+        if (!format::distance(
+            result.distanceKm,
+            imperial,
+            distance,
+            sizeof(distance)
+        )) {
+            text::copy(distance, sizeof(distance), "---");
+        }
+
+        const int codeWritten = std::snprintf(
+            code,
+            sizeof(code),
+            "POTA: %s",
+            result.park.code
+        );
+
+        if (
+            codeWritten < 0 ||
+            static_cast<size_t>(codeWritten) >= sizeof(code)
+        ) {
+            text::copy(code, sizeof(code), "POTA: ---");
+        }
+
+        locator::updateSOTABearing (tft, bearing);
+        locator::updateSOTADistance(tft, distance);
+        locator::updateSOTAPoints  (tft, "---");
+        locator::updateSOTAAltitude(tft, "---");
+        locator::updateSOTACode    (tft, code);
+        return;
+    }
+
     sota::requestNearest(gpsData.latitude, gpsData.longitude);
     const sota::Snapshot result = sota::snapshot();
 
@@ -331,6 +403,7 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
     char distance[16];
     char points[16];
     char altitude[16];
+    char code[32];
 
     if (!format::bearing(result.bearingDeg, bearing, sizeof(bearing)))
         { text::copy(bearing, sizeof(bearing), "---"); }
@@ -355,11 +428,25 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
     if (pointsWritten < 0 || static_cast<size_t>(pointsWritten) >= sizeof(points))
         { text::copy(points, sizeof(points), "---"); }
 
+    const int codeWritten = std::snprintf(
+        code,
+        sizeof(code),
+        "SOTA: %s",
+        result.summit.code
+    );
+
+    if (
+        codeWritten < 0 ||
+        static_cast<size_t>(codeWritten) >= sizeof(code)
+    ) {
+        text::copy(code, sizeof(code), "SOTA: ---");
+    }
+
     locator::updateSOTABearing (tft, bearing);
     locator::updateSOTADistance(tft, distance);
     locator::updateSOTAPoints  (tft, points);
     locator::updateSOTAAltitude(tft, altitude);
-    locator::updateSOTACode    (tft, result.summit.code);
+    locator::updateSOTACode    (tft, code);
 }
 
 void main::updateMARK(ST7796S::MSP4021& tft) {

@@ -54,8 +54,8 @@ namespace {
     
     Area _area;
     ButtonField _mark {uiButtons::markQTH, " MARK QTH ", state::Button::MARK_QTH};
-    ButtonField _sota {uiButtons::sota,     " SOTA ",     state::Button::SOTA};
-    ButtonField _menu {uiButtons::menu,     " MENU ",     state::Button::MENU};
+    ButtonField _sota {uiButtons::sota,    " S/P OTA ",  state::Button::SOTA};
+    ButtonField _menu {uiButtons::menu,    " MENU ",     state::Button::MENU};
 
     void _drawButton(ST7796S::MSP4021 &tft, const ButtonField &field) {
         const auto &button = field.area;
