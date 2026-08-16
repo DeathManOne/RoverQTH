@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "utilities/ota.h"
 #include "utilities/pota.h"
 
 namespace database::pota {
@@ -50,5 +51,11 @@ namespace database::pota {
 
     bool findNearest(double latitude, double longitude,
         utilities::pota::Park& park, double& distanceKm, double& bearing
+    );
+
+    utilities::ota::SearchStatus findNearby(double latitude, double longitude, double radiusKm,
+        utilities::ota::SearchResults &results,
+        utilities::ota::CancelCallback cancelCallback = nullptr,
+        void* cancelUserData = nullptr
     );
 }

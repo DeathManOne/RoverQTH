@@ -76,7 +76,7 @@ namespace services::update {
      * @return true when the service state has been initialized, false if an
      *         update or SOTA/POTA search task is active.
      */
-    bool begin();
+    void begin();
 
     /**
      * @brief Indicates whether an update operation is currently running.

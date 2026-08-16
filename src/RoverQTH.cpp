@@ -24,6 +24,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+#include <esp_heap_caps.h>
 #include <esp_system.h>
 #include <rom/rtc.h>
 
@@ -96,6 +97,17 @@ namespace {
 void app::setup() {
     storage::appendLogRecord("SYSTEM_START");
 
+    char versionRecord[48];
+    const int versionWritten = snprintf(
+        versionRecord, sizeof(versionRecord),
+        "FIRMWARE_VERSION version=%s",
+        PROJECT_VERSION
+    );
+
+    if (versionWritten > 0 &&
+        static_cast<size_t>(versionWritten) < sizeof(versionRecord)
+    ) { storage::appendLogRecord(versionRecord); }
+
     char resetRecord[64];
     const int written = snprintf(
         resetRecord, sizeof(resetRecord),
@@ -109,11 +121,11 @@ void app::setup() {
         static_cast<size_t>(written) < sizeof(resetRecord)
     ) { storage::appendLogRecord(resetRecord); }
 
-    if (!settings::begin())      { storage::appendErrorRecord("NVS_INIT_FAILED"); }
-    if (!power::begin(BTN_PIN))  { storage::appendErrorRecord("POWER_INIT_FAILED"); }
+    settings::begin();
+    power::begin(BTN_PIN);
 
     battery::begin(BATT_PIN);
-    if (battery::isCritical())   { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
+    if (battery::isCritical()) { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
 
     display::begin(
         TFT_CLK,        TFT_MISO,       TFT_MOSI,
@@ -122,7 +134,7 @@ void app::setup() {
     );
 
     navigation::begin();
-    if (!wifi::begin())          { storage::appendErrorRecord("WIFI_INIT_FAILED"); }
+    wifi::begin();
 
     state::begin();
     boot::run(_gpsUART, _sdSPI);
@@ -140,9 +152,37 @@ void app::setup() {
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
 
-    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0);
+    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(
+        _gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0
+    );
+
     if (gpsTaskResult != pdPASS) { storage::appendErrorRecord("GPS_TASK_CREATE_FAILED"); }
-    else { storage::appendLogRecord("SYSTEM_READY"); }
+    else {
+        char memoryRecord[96];
+        const int memoryWritten = snprintf(
+            memoryRecord, sizeof(memoryRecord),
+            "MEMORY_READY free=%lu minimum=%lu largest=%lu",
+            static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+            static_cast<unsigned long>(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)),
+            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))
+        );
+
+        if (memoryWritten > 0 &&
+            static_cast<size_t>(memoryWritten) < sizeof(memoryRecord)
+        ) { storage::appendLogRecord(memoryRecord); }
+
+        char bootRecord[48];
+        const int bootWritten = snprintf(
+            bootRecord, sizeof(bootRecord),
+            "SYSTEM_BOOT_DURATION duration_ms=%lu",
+            static_cast<unsigned long>(millis())
+        );
+
+        if (bootWritten > 0 &&
+            static_cast<size_t>(bootWritten) < sizeof(bootRecord)
+        ) { storage::appendLogRecord(bootRecord); }
+        storage::appendLogRecord("SYSTEM_READY");
+    }
 }
 
 void app::loop() {

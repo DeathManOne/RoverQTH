@@ -59,7 +59,7 @@ namespace services::gps {
      * @param timeout Initialization timeout in seconds.
      * @return true if the GPS was successfully initialized, false otherwise.
      */
-    bool begin  (HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
+    void begin(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
 
     /**
      * Restarts the GPS receiver.
@@ -71,6 +71,8 @@ namespace services::gps {
      * @return true if the GPS was successfully restarted, false otherwise.
      */
     bool restart(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
+
+    bool isInitialized();
 
     /**
      * @brief Reads and processes new GPS data.

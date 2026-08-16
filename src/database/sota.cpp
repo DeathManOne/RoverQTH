@@ -21,6 +21,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -34,6 +35,7 @@
 namespace sota     = database::sota;
 namespace storage  = services::storage;
 namespace distance = utilities::distance;
+namespace ota      = utilities::ota;
 namespace text     = utilities::text;
 namespace uSota    = utilities::sota;
 
@@ -111,6 +113,11 @@ namespace {
         double distanceKm;
         bool found;
         bool valid;
+        ota::SearchResults* nearbyResults;
+        double radiusKm;
+        ota::CancelCallback cancelCallback;
+        void* cancelUserData;
+        bool cancelled;
     };
 
     void _logCandidateFailure(const char* code, uint32_t records, uint32_t totalRecords, size_t buffered);
@@ -360,6 +367,13 @@ namespace {
         SearchContext* const context = static_cast<SearchContext*>(userData);
         if (!context->valid) { return false; }
 
+        if (context->cancelCallback != nullptr &&
+            context->cancelCallback(context->cancelUserData)
+        ) {
+            context->cancelled = true;
+            return false;
+        }
+
         if (context->skipped < sizeof(Header)) {
             size_t skip = sizeof(Header) - context->skipped;
             if (skip > length) { skip = length; }
@@ -370,6 +384,13 @@ namespace {
         }
 
         while (length > 0U) {
+            if (context->cancelCallback != nullptr &&
+                context->cancelCallback(context->cancelUserData)
+            ) {
+                context->cancelled = true;
+                return false;
+            }
+
             size_t copyLength = sizeof(Record) - context->received;
             if (copyLength > length) { copyLength = length; }
 
@@ -388,10 +409,59 @@ namespace {
             }
 
             const uSota::Summit candidate = _toSummit(context->record);
-            context->valid                = uSota::selectNearest(
-                context->latitude, context->longitude, candidate,
-                context->found,    context->nearest,   context->distanceKm
-            );
+
+            if (context->nearbyResults == nullptr) {
+                context->valid = uSota::selectNearest(
+                    context->latitude,
+                    context->longitude,
+                    candidate,
+                    context->found,
+                    context->nearest,
+                    context->distanceKm
+                );
+            } else {
+                bool candidateValid = false;
+                uSota::Summit validatedCandidate {};
+                double candidateDistanceKm = 0.0;
+
+                context->valid = uSota::selectNearest(
+                    context->latitude,
+                    context->longitude,
+                    candidate,
+                    candidateValid,
+                    validatedCandidate,
+                    candidateDistanceKm
+                );
+
+                if (context->valid) {
+                    context->found = true;
+
+                    const bool withinRadius =
+                        context->radiusKm == 0.0 ||
+                        candidateDistanceKm <= context->radiusKm;
+
+                    if (withinRadius) {
+                        ota::SearchResult result {};
+                        context->valid = text::copy(
+                            result.code,
+                            sizeof(result.code),
+                            candidate.code
+                        );
+
+                        if (context->valid) {
+                            result.distanceKm = candidateDistanceKm;
+                            result.points     = candidate.points;
+                            result.bonus      = candidate.bonus;
+
+                            ota::retainNearest(
+                                *context->nearbyResults,
+                                result
+                            );
+                        }
+                    }
+                }
+            }
+
             context->received = 0U;
             ++context->records;
             if (!context->valid || context->records > context->expectedRecords)
@@ -598,7 +668,8 @@ bool sota::buildCandidate(const char* const csvPath, const char* const version, 
     SearchContext verification {
         0U, 0U,
         candidate.recordCount, {}, 0U,
-        0.0, 0.0, {}, 0.0, false, true
+        0.0, 0.0, {}, 0.0, false, true,
+        nullptr, 0.0, nullptr, nullptr, false
     };
 
     if (!storage::readFileChunks(CANDIDATE_PATH, _searchChunk, &verification) ||
@@ -685,9 +756,11 @@ bool sota::findNearest(const double latitude, const double longitude,
 
     SearchContext context {
         0U, 0U,
-        header.recordCount,  {}, 0U,
-        latitude, longitude, {}, 0.0, false, true
+        header.recordCount, {}, 0U,
+        latitude, longitude, {}, 0.0, false, true,
+        nullptr, 0.0, nullptr, nullptr, false
     };
+
     if (!storage::readFileChunks(DATABASE_PATH, _searchChunk, &context) ||
         !context.valid         ||
         context.received != 0U ||
@@ -703,4 +776,67 @@ bool sota::findNearest(const double latitude, const double longitude,
     );
 
     return true;
+}
+
+ota::SearchStatus sota::findNearby(
+    const double latitude,
+    const double longitude,
+    const double radiusKm,
+    ota::SearchResults &results,
+    const ota::CancelCallback cancelCallback,
+    void* const cancelUserData
+) {
+    ota::clear(results);
+
+    if (!std::isfinite(latitude)  || !std::isfinite(longitude) || !std::isfinite(radiusKm) ||
+        latitude  < -90.0         || latitude  > 90.0          ||
+        longitude < -180.0        || longitude > 180.0         ||
+        radiusKm  < 0.0
+    ) {
+        return ota::SearchStatus::ERROR;
+    }
+
+    Header header {};
+    if (!_readHeader(DATABASE_PATH, header)) {
+        return ota::SearchStatus::ERROR;
+    }
+
+    SearchContext context {
+        0U,
+        0U,
+        header.recordCount,
+        {},
+        0U,
+        latitude,
+        longitude,
+        {},
+        0.0,
+        false,
+        true,
+        &results,
+        radiusKm,
+        cancelCallback,
+        cancelUserData,
+        false
+    };
+
+    const bool readComplete =
+        storage::readFileChunks(DATABASE_PATH, _searchChunk, &context);
+
+    if (context.cancelled) {
+        ota::clear(results);
+        return ota::SearchStatus::CANCELLED;
+    }
+
+    if (!readComplete ||
+        !context.valid ||
+        context.received != 0U ||
+        context.records != header.recordCount ||
+        !context.found
+    ) {
+        ota::clear(results);
+        return ota::SearchStatus::ERROR;
+    }
+
+    return ota::SearchStatus::SUCCESS;
 }

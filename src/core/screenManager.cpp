@@ -255,7 +255,7 @@ namespace {
             }
         }
 
-        return false;
+        return sota::handleTouch(x, y);
     }
 }
 

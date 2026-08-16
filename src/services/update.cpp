@@ -1376,15 +1376,17 @@ namespace {
     }
 }
 
-bool update::begin() {
+void update::begin() {
     if (sota::isBusy() || pota::isBusy()) {
-        return false;
+        storage::appendErrorRecord("UPDATE_INIT_BUSY");
+        return;
     }
 
     portENTER_CRITICAL(&_lock);
     if (_taskRunning) {
         portEXIT_CRITICAL(&_lock);
-        return false;
+        storage::appendErrorRecord("UPDATE_INIT_BUSY");
+        return;
     }
     _taskRunning = true;
     portEXIT_CRITICAL(&_lock);
@@ -1393,7 +1395,8 @@ bool update::begin() {
         portENTER_CRITICAL(&_lock);
         _taskRunning = false;
         portEXIT_CRITICAL(&_lock);
-        return false;
+        storage::appendErrorRecord("UPDATE_INIT_BUSY");
+        return;
     }
 
     sotaDB::Info sotaInfo;
@@ -1402,6 +1405,36 @@ bool update::begin() {
     const bool storageReady  = storage::isReady();
     const bool sotaInstalled = storageReady && sotaDB::info(sotaInfo);
     const bool potaInstalled = storageReady && potaDB::info(potaInfo);
+
+    if (sotaInstalled) {
+        char databaseRecord[96];
+        const int databaseWritten = snprintf(
+            databaseRecord, sizeof(databaseRecord),
+            "SOTA_DATABASE status=ready version=%s records=%lu source_size=%llu",
+            sotaInfo.version,
+            static_cast<unsigned long>(sotaInfo.records),
+            static_cast<unsigned long long>(sotaInfo.sourceSize)
+        );
+
+        if (databaseWritten > 0 &&
+            static_cast<size_t>(databaseWritten) < sizeof(databaseRecord)
+        ) { storage::appendLogRecord(databaseRecord); }
+    } else { storage::appendLogRecord("SOTA_DATABASE status=not_installed"); }
+
+    if (potaInstalled) {
+        char databaseRecord[96];
+        const int databaseWritten = snprintf(
+            databaseRecord,
+            sizeof(databaseRecord),
+            "POTA_DATABASE status=ready records=%lu source_size=%llu",
+            static_cast<unsigned long>(potaInfo.records),
+            static_cast<unsigned long long>(potaInfo.sourceSize)
+        );
+
+        if (databaseWritten > 0 &&
+            static_cast<size_t>(databaseWritten) < sizeof(databaseRecord)
+        ) { storage::appendLogRecord(databaseRecord); }
+    } else { storage::appendLogRecord("POTA_DATABASE status=not_installed"); }
 
     portENTER_CRITICAL(&_lock);
     _firmwareStatus            = Status::IDLE;
@@ -1422,7 +1455,8 @@ bool update::begin() {
     _potaError[0]              = '\0';
     _taskRunning               = false;
     portEXIT_CRITICAL(&_lock);
-    return true;
+
+    storage::appendLogRecord("UPDATE_READY");
 }
 
 bool update::checkFirmwareUpdate() {

@@ -52,7 +52,7 @@ namespace services::storage {
      * @param timeoutSec Maximum initialization time in seconds.
      * @return true if the storage service was successfully initialized, false otherwise.
      */
-    bool begin(SPIClass &spi, uint32_t timeoutSec = 10);
+    void begin(SPIClass &spi, uint32_t timeoutSec = 10);
 
     /**
      * Indicates whether the storage service is ready.

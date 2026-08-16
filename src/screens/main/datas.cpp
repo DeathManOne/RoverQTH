@@ -75,10 +75,9 @@ namespace {
     Field _update   (5, "UPDATE", theme::NAV);
 
     void _clearRow(ST7796S::MSP4021 &tft, const Field &field) {
-        const int gap = mockup::GAP;
         tft.rectFill(
-            field.outerX + gap,         field.outerY + gap,
-            field.outerW - (gap * 2),   field.outerH - (gap * 2),
+            field.innerX, field.innerY,
+            field.innerW, field.innerH,
             theme::BLACK
         );
     }

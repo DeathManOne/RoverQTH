@@ -75,7 +75,7 @@ namespace services::settings {
      * Initializes the settings service.
      * @return true if the persistent NVS backend was initialized successfully, false otherwise.
      */
-    bool begin();
+    void begin();
 
     /**
      * Retrieves the touchscreen calibration.

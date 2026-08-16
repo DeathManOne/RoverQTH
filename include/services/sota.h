@@ -23,7 +23,10 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+
+#include "utilities/ota.h"
 #include "utilities/sota.h"
 
 namespace services::sota {
@@ -36,6 +39,15 @@ namespace services::sota {
         ERROR        /**< The last search failed. */
     };
 
+    enum class NearbyStatus : uint8_t {
+        UNAVAILABLE,
+        IDLE,
+        SEARCHING,
+        READY,
+        EMPTY,
+        ERROR
+    };
+
     /** Thread-safe copy of the current SOTA search state and cached result. */
     struct Snapshot {
         Status status = Status::UNAVAILABLE;    /**< Current service state. */
@@ -44,11 +56,16 @@ namespace services::sota {
         double bearingDeg = 0.0;                /**< Initial bearing to the summit in degrees. */
     };
 
+    struct NearbySnapshot {
+        NearbyStatus status = NearbyStatus::UNAVAILABLE;
+        size_t count        = 0U;
+    };
+
     /**
      * @brief Initializes the runtime state and checks for an installed database.
      * @return true when the service state has been initialized.
      */
-    bool begin();
+    void begin();
 
     /**
      * @brief Clears the cached result after the installed database changes.
@@ -66,6 +83,11 @@ namespace services::sota {
      * @note A cached result remains valid until the position moves at least one kilometer.
      */
     bool requestNearest(double latitude, double longitude);
+
+    bool requestNearby(double latitude, double longitude, double radiusKm);
+    bool cancelNearby();
+    NearbySnapshot nearbySnapshot();
+    bool nearbyResult(size_t index, utilities::ota::SearchResult &result);
 
     /**
      * @brief Returns a thread-safe copy of the current service state.

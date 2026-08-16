@@ -205,34 +205,61 @@ namespace {
     };
 }
 
-bool storage::begin(SPIClass &spi, uint32_t timeoutSec) {
+void storage::begin(SPIClass &spi, uint32_t timeoutSec) {
     if (_mutex == nullptr) {
         _mutex = xSemaphoreCreateRecursiveMutex();
-        if (_mutex == nullptr) { return false; }
+        if (_mutex == nullptr) {
+            storage::appendErrorRecord("STORAGE_MUTEX_CREATE_FAILED");
+            return;
+        }
     }
 
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard) {
+        storage::appendErrorRecord("STORAGE_MUTEX_LOCK_FAILED");
+        return;
+    }
 
     spi.begin(SD_CLK, SD_MISO, SD_MOSI);
     if (!_sd) {
         _sd = new (std::nothrow) SDCard();
-        if (!_sd) { return false; }
+        if (!_sd) {
+            storage::appendErrorRecord("STORAGE_ALLOCATION_FAILED");
+            return;
+        }
     }
 
     const uint32_t start = millis();
     do {
         if (_sd->initialize(spi, SD_CS)) {
             _ready = true;
-            if (!_ensureTree()) { _ready = false; }
-            else { _flushWaitingLogs(); }
-            return _ready;
+            if (!_ensureTree()) {
+                _ready = false;
+                storage::appendErrorRecord("SD_DIRECTORY_TREE_FAILED");
+                return;
+            }
+
+            uint8_t type        = 0U;
+            uint64_t size       = 0U;
+            uint64_t totalBytes = 0U;
+            uint64_t usedBytes  = 0U;
+
+            if (!_sd->cardInfos(type, size, totalBytes, usedBytes)) {
+                _ready = false;
+                storage::appendErrorRecord("SD_CARD_INFO_FAILED");
+                return;
+            }
+
+            _flushWaitingLogs();
+            storage::appendLogRecord("SD_READY");
+            return;
         }
+
         delay(250);
     } while ((millis() - start) < timeoutSec * 1000);
 
     _ready = false;
-    return _ready;
+    storage::appendErrorRecord("SD_INITIALIZATION_FAILED");
 }
 
 bool storage::isReady() {

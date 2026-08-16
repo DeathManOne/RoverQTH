@@ -22,11 +22,11 @@
  */
 
 #pragma once
-
 #include <cstdint>
 
 namespace display::sota {
     void preload();
     void draw();
     void update(uint32_t &nextRefreshIn);
+    bool handleTouch(int x, int y);
 }

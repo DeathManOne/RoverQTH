@@ -29,7 +29,7 @@ namespace services::wifi {
      * Initializes the Wi-Fi service.
      * @return true if the service was successfully initialized, false otherwise.
      */
-    bool begin();
+    void begin();
 
     /**
      * Indicates whether the Wi-Fi service has been initialized.

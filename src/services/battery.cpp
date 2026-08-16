@@ -24,9 +24,11 @@
 #include <Arduino.h>
 #include "services/battery.h"
 #include "services/settings.h"
+#include "services/storage.h"
 
 namespace battery  = services::battery;
 namespace settings = services::settings;
+namespace storage  = services::storage;
 
 namespace {
     portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
@@ -86,7 +88,23 @@ void battery::begin(uint8_t pin) {
     #ifdef ESP32
         analogSetPinAttenuation(_batteryPin, ADC_11db);
     #endif
+
     update();
+    if (!isPresent()) {
+        storage::appendLogRecord("BATTERY_READY status=not_present");
+        return;
+    }
+
+    char batteryRecord[48];
+    const int batteryWritten = snprintf(
+        batteryRecord, sizeof(batteryRecord),
+        "BATTERY_READY status=present percent=%u",
+        static_cast<unsigned int>(getPercent())
+    );
+
+    if (batteryWritten > 0 &&
+        static_cast<size_t>(batteryWritten) < sizeof(batteryRecord)
+    ) { storage::appendLogRecord(batteryRecord); }
 }
 
 void battery::update() {

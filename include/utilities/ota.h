@@ -1,5 +1,5 @@
 /*
- * include/services/power.h
+ * include/utilities/ota.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,26 +22,34 @@
  */
 
 #pragma once
+
+#include <cstddef>
 #include <cstdint>
 
-namespace services::power {
-    enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
+namespace utilities::ota {
+    constexpr size_t CODE_SIZE       = 16U;
+    constexpr size_t RESULT_CAPACITY = 64U;
 
-    /**
-     * Initializes the power management service.
-     * @param buttonPin GPIO connected to the power button.
-     * @return true if the service was successfully initialized, false otherwise.
-     */
-    void begin(uint8_t buttonPin);
+    enum class SearchStatus : uint8_t {
+        SUCCESS,
+        CANCELLED,
+        ERROR
+    };
 
-    /**
-     * Updates the power management service.
-     */
-    void update();
+    struct SearchResult {
+        char code[CODE_SIZE] {};
+        double distanceKm = 0.0;
+        uint8_t points    = 0U;
+        uint8_t bonus     = 0U;
+    };
 
-    /**
-     * Shuts down the device.
-     * @param reason Reason for shutting down the device.
-     */
-    void shutdown(ShutdownReason reason);
+    struct SearchResults {
+        SearchResult items[RESULT_CAPACITY] {};
+        size_t count = 0U;
+    };
+
+    using CancelCallback = bool (*)(void* userData);
+
+    void clear(SearchResults &results);
+    bool retainNearest(SearchResults &results, const SearchResult &candidate);
 }

@@ -94,7 +94,7 @@ namespace {
                 break;
         }
 
-        if (!latitudeOk)  { text::copy(latitude, latitudeSize, "--"); }
+        if (!latitudeOk)  { text::copy(latitude,  latitudeSize,  "--"); }
         if (!longitudeOk) { text::copy(longitude, longitudeSize, "--"); }
         if (!uLocator::fromCoordinates(snapshot.latitude, snapshot.longitude, qth, qthSize))
             { text::copy(qth, qthSize, "--"); }

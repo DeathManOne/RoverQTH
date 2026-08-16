@@ -42,3 +42,7 @@ void sota::draw() { sSota::draw(_tft()); }
 void sota::update(uint32_t& nextRefreshIn) {
     sSota::update(_tft(), nextRefreshIn);
 }
+
+bool sota::handleTouch(const int x, const int y) {
+    return sSota::handleTouch(_tft(), x, y);
+}

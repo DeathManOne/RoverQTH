@@ -98,48 +98,33 @@ namespace {
     }
 
     void _initSdCard(SPIClass &sdSPI, uint32_t timeout) {
-        _sdOk = storage::begin(sdSPI, timeout);
+        storage::begin(sdSPI, timeout);
+        _sdOk = storage::isReady();
 
         dBoot::updateSD(&_sdOk);
-        if (!_sdOk) { return; }
-
-        uint8_t type        = 0;
-        uint64_t size       = 0;
-        uint64_t totalBytes = 0;
-        uint64_t usedBytes  = 0;
-
-        _sdOk = storage::readCardInfos(type, size, totalBytes, usedBytes);
-        if (!_sdOk) { storage::appendErrorRecord("SD_CARD_INFO_FAILED"); }
-        else { storage::appendLogRecord("SD_READY"); }
-
-        dBoot::updateSD(&_sdOk);
-        if (_sdOk)
-            { state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY); }
+        if (_sdOk) { state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY); }
     }
 
     void _initGPS(HardwareSerial &gpsUART) {
-        _gpsOk = gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-        dBoot::updateGPS(&_gpsOk);
+        gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+        _gpsOk = gps::isInitialized();
 
+        dBoot::updateGPS(&_gpsOk);
         if (_gpsOk) {
-            storage::appendLogRecord("GPS_READY");
             _waitGPSAcquisition(gpsUART);
             return;
         }
-        storage::appendErrorRecord("GPS_INIT_FAILED");
 
         while (true) {
             int x, y;
             if (display::TRead(x, y)) {
                 if (buttons::isPressed(buttons::bootSearchGPS, x, y)) {
                     dBoot::updateGPS(nullptr);
-                    _gpsOk = gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+                    gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+                    _gpsOk = gps::isInitialized();
 
                     dBoot::updateGPS(&_gpsOk);
-                    if (_gpsOk) {
-                        storage::appendLogRecord("GPS_READY");
-                        break;
-                    }
+                    if (_gpsOk) { break; }
                 }
             }
             delay(50);
@@ -176,8 +161,6 @@ namespace {
                 dBoot::updateGPS(nullptr);
 
                 _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-                if (!_gpsOk) { storage::appendErrorRecord("GPS_RESTART_FAILED"); }
-                else { storage::appendLogRecord("GPS_RESTARTED"); }
 
                 dBoot::updateGPS(&_gpsOk);
                 if (!_gpsOk) { _initGPS(gpsUART); }

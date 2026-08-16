@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "utilities/ota.h"
 #include "utilities/sota.h"
 
 namespace database::sota {
@@ -59,5 +60,11 @@ namespace database::sota {
     /** Finds the nearest stored summit and returns its distance and bearing. */
     bool findNearest(double latitude, double longitude,
         utilities::sota::Summit& summit, double& distanceKm, double& bearing
+    );
+
+    utilities::ota::SearchStatus findNearby(double latitude, double longitude, double radiusKm,
+        utilities::ota::SearchResults &results,
+        utilities::ota::CancelCallback cancelCallback = nullptr,
+        void* cancelUserData = nullptr
     );
 }

@@ -23,8 +23,10 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
+#include "utilities/ota.h"
 #include "utilities/pota.h"
 
 namespace services::pota {
@@ -36,6 +38,15 @@ namespace services::pota {
         ERROR
     };
 
+    enum class NearbyStatus : uint8_t {
+        UNAVAILABLE,
+        IDLE,
+        SEARCHING,
+        READY,
+        EMPTY,
+        ERROR
+    };
+
     struct Snapshot {
         Status status = Status::UNAVAILABLE;
         utilities::pota::Park park {};
@@ -43,9 +54,18 @@ namespace services::pota {
         double bearingDeg = 0.0;
     };
 
-    bool begin();
+    struct NearbySnapshot {
+        NearbyStatus status = NearbyStatus::UNAVAILABLE;
+        size_t count        = 0U;
+    };
+
+    void begin();
     void invalidate();
     bool requestNearest(double latitude, double longitude);
+    bool requestNearby(double latitude, double longitude, double radiusKm);
+    bool cancelNearby();
+    NearbySnapshot nearbySnapshot();
+    bool nearbyResult(size_t index, utilities::ota::SearchResult &result);
     Snapshot snapshot();
     bool isBusy();
 }

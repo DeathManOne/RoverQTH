@@ -28,6 +28,7 @@
 
 namespace screens::sota {
     void preload();
-    void draw  (ST7796S::MSP4021 &tft);
+    void draw(ST7796S::MSP4021 &tft);
     void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn);
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
 }

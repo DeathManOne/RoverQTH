@@ -37,31 +37,57 @@ namespace pota     = services::pota;
 namespace storage  = services::storage;
 namespace update   = services::update;
 namespace distance = utilities::distance;
+namespace ota      = utilities::ota;
 
 namespace {
-    portMUX_TYPE _lock   = portMUX_INITIALIZER_UNLOCKED;
-    pota::Status _status = pota::Status::UNAVAILABLE;
+    portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
 
     constexpr double REFRESH_DISTANCE_KM = 1.0;
     constexpr uint32_t TASK_STACK_SIZE   = 8192U;
 
-    utilities::pota::Park _park {};
-    double _distanceKm         = 0.0;
-    double _bearingDeg         = 0.0;
-    double _requestedLatitude  = 0.0;
-    double _requestedLongitude = 0.0;
-    double _searchedLatitude   = 0.0;
-    double _searchedLongitude  = 0.0;
-    bool _hasSearchedPosition  = false;
-    bool _taskRunning          = false;
+    enum class TaskKind : uint8_t {
+        NONE,
+        NEAREST,
+        NEARBY
+    };
+
+    pota::Status _status             = pota::Status::UNAVAILABLE;
+    pota::NearbyStatus _nearbyStatus = pota::NearbyStatus::UNAVAILABLE;
+
+    utilities::pota::Park _park       {};
+    ota::SearchResults _nearbyResults {};
+    double _requestedRadiusKm    = 0.0;
+    double _distanceKm           = 0.0;
+    double _bearingDeg           = 0.0;
+    double _requestedLatitude    = 0.0;
+    double _requestedLongitude   = 0.0;
+    double _searchedLatitude     = 0.0;
+    double _searchedLongitude    = 0.0;
+    bool _hasSearchedPosition    = false;
+    bool _taskRunning            = false;
+    TaskKind _taskKind           = TaskKind::NONE;
+    bool _cancelNearbyRequested  = false;
 
     bool _validPosition(const double latitude, const double longitude);
+    bool _nearbyCancellationRequested(void*);
     void _searchTask(void*);
+    void _nearbySearchTask(void*);
 
     bool _validPosition(const double latitude, const double longitude) {
         return std::isfinite(latitude) && std::isfinite(longitude) &&
             latitude >= -90.0          && latitude <= 90.0 &&
             longitude >= -180.0        && longitude <= 180.0;
+    }
+
+    bool _nearbyCancellationRequested(void*) {
+        portENTER_CRITICAL(&_lock);
+        const bool requested =
+            _taskRunning &&
+            _taskKind == TaskKind::NEARBY &&
+            _cancelNearbyRequested;
+        portEXIT_CRITICAL(&_lock);
+
+        return requested;
     }
 
     void _searchTask(void*) {
@@ -101,36 +127,109 @@ namespace {
             _bearingDeg = 0.0;
             _status     = pota::Status::ERROR;
         }
-        _taskRunning = false;
+
+        _taskRunning           = false;
+        _taskKind              = TaskKind::NONE;
+        _cancelNearbyRequested = false;
         portEXIT_CRITICAL(&_lock);
 
         vTaskDelete(nullptr);
     }
+
+    void _nearbySearchTask(void*) {
+        double latitude;
+        double longitude;
+        double radiusKm;
+
+        portENTER_CRITICAL(&_lock);
+        latitude  = _requestedLatitude;
+        longitude = _requestedLongitude;
+        radiusKm  = _requestedRadiusKm;
+        portEXIT_CRITICAL(&_lock);
+
+        ota::SearchResults results {};
+        const ota::SearchStatus searchStatus = potaDB::findNearby(
+            latitude,
+            longitude,
+            radiusKm,
+            results,
+            _nearbyCancellationRequested,
+            nullptr
+        );
+
+        if (searchStatus == ota::SearchStatus::ERROR) {
+            storage::appendErrorRecord("POTA_NEARBY_SEARCH_FAILED");
+        } else if (searchStatus == ota::SearchStatus::CANCELLED) {
+            storage::appendLogRecord("POTA_NEARBY_SEARCH_CANCELLED");
+        }
+
+        portENTER_CRITICAL(&_lock);
+
+        switch (searchStatus) {
+            case ota::SearchStatus::SUCCESS:
+                _nearbyResults = results;
+                _nearbyStatus  = results.count > 0U
+                    ? pota::NearbyStatus::READY
+                    : pota::NearbyStatus::EMPTY;
+                break;
+
+            case ota::SearchStatus::CANCELLED:
+                ota::clear(_nearbyResults);
+                _nearbyStatus = pota::NearbyStatus::IDLE;
+                break;
+
+            case ota::SearchStatus::ERROR:
+                ota::clear(_nearbyResults);
+                _nearbyStatus = pota::NearbyStatus::ERROR;
+                break;
+        }
+
+        _taskRunning           = false;
+        _taskKind              = TaskKind::NONE;
+        _cancelNearbyRequested = false;
+        portEXIT_CRITICAL(&_lock);
+        vTaskDelete(nullptr);
+    }
 }
 
-bool pota::begin() {
+void pota::begin() {
     potaDB::Info info {};
     const bool available = potaDB::info(info);
 
     portENTER_CRITICAL(&_lock);
-    _status              = available ? Status::IDLE : Status::UNAVAILABLE;
-    _park                = utilities::pota::Park {};
-    _distanceKm          = 0.0;
-    _bearingDeg          = 0.0;
-    _hasSearchedPosition = false;
-    _taskRunning         = false;
+    _status                 = available ? Status::IDLE : Status::UNAVAILABLE;
+    _park                   = utilities::pota::Park {};
+    _distanceKm             = 0.0;
+    _bearingDeg             = 0.0;
+    _hasSearchedPosition    = false;
+    _nearbyStatus           = available ? NearbyStatus::IDLE : NearbyStatus::UNAVAILABLE;
+    ota::clear(_nearbyResults);
+    _requestedRadiusKm      = 0.0;
+    _taskRunning            = false;
+    _taskKind               = TaskKind::NONE;
+    _cancelNearbyRequested  = false;
     portEXIT_CRITICAL(&_lock);
 
-    return true;
+    storage::appendLogRecord(
+        available
+            ? "POTA_SERVICE_READY status=available"
+            : "POTA_SERVICE_READY status=unavailable"
+    );
 }
 
 void pota::invalidate() {
     portENTER_CRITICAL(&_lock);
-    _status              = Status::IDLE;
-    _park                = utilities::pota::Park {};
-    _distanceKm          = 0.0;
-    _bearingDeg          = 0.0;
-    _hasSearchedPosition = false;
+    _status                 = Status::IDLE;
+    _park                   = utilities::pota::Park {};
+    _distanceKm             = 0.0;
+    _bearingDeg             = 0.0;
+    _hasSearchedPosition    = false;
+    _nearbyStatus           = NearbyStatus::IDLE;
+    ota::clear(_nearbyResults);
+    _requestedRadiusKm      = 0.0;
+    _taskRunning            = false;
+    _taskKind               = TaskKind::NONE;
+    _cancelNearbyRequested  = false;
     portEXIT_CRITICAL(&_lock);
 }
 
@@ -167,14 +266,16 @@ bool pota::requestNearest(const double latitude, const double longitude) {
         portEXIT_CRITICAL(&_lock);
         return false;
     }
-    _requestedLatitude   = latitude;
-    _requestedLongitude  = longitude;
-    _status              = Status::SEARCHING;
-    _park                = utilities::pota::Park {};
-    _distanceKm          = 0.0;
-    _bearingDeg          = 0.0;
-    _hasSearchedPosition = false;
-    _taskRunning         = true;
+    _requestedLatitude     = latitude;
+    _requestedLongitude    = longitude;
+    _status                = Status::SEARCHING;
+    _park                  = utilities::pota::Park {};
+    _distanceKm            = 0.0;
+    _bearingDeg            = 0.0;
+    _hasSearchedPosition   = false;
+    _taskRunning           = true;
+    _taskKind              = TaskKind::NEAREST;
+    _cancelNearbyRequested = false;
     portEXIT_CRITICAL(&_lock);
 
     const BaseType_t created = xTaskCreate(
@@ -188,12 +289,108 @@ bool pota::requestNearest(const double latitude, const double longitude) {
     if (created == pdPASS) { return true; }
 
     portENTER_CRITICAL(&_lock);
-    _taskRunning = false;
-    _status      = Status::ERROR;
+    _taskRunning           = false;
+    _taskKind              = TaskKind::NONE;
+    _cancelNearbyRequested = false;
+    _status                = Status::ERROR;
     portEXIT_CRITICAL(&_lock);
 
     storage::appendErrorRecord("POTA_SEARCH_TASK_CREATE_FAILED");
     return false;
+}
+
+bool pota::requestNearby(const double latitude, const double longitude, const double radiusKm) {
+    if (!_validPosition(latitude, longitude) || !std::isfinite(radiusKm) ||
+        radiusKm < 0.0                       || update::isBusy()
+    ) { return false; }
+
+    portENTER_CRITICAL(&_lock);
+    if (_taskRunning ||
+        _nearbyStatus == NearbyStatus::UNAVAILABLE ||
+        update::isBusy()
+    ) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    _requestedLatitude     = latitude;
+    _requestedLongitude    = longitude;
+    _requestedRadiusKm     = radiusKm;
+    _nearbyStatus          = NearbyStatus::SEARCHING;
+    ota::clear(_nearbyResults);
+    _taskRunning            = true;
+    _taskKind               = TaskKind::NEARBY;
+    _cancelNearbyRequested  = false;
+    portEXIT_CRITICAL(&_lock);
+
+    const BaseType_t created = xTaskCreate(
+        _nearbySearchTask,
+        "POTA nearby",
+        TASK_STACK_SIZE,
+        nullptr,
+        1,
+        nullptr
+    );
+
+    if (created == pdPASS) { return true; }
+
+    portENTER_CRITICAL(&_lock);
+    _taskRunning           = false;
+    _taskKind              = TaskKind::NONE;
+    _cancelNearbyRequested = false;
+    _nearbyStatus          = NearbyStatus::ERROR;
+    ota::clear(_nearbyResults);
+    portEXIT_CRITICAL(&_lock);
+
+    storage::appendErrorRecord(
+        "POTA_NEARBY_TASK_CREATE_FAILED"
+    );
+    return false;
+}
+
+bool pota::cancelNearby() {
+    portENTER_CRITICAL(&_lock);
+
+    if (!_taskRunning ||
+        _taskKind != TaskKind::NEARBY ||
+        _nearbyStatus != NearbyStatus::SEARCHING ||
+        _cancelNearbyRequested
+    ) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    _cancelNearbyRequested = true;
+    portEXIT_CRITICAL(&_lock);
+    return true;
+}
+
+pota::NearbySnapshot pota::nearbySnapshot() {
+    NearbySnapshot value;
+
+    portENTER_CRITICAL(&_lock);
+    value.status = _nearbyStatus;
+    value.count  = _nearbyResults.count;
+    portEXIT_CRITICAL(&_lock);
+
+    return value;
+}
+
+bool pota::nearbyResult(const size_t index, ota::SearchResult &result) {
+    result = ota::SearchResult {};
+
+    portENTER_CRITICAL(&_lock);
+
+    if (_nearbyStatus != NearbyStatus::READY ||
+        index >= _nearbyResults.count
+    ) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    result = _nearbyResults.items[index];
+    portEXIT_CRITICAL(&_lock);
+    return true;
 }
 
 pota::Snapshot pota::snapshot() {

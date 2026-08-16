@@ -128,16 +128,27 @@ namespace {
         };
 }
 
-bool settings::begin() {
+void settings::begin() {
     if (_mutex == nullptr) {
         _mutex = xSemaphoreCreateRecursiveMutex();
-        if (_mutex == nullptr) { return false; }
+        if (_mutex == nullptr) {
+            storage::appendErrorRecord("SETTINGS_MUTEX_CREATE_FAILED");
+            return;
+        }
     }
 
     SettingsGuard guard;
-    if (!guard) { return false; }
+    if (!guard) {
+        storage::appendErrorRecord("SETTINGS_MUTEX_LOCK_FAILED");
+        return;
+    }
 
-    return nvs::begin();
+    if (!nvs::begin()) {
+        storage::appendErrorRecord("NVS_INIT_FAILED");
+        return;
+    }
+
+    storage::appendLogRecord("NVS_READY");
 }
 
 bool settings::getTouchCalibration(Calibration &calibration) {
