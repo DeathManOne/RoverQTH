@@ -22,6 +22,7 @@
  */
 
 #include <cmath>
+#include <cstring>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -31,12 +32,14 @@
 #include "services/storage.h"
 #include "services/update.h"
 #include "utilities/distance.h"
+#include "utilities/text.h"
 
 namespace potaDB   = database::pota;
 namespace pota     = services::pota;
 namespace storage  = services::storage;
 namespace update   = services::update;
 namespace distance = utilities::distance;
+namespace text     = utilities::text;
 namespace ota      = utilities::ota;
 
 namespace {
@@ -48,12 +51,14 @@ namespace {
     enum class TaskKind : uint8_t {
         NONE,
         NEAREST,
+        BY_CODE,
         NEARBY
     };
 
     pota::Status _status             = pota::Status::UNAVAILABLE;
     pota::NearbyStatus _nearbyStatus = pota::NearbyStatus::UNAVAILABLE;
 
+    char _requestedCode[utilities::pota::CODE_SIZE] {};
     utilities::pota::Park _park       {};
     ota::SearchResults _nearbyResults {};
     double _requestedRadiusKm    = 0.0;
@@ -71,6 +76,7 @@ namespace {
     bool _validPosition(const double latitude, const double longitude);
     bool _nearbyCancellationRequested(void*);
     void _searchTask(void*);
+    void _codeSearchTask(void*);
     void _nearbySearchTask(void*);
 
     bool _validPosition(const double latitude, const double longitude) {
@@ -133,6 +139,70 @@ namespace {
         _cancelNearbyRequested = false;
         portEXIT_CRITICAL(&_lock);
 
+        vTaskDelete(nullptr);
+    }
+
+    void _codeSearchTask(void*) {
+        char code[utilities::pota::CODE_SIZE] {};
+        double latitude;
+        double longitude;
+
+        portENTER_CRITICAL(&_lock);
+        text::copy(code, sizeof(code), _requestedCode);
+        latitude  = _requestedLatitude;
+        longitude = _requestedLongitude;
+        portEXIT_CRITICAL(&_lock);
+
+        utilities::pota::Park park {};
+        double distanceKm = 0.0;
+        double bearingDeg = 0.0;
+
+        bool found = potaDB::findByCode(code, park);
+
+        if (found) {
+            distanceKm = distance::betweenKilometers(
+                latitude,
+                longitude,
+                park.latitude,
+                park.longitude
+            );
+
+            bearingDeg = distance::bearingDegrees(
+                latitude,
+                longitude,
+                park.latitude,
+                park.longitude
+            );
+
+            found =
+                std::isfinite(distanceKm) &&
+                std::isfinite(bearingDeg);
+        }
+
+        if (!found) {
+            storage::appendErrorRecord("POTA_CODE_SEARCH_FAILED");
+        }
+
+        portENTER_CRITICAL(&_lock);
+
+        if (found) {
+            _park       = park;
+            _distanceKm = distanceKm;
+            _bearingDeg = bearingDeg;
+            _status     = pota::Status::READY;
+        } else {
+            _park       = utilities::pota::Park {};
+            _distanceKm = 0.0;
+            _bearingDeg = 0.0;
+            _status     = pota::Status::ERROR;
+        }
+
+        _hasSearchedPosition   = false;
+        _taskRunning           = false;
+        _taskKind              = TaskKind::NONE;
+        _cancelNearbyRequested = false;
+
+        portEXIT_CRITICAL(&_lock);
         vTaskDelete(nullptr);
     }
 
@@ -199,6 +269,7 @@ void pota::begin() {
     portENTER_CRITICAL(&_lock);
     _status                 = available ? Status::IDLE : Status::UNAVAILABLE;
     _park                   = utilities::pota::Park {};
+    _requestedCode[0]       = '\0';
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _hasSearchedPosition    = false;
@@ -221,6 +292,7 @@ void pota::invalidate() {
     portENTER_CRITICAL(&_lock);
     _status                 = Status::IDLE;
     _park                   = utilities::pota::Park {};
+    _requestedCode[0]       = '\0';
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _hasSearchedPosition    = false;
@@ -296,6 +368,135 @@ bool pota::requestNearest(const double latitude, const double longitude) {
     portEXIT_CRITICAL(&_lock);
 
     storage::appendErrorRecord("POTA_SEARCH_TASK_CREATE_FAILED");
+    return false;
+}
+
+bool pota::requestByCode(const char* const code, const double latitude, const double longitude) {
+    if (
+        code == nullptr ||
+        code[0] == '\0' ||
+        std::memchr(code, '\0', utilities::pota::CODE_SIZE) == nullptr ||
+        !_validPosition(latitude, longitude) ||
+        update::isBusy()
+    ) {
+        return false;
+    }
+
+    Status status;
+    utilities::pota::Park cachedPark {};
+    char requestedCode[utilities::pota::CODE_SIZE] {};
+
+    portENTER_CRITICAL(&_lock);
+
+    if (_taskRunning) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    status     = _status;
+    cachedPark = _park;
+    text::copy(requestedCode, sizeof(requestedCode), _requestedCode);
+
+    portEXIT_CRITICAL(&_lock);
+
+    if (status == Status::UNAVAILABLE) { return false; }
+
+    if (text::equals(requestedCode, code)) {
+        if (status == Status::ERROR) { return false; }
+
+        if (
+            status == Status::READY &&
+            cachedPark.code[0] != '\0'
+        ) {
+            const double distanceKm = distance::betweenKilometers(
+                latitude,
+                longitude,
+                cachedPark.latitude,
+                cachedPark.longitude
+            );
+
+            const double bearingDeg = distance::bearingDegrees(
+                latitude,
+                longitude,
+                cachedPark.latitude,
+                cachedPark.longitude
+            );
+
+            if (
+                !std::isfinite(distanceKm) ||
+                !std::isfinite(bearingDeg)
+            ) {
+                return false;
+            }
+
+            portENTER_CRITICAL(&_lock);
+
+            if (
+                _taskRunning ||
+                _status != Status::READY ||
+                !text::equals(_requestedCode, code)
+            ) {
+                portEXIT_CRITICAL(&_lock);
+                return false;
+            }
+
+            _distanceKm = distanceKm;
+            _bearingDeg = bearingDeg;
+
+            portEXIT_CRITICAL(&_lock);
+            return true;
+        }
+    }
+
+    portENTER_CRITICAL(&_lock);
+
+    if (
+        _taskRunning ||
+        _status == Status::UNAVAILABLE ||
+        update::isBusy()
+    ) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    text::copy(_requestedCode, sizeof(_requestedCode), code);
+    _requestedLatitude      = latitude;
+    _requestedLongitude     = longitude;
+    _status                 = Status::SEARCHING;
+    _park                   = utilities::pota::Park {};
+    _distanceKm             = 0.0;
+    _bearingDeg             = 0.0;
+    _hasSearchedPosition    = false;
+    _taskRunning            = true;
+    _taskKind               = TaskKind::BY_CODE;
+    _cancelNearbyRequested  = false;
+
+    portEXIT_CRITICAL(&_lock);
+
+    const BaseType_t created = xTaskCreate(
+        _codeSearchTask,
+        "POTA code",
+        TASK_STACK_SIZE,
+        nullptr,
+        1,
+        nullptr
+    );
+
+    if (created == pdPASS) { return true; }
+
+    portENTER_CRITICAL(&_lock);
+
+    _status                 = Status::ERROR;
+    _park                   = utilities::pota::Park {};
+    _distanceKm             = 0.0;
+    _bearingDeg             = 0.0;
+    _taskRunning            = false;
+    _taskKind               = TaskKind::NONE;
+    _cancelNearbyRequested  = false;
+
+    portEXIT_CRITICAL(&_lock);
+
+    storage::appendErrorRecord("POTA_CODE_TASK_CREATE_FAILED");
     return false;
 }
 

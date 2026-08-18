@@ -120,6 +120,16 @@ namespace {
         bool cancelled;
     };
 
+    struct CodeSearchContext {
+        size_t skipped;
+        Record record;
+        size_t received;
+        const char* code;
+        uSota::Summit summit;
+        bool found;
+        bool valid;
+    };
+
     void _logCandidateFailure(const char* code, uint32_t records, uint32_t totalRecords, size_t buffered);
     bool _validHeader(const Header& header);
     bool _readHeader(const char* const path, Header& header);
@@ -128,6 +138,7 @@ namespace {
     bool _flushRecords(WriteCsvContext& context);
     bool _writeCsvLine(const char* const line, void* const userData);
     uSota::Summit _toSummit(const Record& record);
+    bool _searchCodeChunk(const uint8_t* data, size_t length, void* userData);
     bool _searchChunk(const uint8_t* data, size_t length, void* const userData);
 
     void _logCandidateFailure(const char* const code, const uint32_t records, const uint32_t totalRecords, const size_t buffered) {
@@ -359,6 +370,70 @@ namespace {
         summit.points    = record.points;
         summit.bonus     = record.bonus;
         return summit;
+    }
+
+    bool _searchCodeChunk(const uint8_t* data, size_t length, void* const userData) {
+        if (data == nullptr || userData == nullptr) { return false; }
+
+        CodeSearchContext* const context =
+            static_cast<CodeSearchContext*>(userData);
+
+        if (!context->valid || context->found) { return false; }
+
+        if (context->skipped < sizeof(Header)) {
+            size_t skip = sizeof(Header) - context->skipped;
+            if (skip > length) { skip = length; }
+
+            context->skipped += skip;
+            data             += skip;
+            length           -= skip;
+        }
+
+        while (length > 0U) {
+            size_t copyLength = sizeof(Record) - context->received;
+            if (copyLength > length) { copyLength = length; }
+
+            std::memcpy(
+                reinterpret_cast<uint8_t*>(&context->record) + context->received,
+                data,
+                copyLength
+            );
+
+            context->received += copyLength;
+            data              += copyLength;
+            length            -= copyLength;
+
+            if (context->received != sizeof(Record)) { continue; }
+
+            if (
+                context->record.code[0] == '\0' ||
+                context->record.area[0] == '\0' ||
+                std::memchr(
+                    context->record.code,
+                    '\0',
+                    sizeof(context->record.code)
+                ) == nullptr ||
+                std::memchr(
+                    context->record.area,
+                    '\0',
+                    sizeof(context->record.area)
+                ) == nullptr
+            ) {
+                context->valid = false;
+                return false;
+            }
+
+            if (text::equals(context->record.code, context->code)) {
+                context->summit = _toSummit(context->record);
+                context->found  = true;
+                return false;
+            }
+
+            context->record   = Record {};
+            context->received = 0U;
+        }
+
+        return true;
     }
 
     bool _searchChunk(const uint8_t* data, size_t length, void* const userData) {
@@ -742,6 +817,48 @@ bool sota::installCandidate() {
 
 void sota::discardCandidate() {
     storage::deleteFile(CANDIDATE_PATH);
+}
+
+bool sota::findByCode(
+    const char* const code,
+    uSota::Summit& summit
+) {
+    summit = uSota::Summit {};
+
+    if (
+        code == nullptr ||
+        code[0] == '\0' ||
+        std::memchr(code, '\0', uSota::CODE_SIZE) == nullptr
+    ) {
+        return false;
+    }
+
+    Header header {};
+    if (!_readHeader(DATABASE_PATH, header)) { return false; }
+
+    CodeSearchContext context {
+        0U,
+        {},
+        0U,
+        code,
+        {},
+        false,
+        true
+    };
+
+    const bool readComplete =
+        storage::readFileChunks(DATABASE_PATH, _searchCodeChunk, &context);
+
+    if (
+        !readComplete ||
+        !context.valid ||
+        !context.found
+    ) {
+        return false;
+    }
+
+    summit = context.summit;
+    return true;
 }
 
 bool sota::findNearest(const double latitude, const double longitude,

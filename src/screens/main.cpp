@@ -62,6 +62,8 @@ namespace uLocator    = utilities::locator;
 namespace text        = utilities::text;
 
 namespace {
+    settings::OtaSelection _otaSelection {};
+
     void _getFormattedPosition(const gps::Snapshot& snapshot,
         const settings::CoordinateFormat coordinateFormat,
         char* const latitude,  const size_t latitudeSize,
@@ -189,6 +191,9 @@ void main::preloadGPS() {
 }
 
 void main::preloadSOTA() {
+    _otaSelection = settings::OtaSelection {};
+    settings::getOtaSelection(_otaSelection);
+
     locator::setSOTABearing ("---");
     locator::setSOTADistance("---");
     locator::setSOTAPoints  ("---");
@@ -313,16 +318,28 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         return;
     }
 
-    const sota::Snapshot sotaState = sota::snapshot();
+    if (
+    (
+        _otaSelection.type != settings::OtaType::SOTA &&
+        _otaSelection.type != settings::OtaType::POTA
+    ) || _otaSelection.code[0] == '\0'
+    ) {
+        locator::updateSOTABearing (tft, "---");
+        locator::updateSOTADistance(tft, "---");
+        locator::updateSOTAPoints  (tft, "---");
+        locator::updateSOTAAltitude(tft, "---");
+        locator::updateSOTACode    (tft, "---");
+        return;
+    }
 
-    if (sotaState.status == sota::Status::UNAVAILABLE) {
-        pota::requestNearest(
+    if (_otaSelection.type == settings::OtaType::POTA) {
+        pota::requestByCode(
+            _otaSelection.code,
             gpsData.latitude,
             gpsData.longitude
         );
 
         const pota::Snapshot result = pota::snapshot();
-
         if (result.park.code[0] == '\0') {
             const char* const status =
                 result.status == pota::Status::SEARCHING
@@ -383,9 +400,13 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         return;
     }
 
-    sota::requestNearest(gpsData.latitude, gpsData.longitude);
-    const sota::Snapshot result = sota::snapshot();
+    sota::requestByCode(
+        _otaSelection.code,
+        gpsData.latitude,
+        gpsData.longitude
+    );
 
+    const sota::Snapshot result = sota::snapshot();
     if (result.summit.code[0] == '\0') {
         const char* const status = result.status == sota::Status::SEARCHING ? "Searching" : "---";
         locator::updateSOTABearing (tft, "---");
