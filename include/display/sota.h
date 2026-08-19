@@ -29,4 +29,5 @@ namespace display::sota {
     void draw();
     void update(uint32_t &nextRefreshIn);
     bool handleTouch(int x, int y);
+    bool isEditing();
 }

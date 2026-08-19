@@ -37,6 +37,42 @@ namespace {
     }
 }
 
+bool ota::normalizeCodePrefix(const char* const input, char* const output, const size_t outputSize) {
+    if (output == nullptr || outputSize == 0U) { return false; }
+
+    output[0] = '\0';
+    if (input == nullptr) { return false; }
+
+    size_t outputIndex = 0U;
+    for (size_t inputIndex = 0U; input[inputIndex] != '\0'; ++inputIndex) {
+        char character = input[inputIndex];
+
+        if (character == ' ' ||
+            character == '/' ||
+            character == '-'
+        ) { continue; }
+
+        if (character >= 'a' &&
+            character <= 'z'
+        ) { character = static_cast<char>(character - 'a' + 'A'); }
+
+        const bool valid =
+            (character >= 'A' && character <= 'Z') ||
+            (character >= '0' && character <= '9');
+
+        if (!valid || outputIndex + 1U >= outputSize) {
+            output[0] = '\0';
+            return false;
+        }
+        output[outputIndex++] = character;
+    }
+
+    if (outputIndex == 0U)
+        { return false; }
+    output[outputIndex] = '\0';
+    return true;
+}
+
 void ota::clear(SearchResults &results) {
     results = {};
 }

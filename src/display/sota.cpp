@@ -26,10 +26,12 @@
 #include "display/internal.h"
 #include "display/sota.h"
 #include "screens/sota.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace internal = display::internal;
 namespace sota     = display::sota;
 namespace sSota    = screens::sota;
+namespace theme    = ui::settings::themes::defaults;
 
 namespace {
     ST7796S::MSP4021& _tft() { return *internal::TFT; }
@@ -44,5 +46,20 @@ void sota::update(uint32_t& nextRefreshIn) {
 }
 
 bool sota::handleTouch(const int x, const int y) {
+    if (sSota::isEditing()) {
+        const bool handled = sSota::handleTouch(_tft(), x, y);
+
+        if (handled && !sSota::isEditing()) {
+            _tft().fillScreen(theme::BLACK);
+            draw();
+        }
+
+        return true;
+    }
+
     return sSota::handleTouch(_tft(), x, y);
+}
+
+bool sota::isEditing() {
+    return sSota::isEditing();
 }

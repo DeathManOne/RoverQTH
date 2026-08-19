@@ -38,6 +38,8 @@ namespace utilities::text {
      */
     bool copy(char* destination, size_t destinationSize, const char* source);
 
+    bool startsWith(const char* text, const char* prefix);
+
     /**
      * Compares two null-terminated strings.
      * Two identical pointers, including two null pointers, are considered

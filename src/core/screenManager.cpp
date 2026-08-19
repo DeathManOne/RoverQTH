@@ -238,6 +238,8 @@ namespace {
     }
 
     bool _handleSotaTouch(int x, int y) {
+        if (sota::isEditing()) { return sota::handleTouch(x, y); }
+
         if (buttons::isPressed(buttons::sota, x, y)) {
             state::setButtonState(state::Button::SOTA, state::ButtonState::READY);
             state::setScreen(state::Screen::MAIN);

@@ -104,6 +104,7 @@ namespace {
         bool found;
         bool valid;
         ota::SearchResults* nearbyResults;
+        const char* normalizedPrefix;
         double radiusKm;
         ota::CancelCallback cancelCallback;
         void* cancelUserData;
@@ -130,6 +131,12 @@ namespace {
     uPota::Park _toPark(const Record& record);
     bool _searchCodeChunk(const uint8_t* data, size_t length, void* userData);
     bool _searchChunk(const uint8_t* data, size_t length, void* const userData);
+    ota::SearchStatus _findResults(double latitude, double longitude, double radiusKm,
+        const char* normalizedPrefix,
+        ota::SearchResults &results,
+        ota::CancelCallback cancelCallback,
+        void* cancelUserData
+    );
 
     void _logCandidateFailure(const char* const code, const uint32_t records, const uint32_t totalRecords, const size_t buffered) {
         uint8_t progress = 60U;
@@ -473,7 +480,27 @@ namespace {
                         context->radiusKm == 0.0 ||
                         candidateDistanceKm <= context->radiusKm;
 
-                    if (withinRadius) {
+                    bool prefixMatches = true;
+
+                    if (context->normalizedPrefix != nullptr) {
+                        char normalizedCode[ota::CODE_SIZE] {};
+
+                        if (!ota::normalizeCodePrefix(
+                            candidate.code,
+                            normalizedCode,
+                            sizeof(normalizedCode)
+                        )) {
+                            context->valid = false;
+                            return false;
+                        }
+
+                        prefixMatches = text::startsWith(
+                            normalizedCode,
+                            context->normalizedPrefix
+                        );
+                    }
+
+                    if (withinRadius && prefixMatches) {
                         ota::SearchResult result {};
                         context->valid = text::copy(
                             result.code,
@@ -502,6 +529,94 @@ namespace {
         }
 
         return true;
+    }
+
+    ota::SearchStatus _findResults(double latitude, double longitude, double radiusKm,
+        const char* normalizedPrefix,
+        ota::SearchResults &results,
+        ota::CancelCallback cancelCallback,
+        void* cancelUserData
+    ) {
+        ota::clear(results);
+
+        if (
+            !std::isfinite(latitude) ||
+            !std::isfinite(longitude) ||
+            !std::isfinite(radiusKm) ||
+            latitude < -90.0 ||
+            latitude > 90.0 ||
+            longitude < -180.0 ||
+            longitude > 180.0 ||
+            radiusKm < 0.0
+        ) {
+            return ota::SearchStatus::ERROR;
+        }
+
+        if (normalizedPrefix != nullptr) {
+            char validatedPrefix[ota::CODE_SIZE] {};
+
+            if (
+                !ota::normalizeCodePrefix(
+                    normalizedPrefix,
+                    validatedPrefix,
+                    sizeof(validatedPrefix)
+                ) ||
+                !text::equals(validatedPrefix, normalizedPrefix)
+            ) {
+                return ota::SearchStatus::ERROR;
+            }
+        }
+
+        Header header {};
+
+        if (!_readHeader(DATABASE_PATH, header)) {
+            return ota::SearchStatus::ERROR;
+        }
+
+        SearchContext context {
+            0U,
+            0U,
+            header.recordCount,
+            {},
+            0U,
+            latitude,
+            longitude,
+            {},
+            0.0,
+            false,
+            true,
+            &results,
+            normalizedPrefix,
+            radiusKm,
+            cancelCallback,
+            cancelUserData,
+            false
+        };
+
+        const bool readComplete =
+            storage::readFileChunks(
+                DATABASE_PATH,
+                _searchChunk,
+                &context
+            );
+
+        if (context.cancelled) {
+            ota::clear(results);
+            return ota::SearchStatus::CANCELLED;
+        }
+
+        if (
+            !readComplete ||
+            !context.valid ||
+            context.received != 0U ||
+            context.records != header.recordCount ||
+            !context.found
+        ) {
+            ota::clear(results);
+            return ota::SearchStatus::ERROR;
+        }
+
+        return ota::SearchStatus::SUCCESS;
     }
 }
 
@@ -666,7 +781,7 @@ bool pota::buildCandidate(const char* const csvPath, const char* const etag,
         0U, 0U,
         candidate.recordCount, {}, 0U,
         0.0, 0.0, {}, 0.0, false, true,
-        nullptr, 0.0, nullptr, nullptr, false
+        nullptr, nullptr, 0.0, nullptr, nullptr, false
     };
 
     if (!storage::readFileChunks(CANDIDATE_PATH, _searchChunk, &verification) ||
@@ -799,7 +914,7 @@ bool pota::findNearest(const double latitude, const double longitude,
         0U, 0U,
         header.recordCount, {}, 0U,
         latitude, longitude, {}, 0.0, false, true,
-        nullptr, 0.0, nullptr, nullptr, false
+        nullptr, nullptr, 0.0, nullptr, nullptr, false
     };
 
     if (!storage::readFileChunks(DATABASE_PATH, _searchChunk, &context) ||
@@ -817,61 +932,43 @@ bool pota::findNearest(const double latitude, const double longitude,
     return true;
 }
 
-ota::SearchStatus pota::findNearby(const double latitude, const double longitude, const double radiusKm,
-    ota::SearchResults &results, const ota::CancelCallback cancelCallback,
+ota::SearchStatus pota::findByPrefix(const double latitude, const double longitude,
+    const char* const normalizedPrefix,
+    ota::SearchResults &results,
+    const ota::CancelCallback cancelCallback,
     void* const cancelUserData
 ) {
-    ota::clear(results);
-
-    if (!std::isfinite(latitude)  || !std::isfinite(longitude) || !std::isfinite(radiusKm) ||
-        latitude  < -90.0         || latitude  > 90.0          ||
-        longitude < -180.0        || longitude > 180.0         ||
-        radiusKm  < 0.0
+    if (
+        normalizedPrefix == nullptr ||
+        normalizedPrefix[0] == '\0'
     ) {
+        ota::clear(results);
         return ota::SearchStatus::ERROR;
     }
 
-    Header header {};
-    if (!_readHeader(DATABASE_PATH, header)) {
-        return ota::SearchStatus::ERROR;
-    }
-
-    SearchContext context {
-        0U,
-        0U,
-        header.recordCount,
-        {},
-        0U,
+    return _findResults(
         latitude,
         longitude,
-        {},
         0.0,
-        false,
-        true,
-        &results,
-        radiusKm,
+        normalizedPrefix,
+        results,
         cancelCallback,
-        cancelUserData,
-        false
-    };
+        cancelUserData
+    );
+}
 
-    const bool readComplete =
-        storage::readFileChunks(DATABASE_PATH, _searchChunk, &context);
-
-    if (context.cancelled) {
-        ota::clear(results);
-        return ota::SearchStatus::CANCELLED;
-    }
-
-    if (!readComplete ||
-        !context.valid ||
-        context.received != 0U ||
-        context.records != header.recordCount ||
-        !context.found
-    ) {
-        ota::clear(results);
-        return ota::SearchStatus::ERROR;
-    }
-
-    return ota::SearchStatus::SUCCESS;
+ota::SearchStatus pota::findNearby(const double latitude, const double longitude, const double radiusKm,
+    ota::SearchResults &results,
+    const ota::CancelCallback cancelCallback,
+    void* const cancelUserData
+) {
+    return _findResults(
+        latitude,
+        longitude,
+        radiusKm,
+        nullptr,
+        results,
+        cancelCallback,
+        cancelUserData
+    );
 }

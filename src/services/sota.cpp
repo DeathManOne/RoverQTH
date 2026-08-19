@@ -52,6 +52,7 @@ namespace {
         NONE,
         NEAREST,
         BY_CODE,
+        BY_PREFIX,
         NEARBY
     };
 
@@ -59,6 +60,7 @@ namespace {
     sota::NearbyStatus _nearbyStatus = sota::NearbyStatus::UNAVAILABLE;
 
     char _requestedCode[utilities::sota::CODE_SIZE] {};
+    char _requestedPrefix[ota::CODE_SIZE] {};
     utilities::sota::Summit _summit   {};
     ota::SearchResults _nearbyResults {};
     double _requestedRadiusKm    = 0.0;
@@ -89,7 +91,10 @@ namespace {
         portENTER_CRITICAL(&_lock);
         const bool requested =
             _taskRunning &&
-            _taskKind == TaskKind::NEARBY &&
+            (
+                _taskKind == TaskKind::NEARBY ||
+                _taskKind == TaskKind::BY_PREFIX
+            ) &&
             _cancelNearbyRequested;
         portEXIT_CRITICAL(&_lock);
 
@@ -206,30 +211,55 @@ namespace {
     }
 
     void _nearbySearchTask(void*) {
+        char prefix[ota::CODE_SIZE] {};
         double latitude;
         double longitude;
         double radiusKm;
+        TaskKind taskKind;
 
         portENTER_CRITICAL(&_lock);
+        text::copy(prefix, sizeof(prefix), _requestedPrefix);
         latitude  = _requestedLatitude;
         longitude = _requestedLongitude;
         radiusKm  = _requestedRadiusKm;
+        taskKind  = _taskKind;
         portEXIT_CRITICAL(&_lock);
 
         ota::SearchResults results {};
-        const ota::SearchStatus searchStatus = sotaDB::findNearby(
-            latitude,
-            longitude,
-            radiusKm,
-            results,
-            _nearbyCancellationRequested,
-            nullptr
-        );
+        ota::SearchStatus searchStatus = ota::SearchStatus::ERROR;
+
+        if (taskKind == TaskKind::BY_PREFIX) {
+            searchStatus = sotaDB::findByPrefix(
+                latitude,
+                longitude,
+                prefix,
+                results,
+                _nearbyCancellationRequested,
+                nullptr
+            );
+        } else if (taskKind == TaskKind::NEARBY) {
+            searchStatus = sotaDB::findNearby(
+                latitude,
+                longitude,
+                radiusKm,
+                results,
+                _nearbyCancellationRequested,
+                nullptr
+            );
+        }
 
         if (searchStatus == ota::SearchStatus::ERROR) {
-            storage::appendErrorRecord("SOTA_NEARBY_SEARCH_FAILED");
+            storage::appendErrorRecord(
+                taskKind == TaskKind::BY_PREFIX
+                    ? "SOTA_PREFIX_SEARCH_FAILED"
+                    : "SOTA_NEARBY_SEARCH_FAILED"
+            );
         } else if (searchStatus == ota::SearchStatus::CANCELLED) {
-            storage::appendLogRecord("SOTA_NEARBY_SEARCH_CANCELLED");
+            storage::appendLogRecord(
+                taskKind == TaskKind::BY_PREFIX
+                    ? "SOTA_PREFIX_SEARCH_CANCELLED"
+                    : "SOTA_NEARBY_SEARCH_CANCELLED"
+            );
         }
 
         portENTER_CRITICAL(&_lock);
@@ -253,9 +283,11 @@ namespace {
                 break;
         }
 
+        _requestedPrefix[0]    = '\0';
         _taskRunning           = false;
         _taskKind              = TaskKind::NONE;
         _cancelNearbyRequested = false;
+
         portEXIT_CRITICAL(&_lock);
         vTaskDelete(nullptr);
     }
@@ -269,6 +301,7 @@ void sota::begin() {
     _status                 = available ? Status::IDLE : Status::UNAVAILABLE;
     _summit                 = utilities::sota::Summit {};
     _requestedCode[0]       = '\0';
+    _requestedPrefix[0]     = '\0';
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _hasSearchedPosition    = false;
@@ -294,6 +327,7 @@ void sota::invalidate() {
     _status                 = Status::IDLE;
     _summit                 = utilities::sota::Summit {};
     _requestedCode[0]       = '\0';
+    _requestedPrefix[0]     = '\0';
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _hasSearchedPosition    = false;
@@ -499,6 +533,81 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
     return false;
 }
 
+bool sota::requestByPrefix(const char* const prefix, const double latitude, const double longitude) {
+    char normalizedPrefix[ota::CODE_SIZE] {};
+
+    if (
+        !_validPosition(latitude, longitude) ||
+        !ota::normalizeCodePrefix(
+            prefix,
+            normalizedPrefix,
+            sizeof(normalizedPrefix)
+        ) ||
+        normalizedPrefix[0] == '\0' ||
+        update::isBusy()
+    ) {
+        return false;
+    }
+
+    portENTER_CRITICAL(&_lock);
+
+    if (
+        _taskRunning ||
+        _nearbyStatus == NearbyStatus::UNAVAILABLE ||
+        update::isBusy()
+    ) {
+        portEXIT_CRITICAL(&_lock);
+        return false;
+    }
+
+    text::copy(
+        _requestedPrefix,
+        sizeof(_requestedPrefix),
+        normalizedPrefix
+    );
+
+    _requestedLatitude      = latitude;
+    _requestedLongitude     = longitude;
+    _requestedRadiusKm      = 0.0;
+    _nearbyStatus           = NearbyStatus::SEARCHING;
+    ota::clear(_nearbyResults);
+    _taskRunning            = true;
+    _taskKind               = TaskKind::BY_PREFIX;
+    _cancelNearbyRequested  = false;
+
+    portEXIT_CRITICAL(&_lock);
+
+    const BaseType_t created = xTaskCreate(
+        _nearbySearchTask,
+        "SOTA prefix",
+        TASK_STACK_SIZE,
+        nullptr,
+        1,
+        nullptr
+    );
+
+    if (created == pdPASS) {
+        return true;
+    }
+
+    portENTER_CRITICAL(&_lock);
+
+    _requestedPrefix[0]    = '\0';
+    _taskRunning           = false;
+    _taskKind              = TaskKind::NONE;
+    _cancelNearbyRequested = false;
+    _nearbyStatus          = NearbyStatus::ERROR;
+    ota::clear(_nearbyResults);
+
+    portEXIT_CRITICAL(&_lock);
+
+    storage::appendErrorRecord(
+        "SOTA_PREFIX_TASK_CREATE_FAILED"
+    );
+
+    return false;
+}
+
 bool sota::requestNearby(const double latitude, const double longitude, const double radiusKm) {
     if (!_validPosition(latitude, longitude) || !std::isfinite(radiusKm) ||
         radiusKm < 0.0                       || update::isBusy()
@@ -513,6 +622,7 @@ bool sota::requestNearby(const double latitude, const double longitude, const do
         return false;
     }
 
+    _requestedPrefix[0]     = '\0';
     _requestedLatitude      = latitude;
     _requestedLongitude     = longitude;
     _requestedRadiusKm      = radiusKm;
@@ -551,8 +661,12 @@ bool sota::requestNearby(const double latitude, const double longitude, const do
 bool sota::cancelNearby() {
     portENTER_CRITICAL(&_lock);
 
-    if (!_taskRunning ||
-        _taskKind != TaskKind::NEARBY ||
+    if (
+        !_taskRunning ||
+        (
+            _taskKind != TaskKind::NEARBY &&
+            _taskKind != TaskKind::BY_PREFIX
+        ) ||
         _nearbyStatus != NearbyStatus::SEARCHING ||
         _cancelNearbyRequested
     ) {

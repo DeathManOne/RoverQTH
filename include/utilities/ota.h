@@ -50,6 +50,7 @@ namespace utilities::ota {
 
     using CancelCallback = bool (*)(void* userData);
 
+    bool normalizeCodePrefix(const char* input, char* output, size_t outputSize);
     void clear(SearchResults &results);
     bool retainNearest(SearchResults &results, const SearchResult &candidate);
 }

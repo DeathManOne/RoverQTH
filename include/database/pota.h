@@ -55,6 +55,13 @@ namespace database::pota {
 
     bool findByCode(const char* code, utilities::pota::Park& park);
 
+    utilities::ota::SearchStatus findByPrefix(double latitude, double longitude,
+        const char* normalizedPrefix,
+        utilities::ota::SearchResults &results,
+        utilities::ota::CancelCallback cancelCallback = nullptr,
+        void* cancelUserData = nullptr
+    );
+
     utilities::ota::SearchStatus findNearby(double latitude, double longitude, double radiusKm,
         utilities::ota::SearchResults &results,
         utilities::ota::CancelCallback cancelCallback = nullptr,

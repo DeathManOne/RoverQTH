@@ -62,6 +62,12 @@ namespace database::sota {
         utilities::sota::Summit& summit, double& distanceKm, double& bearing
     );
 
+    utilities::ota::SearchStatus findByPrefix(double latitude, double longitude,
+        const char* normalizedPrefix,
+        utilities::ota::SearchResults &results,
+        utilities::ota::CancelCallback cancelCallback = nullptr,
+        void* cancelUserData = nullptr
+    );
     bool findByCode(const char* code, utilities::sota::Summit& summit);
 
     utilities::ota::SearchStatus findNearby(double latitude, double longitude, double radiusKm,

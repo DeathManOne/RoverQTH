@@ -22,6 +22,7 @@
  */
 
 #include <cstdio>
+#include <cstring>
 
 #include "screens/main/title.h"
 #include "screens/sota.h"
@@ -99,7 +100,8 @@ namespace {
     };
 
     enum class SearchType           : uint8_t {SOTA, POTA};
-    enum class SearchMode           : uint8_t {NEAREST, CODE, AREA};
+    enum class SearchMode           : uint8_t {NEAREST, CODE};
+    enum class SortMode             : uint8_t {DISTANCE, CODE, POINTS};
     enum class SelectionStatus      : uint8_t {NONE, PENDING, SAVED, ERROR};
     enum class ClearSelectionStatus : uint8_t {HIDDEN, AVAILABLE, CLEARED, ERROR};
     enum class ResultsViewStatus    : uint8_t {
@@ -123,6 +125,7 @@ namespace {
         size_t count;
     };
 
+    SortMode _sortMode              = SortMode::DISTANCE;
     SearchType _searchType          = SearchType::SOTA;
     SearchType _submittedSearchType = SearchType::SOTA;
     SearchMode _searchMode          = SearchMode::NEAREST;
@@ -131,12 +134,16 @@ namespace {
     ResultsViewStatus _displayedResultStatus   = ResultsViewStatus::UNKNOWN;
     ClearSelectionStatus _clearSelectionStatus = ClearSelectionStatus::HIDDEN;
 
+    char _codePrefix[ota::CODE_SIZE] {};
+    size_t _resultOrder[ota::RESULT_CAPACITY] {};
     size_t _displayedResultCount  = 0U;
     size_t _displayedResultPage   = 0U;
     size_t _resultPage            = 0U;
     size_t _visibleResultCount    = 0U;
+    size_t _resultOrderCount      = 0U;
     size_t _selectedResultIndex   = NO_RESULT_SELECTED;
     uint8_t _radiusIndex          = DEFAULT_RADIUS_INDEX;
+    bool _keyboardActive          = false;
     bool _searchSubmitted         = false;
     bool _searchButtonShowingStop = false;
 
@@ -144,7 +151,7 @@ namespace {
     button::ButtonArea _potaTypeButton       {};
     button::ButtonArea _nearestModeButton    {};
     button::ButtonArea _codeModeButton       {};
-    button::ButtonArea _areaModeButton       {};
+    button::ButtonArea _sortButton           {};
     button::ButtonArea _parameterButton      {};
     button::ButtonArea _searchButton         {};
     button::ButtonArea _clearSelectionButton {};
@@ -161,10 +168,14 @@ namespace {
     void _drawTypeSelector(ST7796S::MSP4021 &tft);
     void _drawModeSelector(ST7796S::MSP4021 &tft);
     void _drawParameter(ST7796S::MSP4021 &tft);
+    void _openCodeKeyboard(ST7796S::MSP4021 &tft);
     void _drawSearchButton(ST7796S::MSP4021 &tft, const bool searching);
-    bool _requestNearestSearch();
+    bool _requestSearch();
     ResultsView _currentResultsView();
+    bool _sourceResultAt(size_t index, ota::SearchResult &result);
     bool _resultAt(const size_t index, ota::SearchResult &result);
+    bool _resultComesBefore(const ota::SearchResult &left, const ota::SearchResult &right);
+    void _rebuildResultOrder(size_t resultCount);
     bool _saveSelectedResult();
     void _drawClearSelection(ST7796S::MSP4021 &tft);
     bool _clearSelection();
@@ -250,7 +261,7 @@ namespace {
             buttonH
         );
 
-        _areaModeButton = button::makeArea(
+        _sortButton = button::makeArea(
             buttonX,
             right::innerY() + (rowH * 3) + gap,
             buttonW,
@@ -269,9 +280,26 @@ namespace {
             controlsEnabled, _searchMode == SearchMode::CODE
         );
 
+        const char* sortLabel = nullptr;
+        switch (_sortMode) {
+            case SortMode::CODE:
+                sortLabel = "SORT: CODE";
+                break;
+            case SortMode::POINTS:
+                sortLabel = "SORT: POINTS";
+                break;
+            case SortMode::DISTANCE:
+            default:
+                sortLabel = "SORT: DIST";
+                break;
+        }
+
         _drawChoiceButton(
-            tft, _areaModeButton, "AREA",
-            controlsEnabled, _searchMode == SearchMode::AREA
+            tft,
+            _sortButton,
+            sortLabel,
+            controlsEnabled,
+            false
         );
     }
 
@@ -288,10 +316,9 @@ namespace {
 
         switch (_searchMode) {
             case SearchMode::CODE:
-                label = "ENTER CODE";
-                break;
-            case SearchMode::AREA:
-                label = "ENTER AREA";
+                label = _codePrefix[0] != '\0'
+                    ? _codePrefix
+                    : "ENTER CODE";
                 break;
             case SearchMode::NEAREST:
             default:
@@ -300,6 +327,12 @@ namespace {
         }
 
         _drawChoiceButton(tft, _parameterButton, label, !_searchButtonShowingStop, false);
+    }
+
+    void _openCodeKeyboard(ST7796S::MSP4021 &tft) {
+        tft.KSetText(_codePrefix);
+        tft.KDraw("Code prefix");
+        _keyboardActive = true;
     }
 
     void _drawSearchButton(ST7796S::MSP4021 &tft, const bool searching) {
@@ -336,13 +369,42 @@ namespace {
         _searchButtonShowingStop = searching;
     }
 
-    bool _requestNearestSearch() {
+    bool _requestSearch() {
         gps::Snapshot position {};
-        if (!gps::getSnapshot(position) ||
-            !position.positionValid
-        ) { return false; }
 
-        const double radiusKm = RADIUS_VALUES[_radiusIndex];
+        if (
+            !gps::getSnapshot(position) ||
+            !position.positionValid
+        ) {
+            return false;
+        }
+
+        if (_searchMode == SearchMode::CODE) {
+            if (_codePrefix[0] == '\0') {
+                return false;
+            }
+
+            switch (_searchType) {
+                case SearchType::POTA:
+                    return sPota::requestByPrefix(
+                        _codePrefix,
+                        position.latitude,
+                        position.longitude
+                    );
+
+                case SearchType::SOTA:
+                default:
+                    return sSota::requestByPrefix(
+                        _codePrefix,
+                        position.latitude,
+                        position.longitude
+                    );
+            }
+        }
+
+        const double radiusKm =
+            RADIUS_VALUES[_radiusIndex];
+
         switch (_searchType) {
             case SearchType::POTA:
                 return sPota::requestNearby(
@@ -350,6 +412,7 @@ namespace {
                     position.longitude,
                     radiusKm
                 );
+
             case SearchType::SOTA:
             default:
                 return sSota::requestNearby(
@@ -404,14 +467,107 @@ namespace {
         }
     }
 
-    bool _resultAt(const size_t index, ota::SearchResult &result) {
+    bool _sourceResultAt(const size_t index, ota::SearchResult &result) {
         switch (_submittedSearchType) {
             case SearchType::POTA:
                 return sPota::nearbyResult(index, result);
-
             case SearchType::SOTA:
             default:
                 return sSota::nearbyResult(index, result);
+        }
+    }
+
+    bool _resultAt(const size_t index, ota::SearchResult &result) {
+        if (_resultOrderCount == 0U) {
+            return _sourceResultAt(index, result);
+        }
+        if (index >= _resultOrderCount) {
+            return false;
+        }
+        return _sourceResultAt(_resultOrder[index], result);
+    }
+
+    bool _resultComesBefore(const ota::SearchResult &left, const ota::SearchResult &right) {
+        const int codeOrder = std::strcmp(left.code, right.code);
+
+        switch (_sortMode) {
+            case SortMode::CODE:
+                if (codeOrder != 0) {
+                    return codeOrder < 0;
+                }
+                return left.distanceKm < right.distanceKm;
+
+            case SortMode::POINTS: {
+                const uint16_t leftPoints =
+                    static_cast<uint16_t>(left.points) +
+                    static_cast<uint16_t>(left.bonus);
+
+                const uint16_t rightPoints =
+                    static_cast<uint16_t>(right.points) +
+                    static_cast<uint16_t>(right.bonus);
+
+                if (leftPoints != rightPoints) {
+                    return leftPoints > rightPoints;
+                }
+
+                if (left.distanceKm != right.distanceKm) {
+                    return left.distanceKm < right.distanceKm;
+                }
+
+                return codeOrder < 0;
+            }
+
+            case SortMode::DISTANCE:
+            default:
+                if (left.distanceKm != right.distanceKm) {
+                    return left.distanceKm < right.distanceKm;
+                }
+                return codeOrder < 0;
+        }
+    }
+
+    void _rebuildResultOrder(const size_t resultCount) {
+        _resultOrderCount = resultCount < ota::RESULT_CAPACITY
+            ? resultCount
+            : ota::RESULT_CAPACITY;
+
+        for (size_t index = 0U; index < _resultOrderCount; ++index) {
+            _resultOrder[index] = index;
+        }
+
+        for (size_t index = 1U; index < _resultOrderCount; ++index) {
+            const size_t sourceIndex = _resultOrder[index];
+            ota::SearchResult current {};
+
+            if (!_sourceResultAt(sourceIndex, current)) {
+                _resultOrderCount = 0U;
+                return;
+            }
+
+            size_t insertionIndex = index;
+
+            while (insertionIndex > 0U) {
+                ota::SearchResult previous {};
+
+                if (!_sourceResultAt(
+                    _resultOrder[insertionIndex - 1U],
+                    previous
+                )) {
+                    _resultOrderCount = 0U;
+                    return;
+                }
+
+                if (!_resultComesBefore(current, previous)) {
+                    break;
+                }
+
+                _resultOrder[insertionIndex] =
+                    _resultOrder[insertionIndex - 1U];
+
+                --insertionIndex;
+            }
+
+            _resultOrder[insertionIndex] = sourceIndex;
         }
     }
 
@@ -747,7 +903,13 @@ namespace {
                 color = theme::CYAN;
                 break;
             case ResultsViewStatus::READY:
-                if (_drawReadyResults(tft, view.count)) {
+                if (_resultOrderCount != view.count) {
+                    _rebuildResultOrder(view.count);
+                }
+                if (
+                    _resultOrderCount == view.count &&
+                    _drawReadyResults(tft, view.count)
+                ) {
                     return;
                 }
                 label = "SEARCH ERROR";
@@ -779,7 +941,10 @@ namespace {
 
 void sota::preload() {
     _searchMode            = SearchMode::NEAREST;
+    _sortMode              = SortMode::DISTANCE;
     _radiusIndex           = DEFAULT_RADIUS_INDEX;
+    _codePrefix[0]         = '\0';
+    _keyboardActive        = false;
     _searchSubmitted       = false;
     _displayedResultStatus = ResultsViewStatus::UNKNOWN;
     _displayedResultCount  = 0U;
@@ -788,6 +953,7 @@ void sota::preload() {
     _selectedResultIndex   = NO_RESULT_SELECTED;
     _selectionStatus       = SelectionStatus::NONE;
     _visibleResultCount    = 0U;
+    _resultOrderCount      = 0U;
 
     settings::OtaSelection persistedSelection {};
     _clearSelectionStatus = settings::getOtaSelection(persistedSelection)
@@ -819,6 +985,11 @@ void sota::draw(ST7796S::MSP4021& tft) {
 }
 
 void sota::update(ST7796S::MSP4021& tft, uint32_t& nextRefreshIn) {
+    if (_keyboardActive) {
+        nextRefreshIn = 1000;
+        return;
+    }
+
     char date[16];
     char time[16];
     char battery[8];
@@ -845,6 +1016,21 @@ void sota::update(ST7796S::MSP4021& tft, uint32_t& nextRefreshIn) {
 }
 
 bool sota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
+    if (_keyboardActive) {
+        if (tft.KUpdate(x, y)) {
+            ota::normalizeCodePrefix(
+                tft.KRead(),
+                _codePrefix,
+                sizeof(_codePrefix)
+            );
+
+            _displayedResultStatus = ResultsViewStatus::UNKNOWN;
+            _keyboardActive = false;
+            tft.setTextScale(1);
+        }
+        return true;
+    }
+
     const bool sotaAvailable = sSota::snapshot().status != sSota::Status::UNAVAILABLE;
     const bool potaAvailable = sPota::snapshot().status != sPota::Status::UNAVAILABLE;
 
@@ -955,26 +1141,57 @@ bool sota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
         }
         return true;
     }
-    if (button::isPressed(_areaModeButton, x, y)) {
-        if (_searchMode != SearchMode::AREA) {
-            _searchMode = SearchMode::AREA;
-            _drawModeSelector(tft);
-            _drawParameter(tft);
+    if (button::isPressed(_sortButton, x, y)) {
+        const SearchType sortedType =
+            resultsView.status == ResultsViewStatus::READY
+                ? _submittedSearchType
+                : _searchType;
+        switch (_sortMode) {
+            case SortMode::DISTANCE:
+                _sortMode = SortMode::CODE;
+                break;
+            case SortMode::CODE:
+                _sortMode = sortedType == SearchType::SOTA
+                    ? SortMode::POINTS
+                    : SortMode::DISTANCE;
+                break;
+            case SortMode::POINTS:
+            default:
+                _sortMode = SortMode::DISTANCE;
+                break;
         }
+
+        _resultPage            = 0U;
+        _resultOrderCount      = 0U;
+        _selectedResultIndex   = NO_RESULT_SELECTED;
+        _selectionStatus       = SelectionStatus::NONE;
+        _displayedResultStatus = ResultsViewStatus::UNKNOWN;
+
+        _drawModeSelector(tft);
+        _drawResultsStatus(tft);
         return true;
     }
     if (button::isPressed(_parameterButton, x, y)) {
-        if (_searchMode == SearchMode::NEAREST) {
+        if (_searchMode == SearchMode::CODE) { _openCodeKeyboard(tft); }
+        else {
             _radiusIndex = static_cast<uint8_t>((_radiusIndex + 1U) % RADIUS_COUNT);
             _drawParameter(tft);
         }
         return true;
     }
     if (button::isPressed(_searchButton, x, y)) {
-        if (_searchMode == SearchMode::NEAREST && _requestNearestSearch()) {
+        if (_requestSearch()) {
+            if (
+                _searchType == SearchType::POTA &&
+                _sortMode == SortMode::POINTS
+            ) {
+                _sortMode = SortMode::DISTANCE;
+            }
+
             _submittedSearchType = _searchType;
             _searchSubmitted     = true;
             _resultPage          = 0U;
+            _resultOrderCount    = 0U;
             _selectedResultIndex = NO_RESULT_SELECTED;
             _selectionStatus     = SelectionStatus::NONE;
             _drawSearchButton(tft, true);
@@ -986,4 +1203,8 @@ bool sota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
         return true;
     }
     return false;
+}
+
+bool sota::isEditing() {
+    return _keyboardActive;
 }

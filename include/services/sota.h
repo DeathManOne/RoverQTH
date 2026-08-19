@@ -85,6 +85,7 @@ namespace services::sota {
     bool requestNearest(double latitude, double longitude);
 
     bool requestByCode(const char* code, double latitude, double longitude);
+    bool requestByPrefix(const char* prefix, double latitude, double longitude);
     bool requestNearby(double latitude, double longitude, double radiusKm);
     bool cancelNearby();
     NearbySnapshot nearbySnapshot();
