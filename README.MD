@@ -17,9 +17,9 @@
   <strong>GNSS Assistant for Portable & Mobile Amateur Radio</strong>
 </p>
 
-RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator, operating information and the nearest SOTA summit, allowing operators to accurately determine their current operating position in the field.
+RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator, operating information and selected SOTA or POTA references, allowing operators to accurately determine their current operating position in the field.
 
-The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and an installable SOTA database, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
+The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and installable SOTA and POTA databases, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
 
 ---
 
@@ -52,17 +52,23 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * HDOP precision indicator
 * UTC clock
 
-### SOTA
+### SOTA and POTA
 
-* Secure download of the official SOTA summit list
-* On-device CSV validation and binary database conversion
+* Secure download of the official SOTA summit and POTA park lists
+* Remote update checks using ETag and content length
+* On-device CSV validation and conversion to compact binary databases
 * Atomic database installation with backup and rollback
-* Installed database version tracking
-* Asynchronous nearest-summit search
-* Automatic refresh after one kilometer of movement
-* Nearest summit code, bearing and distance
-* Summit altitude, points and bonus points
-* Non-blocking `Searching` status while a search is running
+* Binary format, metadata and record-count validation
+* Dedicated S/P OTA search page
+* Asynchronous searches by proximity or code prefix
+* Flexible code entry with optional spaces, slashes and hyphens
+* Result sorting by distance or code
+* Additional SOTA sorting by points
+* Pagination for up to 64 nearest matching results
+* Search cancellation without blocking the interface
+* Persistent SOTA/POTA selection stored in NVS
+* Selected reference, bearing and distance display on the main screen
+* SOTA altitude, points and bonus-points display
 
 ### Touchscreen Interface
 
@@ -96,7 +102,8 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 * OTA firmware updates
 * Online firmware version checking
 * Online SOTA database checking and installation
-* Firmware and SOTA update progress display
+* Online POTA database checking and installation
+* Firmware, SOTA and POTA update progress display
 
 ### Power Management
 
@@ -146,7 +153,8 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 ```text
 /RoverQTH/
 |-- database/
-|   `-- sota.bin
+|   |-- sota.bin
+|   `-- pota.bin
 |-- export/
 |-- logs/
 |   |-- system.log
@@ -161,7 +169,7 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 
 The `QTH.tmp`, `QTH.trace.tmp` and `QTH.final.tmp` files exist only while recording, recovering or finalizing a QTH.
 
-The SOTA update process temporarily uses `sota.tmp`, `sota.bin` and `sota.bak` inside `/RoverQTH/tmp/`. Candidate and backup files are removed after a successful installation. The installed database remains in `/RoverQTH/database/sota.bin`.
+The SOTA and POTA update processes use temporary download, candidate and backup files inside `/RoverQTH/tmp/`. These files are removed after a successful installation or safely cleaned after a failed operation. Installed databases remain in `/RoverQTH/database/sota.bin` and `/RoverQTH/database/pota.bin`.
 
 ### Logging
 
@@ -171,7 +179,9 @@ Two log files are automatically maintained.
   * System events
   * Boot sequence
   * QTH recording events
-  * Firmware and SOTA update events
+  * Firmware, SOTA and POTA update events
+  * Search cancellation and service status events
+  * ESP and CPU reset reasons
 
 * `error.log`
   * Initialization failures
@@ -203,24 +213,26 @@ The OTA system provides:
 
 Firmware updates run asynchronously without blocking the user interface.
 
-## SOTA Database Updates
+## SOTA and POTA Database Updates
 
-RoverQTH can download and install the official SOTA summit list directly from the Updates settings page.
+RoverQTH can download and install the official SOTA summit and POTA park lists directly from the Updates settings page.
 
-The SOTA update system provides:
+The database update system provides:
 
 * Secure HTTPS download
-* Database date comparison
+* Bandwidth-efficient checks using ETag and content length
 * Download and conversion progress display
 * CSV structure and record validation
 * Conversion to a compact fixed-record binary format
 * Atomic installation with backup and rollback
 * Automatic temporary-file cleanup
-* Detailed SOTA event and error logging
+* Detailed SOTA and POTA event and error logging
 
-The installed database stores the summit code, association name, latitude, longitude, altitude, points and bonus points. Summit names are not stored.
+The SOTA database stores the summit code, association area, latitude, longitude, altitude, points and bonus points. The POTA database stores the park code, area, latitude and longitude. Names are intentionally omitted because they are not required by the embedded interface.
 
-Nearest-summit searches run in a background FreeRTOS task. The latest result is cached and remains available to the interface while a new search is running. Firmware updates, SOTA updates and SOTA searches are coordinated so that only one heavy operation runs at a time.
+SOTA and POTA searches run in background FreeRTOS tasks. Users can search within a configurable radius or enter a normalized code prefix such as `FLNO096` or `FR10026`. Separators are optional, searches can be stopped, and existing results remain displayed until a new search is started.
+
+Firmware updates, database updates and database searches are coordinated so that only one heavy operation runs at a time. A selected SOTA or POTA reference is stored in NVS and restored after restart. No automatic full-database search is performed during startup.
 
 ## Hardware Requirements
 
@@ -380,7 +392,7 @@ Example configuration:
 -D BTN_PIN=19
 ```
 
-`DL_POTA` is reserved for the future POTA database implementation.
+`DL_SOTA` and `DL_POTA` define the official CSV sources used by the database update service.
 
 ---
 
@@ -437,16 +449,19 @@ Implemented features:
 * Persistent system logging with automatic timestamps
 * SOTA database support
 * Online SOTA database updates
-* Asynchronous nearest-SOTA search
-* Nearest-SOTA bearing and distance display
+* POTA database support
+* Online POTA database updates
+* Dedicated S/P OTA search page
+* Asynchronous SOTA and POTA searches
+* Proximity and code-prefix searches
+* Search sorting and pagination
+* Persistent SOTA/POTA selection
+* SOTA/POTA bearing and distance display
 * Power button and deep sleep
 
 Planned features:
 
-* POTA database support
-* Online POTA database updates
 * Export utilities
-* Dedicated SOTA screen
 * Storage actions (export, clear logs)
 
 ---

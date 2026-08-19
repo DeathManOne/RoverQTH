@@ -7,6 +7,76 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.9.0] - 2026-08-19
+
+### Added
+
+- Complete POTA database update workflow
+- Secure HTTPS download of the official POTA park list
+- Remote SOTA and POTA database checks using ETag and content length
+- CSV validation and conversion to compact binary databases
+- Atomic POTA database installation with backup and rollback
+- Versioned and validated SOTA, POTA and QTH file formats
+- Dedicated S/P OTA search page
+- Asynchronous SOTA and POTA searches by proximity
+- Prefix-based SOTA and POTA code searches
+- Touchscreen keyboard support for code-prefix entry
+- Flexible code normalization:
+  - Case-insensitive input
+  - Optional spaces, slashes and hyphens
+  - Compact code entry such as `FLNO096` or `FR10026`
+- Result sorting by distance and code
+- SOTA result sorting by points
+- Paginated search results
+- Search cancellation through the `STOP` button
+- SOTA/POTA result selection and confirmation
+- Persistent SOTA/POTA selection in NVS
+- `CLEAR SELECTION` support
+- Selected `SOTA: code` or `POTA: code` display on the main screen
+- ESP and CPU reset-reason logging at startup
+- Detailed SOTA and POTA update diagnostics
+
+### Changed
+
+- Unified the SOTA and POTA database schemas and search interfaces
+- Updated the SOTA binary database format to version `3`
+- Extended `services::update` to orchestrate firmware, SOTA and POTA updates
+- Improved update progress reporting across check, download, installation and verification
+- Limited search results to the nearest 64 matching records
+- Preserved displayed results until a new search is explicitly started
+- Disabled unavailable S/P OTA controls when the SD card or required database is absent
+- Removed automatic nearest-SOTA/POTA searching at startup
+- Improved SD-card access by keeping large files open during sequential operations
+- Updated SDCard integration to use the external PlatformIO dependency
+- Improved startup, service and update logging
+- Harmonized SOTA and POTA validation, cancellation and error handling
+
+### Fixed
+
+- Fixed SOTA and POTA update tasks remaining blocked after a failed operation
+- Fixed incomplete temporary-file cleanup after database operations
+- Fixed database installation failures caused by repeated SD-card file opening
+- Fixed inconsistent battery readings during intensive SD-card operations
+- Fixed stale characters remaining in GNSS fields on the main screen
+- Fixed navigation being triggered by touchscreen keyboard input
+- Fixed periodic screen refresh drawing over the touchscreen keyboard
+- Fixed search results disappearing after editing a code prefix
+- Fixed repeated or unintended search cancellation
+- Fixed POTA download and database validation failures
+- Fixed invalid or incomplete source records being accepted during conversion
+
+### Internal
+
+- Added `database::pota`, `utilities::pota` and `services::pota`
+- Added shared OTA code normalization and prefix-matching utilities
+- Added asynchronous prefix-search support to SOTA and POTA services
+- Added common bounded search-result storage and nearest-result retention
+- Added coordinated access between firmware updates, database updates and searches
+- Strengthened binary headers, record validation and file-size verification
+- Improved symmetry between the SOTA and POTA implementations
+
+---
+
 ## [1.8.0] - 2026-08-09
 
 ### Added
