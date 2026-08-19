@@ -44,16 +44,20 @@ namespace {
     }
 }
 
-bool wifi::begin() {
-    if (_initialized)         { return true; }
-    if (!WiFi.mode(WIFI_STA)) { return false; }
+void wifi::begin() {
+    if (_initialized) { return; }
+    if (!WiFi.mode(WIFI_STA)) {
+        storage::appendErrorRecord("WIFI_STA_MODE_FAILED");
+        return;
+    }
 
     WiFi.setAutoReconnect(true);
     WiFi.persistent(false);
 
     _resetConnectionState();
     _initialized = true;
-    return true;
+
+    storage::appendLogRecord("WIFI_READY");
 }
 
 bool wifi::isInitialized() { return _initialized; }

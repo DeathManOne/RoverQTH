@@ -90,6 +90,10 @@ namespace {
     constexpr const char* DEFAULT_WIFI_PASSWORD = "";
     constexpr uint8_t DEFAULT_WIFI_BOOT_MODE    = 0;
     constexpr bool DEFAULT_WIFI_LAST_ENABLED    = false;
+
+    // OTA SELECTION
+    constexpr const char* KEY_OTA_TYPE = "ota_type";
+    constexpr const char* KEY_OTA_CODE = "ota_code";
 }
 
 bool nvs::begin() {
@@ -374,4 +378,50 @@ bool nvs::setWifiLastEnabled(bool enabled) {
     if (!_ready && !begin())
         { return false; }
     return _prefs.putBool(KEY_WIFI_LAST_ENABLED, enabled) > 0U;
+}
+
+bool nvs::getOtaSelection(char* const type, const size_t typeSize, char* const code, const size_t codeSize) {
+    if (!_ready && !begin())                                                    { return false; }
+    if (type == nullptr || typeSize == 0U || code == nullptr || codeSize == 0U) { return false; }
+
+    const String storedType = _prefs.getString(KEY_OTA_TYPE, "");
+    const String storedCode = _prefs.getString(KEY_OTA_CODE, "");
+
+    if ((storedType != "SOTA" && storedType != "POTA") || storedCode.length() == 0U ||
+        storedType.length() >= typeSize                || storedCode.length() >= codeSize
+    ) { return false; }
+
+    return
+        text::copy(type, typeSize, storedType.c_str()) &&
+        text::copy(code, codeSize, storedCode.c_str());
+}
+
+bool nvs::setOtaSelection(const char* const type, const char* const code) {
+    if (!_ready && !begin()) { return false; }
+
+    if (type == nullptr || code == nullptr || code[0] == '\0' ||
+        (!text::equals(type, "SOTA") && !text::equals(type, "POTA"))
+    ) { return false; }
+
+    _prefs.remove(KEY_OTA_TYPE);
+    if (_prefs.isKey(KEY_OTA_TYPE)) { return false; }
+    if (_prefs.putString(KEY_OTA_CODE, code) == 0U) {
+        _prefs.remove(KEY_OTA_CODE);
+        return false;
+    }
+    if (_prefs.putString(KEY_OTA_TYPE, type) == 0U) {
+        _prefs.remove(KEY_OTA_TYPE);
+        _prefs.remove(KEY_OTA_CODE);
+        return false;
+    }
+    return true;
+}
+
+bool nvs::resetOtaSelection() {
+    if (!_ready && !begin()) { return false; }
+
+    _prefs.remove(KEY_OTA_TYPE);
+    _prefs.remove(KEY_OTA_CODE);
+
+    return !_prefs.isKey(KEY_OTA_TYPE) && !_prefs.isKey(KEY_OTA_CODE);
 }

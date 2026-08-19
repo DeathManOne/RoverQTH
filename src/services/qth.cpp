@@ -44,9 +44,12 @@ namespace text       = utilities::text;
 
 namespace {
     enum class TraceRestoreStatus : uint8_t {RESTORED, MISSING_OR_EMPTY, ERROR};
+    constexpr uint16_t QTH_FORMAT_VERSION          = 1U;
     constexpr size_t ID_SIZE                       = 30U;
     constexpr size_t MODE_SIZE                     = 4U;
     constexpr size_t USER_ID_SIZE                  = 32U;
+    constexpr size_t GENERATOR_VERSION_SIZE        = 16U;
+    constexpr const char* QTH_FORMAT               = "RoverQTH-QTH";
     constexpr size_t FILE_PATH_SIZE                = 64U;
     constexpr size_t TRACE_JSON_SIZE               = 160U;
     constexpr size_t RECORD_JSON_SIZE              = 768U;
@@ -80,11 +83,14 @@ namespace {
     };
 
     struct RecordData {
-        char id[ID_SIZE]          {};
+        char id[ID_SIZE] {};
         char userId[USER_ID_SIZE] {};
-        char mode[MODE_SIZE]      {};
+        char mode[MODE_SIZE] {};
+        char generatorVersion[GENERATOR_VERSION_SIZE] {};
 
-        bool finished = false;
+        uint16_t formatVersion = QTH_FORMAT_VERSION;
+        bool finished          = false;
+
         PositionData start;
         PositionData end;
     };
@@ -93,6 +99,7 @@ namespace {
     bool _serializePosition(json::Writer& writer, const char* const key, const PositionData& position);
     bool _deserializePosition(const json::Reader& parent, const char* const key, PositionData& position);
     bool _validatePosition(const PositionData& position, bool requireUTC);
+    bool _isValidId(const char* id);
     bool _validateRecord(const RecordData& record);
     bool _writeRecord(const RecordData& record);
     bool _buildFilePath(const char* const id, char* const path, const size_t size);
@@ -169,11 +176,35 @@ namespace {
             position.longitude >= -180.0 && position.longitude <= 180.0;
     }
 
+    bool _isValidId(const char* const id) {
+        if (id == nullptr) { return false; }
+
+        constexpr size_t ID_LENGTH = 26U;
+        for (size_t index = 0U; index < ID_LENGTH; ++index) {
+            if (index == 8U || index == 15U) {
+                if (id[index] != '-')
+                    { return false; }
+                continue;
+            }
+
+            if (id[index] < '0' || id[index] > '9')
+                { return false; }
+        }
+
+        return id[ID_LENGTH] == '\0';
+    }
+
     bool _validateRecord(const RecordData& record) {
-        if (record.id[0] == '\0' || record.userId[0] == '\0') { return false; }
+        if (record.formatVersion != QTH_FORMAT_VERSION ||
+            record.generatorVersion[0] == '\0' ||
+            !_isValidId(record.id)             ||
+            record.userId[0] == '\0'
+        ) { return false; }
+
         if (!_validatePosition(record.start, true)) { return false; }
-        if (!record.finished) { return record.end.utc == 0U; }
-        if (!_validatePosition(record.end, true)) { return false; }
+        if (!record.finished)                       { return record.end.utc == 0U; }
+        if (!_validatePosition(record.end, true))   { return false; }
+
         return record.end.utc >= record.start.utc;
     }
 
@@ -189,8 +220,13 @@ namespace {
     }
 
     bool _buildFilePath(const char* const id, char* const path, const size_t size) {
-        if (id == nullptr || id[0] == '\0' || path == nullptr || size == 0U) { return false; }
-        const int written = std::snprintf(path, size, "%s%s%s", DIR_QTH, id, FILE_EXTENSION);
+        if (!_isValidId(id) || path == nullptr || size == 0U) { return false; }
+
+        const int written = std::snprintf(
+            path, size, "%s%s%s",
+            DIR_QTH, id, FILE_EXTENSION
+        );
+
         return written > 0 && static_cast<size_t>(written) < size;
     }
 
@@ -468,14 +504,22 @@ namespace {
 
         record = {};
         if (_hasRestoredRecord) {
+            record.formatVersion = _restoredRecord.formatVersion;
             if (!text::copy(record.id,     sizeof(record.id),     _restoredRecord.id)     ||
                 !text::copy(record.userId, sizeof(record.userId), _restoredRecord.userId) ||
-                !text::copy(record.mode,   sizeof(record.mode),   _restoredRecord.mode)
+                !text::copy(record.mode,   sizeof(record.mode),   _restoredRecord.mode)   ||
+                !text::copy(record.generatorVersion, sizeof(record.generatorVersion), _restoredRecord.generatorVersion)
             ) { return false; }
         } else {
+            record.formatVersion = QTH_FORMAT_VERSION;
+
             if (!_createId(snapshot.startUTC, snapshot.startedAtMillis, record.id, sizeof(record.id)))
                 { return false; }
+    
             if (!_formatUser(record.userId, sizeof(record.userId), record.mode, sizeof(record.mode)))
+                { return false; }
+
+            if (!text::copy(record.generatorVersion, sizeof(record.generatorVersion), PROJECT_VERSION))
                 { return false; }
         }
 
@@ -496,13 +540,16 @@ namespace {
     
     bool _serialize(json::Writer& writer, const RecordData& record) {
         if (!_validateRecord(record)) { return false; }
-        if (!writer.beginObject()                              ||
-            !writer.string("id",        record.id)             ||
-            !writer.string("userId",    record.userId)         ||
-            !writer.string("mode",      record.mode)           ||
-            !writer.boolean("finished", record.finished)       ||
-            !_serializePosition(writer, "start", record.start) ||
-            !_serializePosition(writer, "end", record.end)     ||
+        if (!writer.beginObject()                                          ||
+            !writer.string("format", QTH_FORMAT)                           ||
+            !writer.unsignedInteger("formatVersion", record.formatVersion) ||
+            !writer.string("generatorVersion", record.generatorVersion)    ||
+            !writer.string("id",        record.id)                         ||
+            !writer.string("userId",    record.userId)                     ||
+            !writer.string("mode",      record.mode)                       ||
+            !writer.boolean("finished", record.finished)                   ||
+            !_serializePosition(writer, "start", record.start)             ||
+            !_serializePosition(writer, "end", record.end)                 ||
             !writer.endObject()
         ) { return false; }
         return writer.complete();
@@ -514,16 +561,30 @@ namespace {
         json::Reader root(content);
         if (!root.valid()) { return false; }
 
+        char format[16] {};
         RecordData restored {};
-        if (!root.string("id",        restored.id,     sizeof(restored.id))     ||
-            !root.string("userId",    restored.userId, sizeof(restored.userId)) ||
-            !root.string("mode",      restored.mode,   sizeof(restored.mode))   ||
-            !root.boolean("finished", restored.finished)                        ||
-            !_deserializePosition(root, "start", restored.start)                ||
-            !_deserializePosition(root, "end",   restored.end)
+        uint64_t formatVersion = 0U;
+
+        if (!root.string("format", format, sizeof(format))                   ||
+            !text::equals(format, QTH_FORMAT)                                ||
+            !root.unsignedInteger("formatVersion", formatVersion)            ||
+            formatVersion != QTH_FORMAT_VERSION                              ||
+            !root.string(
+                "generatorVersion",
+                restored.generatorVersion,
+                sizeof(restored.generatorVersion)
+            )                                                                ||
+            !root.string("id", restored.id, sizeof(restored.id))             ||
+            !root.string("userId", restored.userId, sizeof(restored.userId)) ||
+            !root.string("mode", restored.mode, sizeof(restored.mode))       ||
+            !root.boolean("finished", restored.finished)                     ||
+            !_deserializePosition(root, "start", restored.start)             ||
+            !_deserializePosition(root, "end", restored.end)
         ) { return false; }
 
+        restored.formatVersion = static_cast<uint16_t>(formatVersion);
         if (!_validateRecord(restored)) { return false; }
+    
         record = restored;
         return true;
     }

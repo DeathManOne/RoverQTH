@@ -26,10 +26,12 @@
 
 #include "services/dtc.h"
 #include "services/navigation.h"
+#include "services/storage.h"
 #include "utilities/distance.h"
 
 namespace dtc        = services::dtc;
 namespace navigation = services::navigation;
+namespace storage    = services::storage;
 namespace distance   = utilities::distance;
 
 namespace {
@@ -104,6 +106,8 @@ void navigation::begin() {
     _clearTraceQueue();
     _lastTraceUTC       = 0U;
     portEXIT_CRITICAL(&_lock);
+
+    storage::appendLogRecord("NAVIGATION_READY");
 }
 
 void navigation::updateGPSFix(const Coordinate& coordinate, const bool fixValid) {

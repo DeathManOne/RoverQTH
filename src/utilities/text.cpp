@@ -43,6 +43,18 @@ bool text::copy(char* const destination, const size_t destinationSize, const cha
     return source[index] == '\0';
 }
 
+bool text::startsWith(const char* const value, const char* const prefix) {
+    if (value == nullptr || prefix == nullptr) { return false; }
+
+    size_t index = 0U;
+    while (prefix[index] != '\0') {
+        if (value[index] == '\0' || value[index] != prefix[index])
+            { return false; }
+        ++index;
+    }
+    return true;
+}
+
 bool text::equals(const char* const left, const char* const right) {
     if (left == right)                       { return true; }
     if (left == nullptr || right == nullptr) { return false; }

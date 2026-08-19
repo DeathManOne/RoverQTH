@@ -32,12 +32,14 @@ namespace services::settings {
     constexpr size_t FULL_CALLSIGN_SIZE      = CALLSIGN_SIZE + CALLSIGN_SUFFIX_LENGTH;
     constexpr size_t WIFI_SSID_SIZE          = 33;
     constexpr size_t WIFI_PASSWORD_SIZE      = 64;
+    constexpr size_t OTA_CODE_SIZE           = 16;
 
     enum class Units            : uint8_t {METRIC, IMPERIAL};
     enum class TFTRotation      : uint8_t {NORMAL = 1, REVERSED = 3};
     enum class CallsignSuffix   : uint8_t {NONE, P, M, MM, AM};
     enum class CoordinateFormat : uint8_t {DD, DDM, DMS};
     enum class WifiBootMode     : uint8_t {NEVER, ALWAYS, LAST_STATE};
+    enum class OtaType          : uint8_t {NONE, SOTA, POTA};
 
     struct Calibration {
         bool swapXY     = false;
@@ -71,11 +73,16 @@ namespace services::settings {
         bool lastEnabled      = false;
     };
 
+    struct OtaSelection {
+        OtaType type = OtaType::NONE;
+        char code[OTA_CODE_SIZE] {};
+    };
+
     /**
      * Initializes the settings service.
      * @return true if the persistent NVS backend was initialized successfully, false otherwise.
      */
-    bool begin();
+    void begin();
 
     /**
      * Retrieves the touchscreen calibration.
@@ -229,4 +236,8 @@ namespace services::settings {
      * @return true if Wi-Fi should be enabled, false otherwise.
      */
     bool shouldConnectWifiAtBoot();
+
+    bool getOtaSelection(OtaSelection &selection);
+    bool setOtaSelection(OtaType type, const char* code);
+    bool resetOtaSelection();
 }

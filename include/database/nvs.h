@@ -293,4 +293,8 @@ namespace database::nvs {
      * @return true if the value was stored, false otherwise.
      */
     bool setWifiLastEnabled(bool enabled);
+
+    bool getOtaSelection(char* type, size_t typeSize, char* code, size_t codeSize);
+    bool setOtaSelection(const char* type, const char* code);
+    bool resetOtaSelection();
 }

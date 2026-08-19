@@ -1,5 +1,5 @@
 /*
- * include/services/power.h
+ * include/utilities/pota.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,26 +22,21 @@
  */
 
 #pragma once
-#include <cstdint>
+#include <cstddef>
 
-namespace services::power {
-    enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
+namespace utilities::pota {
+    constexpr size_t CODE_SIZE = 16U;
+    constexpr size_t AREA_SIZE = 96U;
 
-    /**
-     * Initializes the power management service.
-     * @param buttonPin GPIO connected to the power button.
-     * @return true if the service was successfully initialized, false otherwise.
-     */
-    void begin(uint8_t buttonPin);
+    struct Park {
+        char code[CODE_SIZE] {};
+        char area[AREA_SIZE] {};
+        double latitude  = 0.0;
+        double longitude = 0.0;
+    };
 
-    /**
-     * Updates the power management service.
-     */
-    void update();
-
-    /**
-     * Shuts down the device.
-     * @param reason Reason for shutting down the device.
-     */
-    void shutdown(ShutdownReason reason);
+    bool parseCsvRecord(const char* line, Park& park, bool& active);
+    bool selectNearest(double latitude, double longitude,
+        const Park& candidate, bool& found,
+        Park& nearest,         double& distanceKm);
 }

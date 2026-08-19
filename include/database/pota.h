@@ -1,5 +1,5 @@
 /*
- * include/database/sota.h
+ * include/database/pota.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -27,40 +27,33 @@
 #include <cstdint>
 
 #include "utilities/ota.h"
-#include "utilities/sota.h"
+#include "utilities/pota.h"
 
-namespace database::sota {
+namespace database::pota {
     constexpr size_t ETAG_SIZE = 96U;
 
-    /** Information stored in the installed database header. */
     struct Info {
         uint32_t records    = 0U;
         uint64_t sourceSize = 0U;
-        char version[utilities::sota::VERSION_SIZE] {};
         char etag[ETAG_SIZE] {};
     };
 
-    /** Callback invoked while a candidate database is being built. */
     using ProgressCallback = void (*)(uint8_t progress, void* userData);
 
-    /** Reads and validates the installed database information. */
     bool info(Info& value);
 
-    /** Builds and validates a binary candidate database from a SOTA CSV file. */
-    bool buildCandidate(const char* csvPath, const char* version, const char* etag,
+    bool buildCandidate(const char* csvPath, const char* etag,
         uint64_t sourceSize, ProgressCallback callback = nullptr, void* userData = nullptr
     );
 
-    /** Atomically replaces the installed database with the validated candidate. */
     bool installCandidate();
-
-    /** Deletes the candidate database when it is no longer usable. */
     void discardCandidate();
 
-    /** Finds the nearest stored summit and returns its distance and bearing. */
     bool findNearest(double latitude, double longitude,
-        utilities::sota::Summit& summit, double& distanceKm, double& bearing
+        utilities::pota::Park& park, double& distanceKm, double& bearing
     );
+
+    bool findByCode(const char* code, utilities::pota::Park& park);
 
     utilities::ota::SearchStatus findByPrefix(double latitude, double longitude,
         const char* normalizedPrefix,
@@ -68,7 +61,6 @@ namespace database::sota {
         utilities::ota::CancelCallback cancelCallback = nullptr,
         void* cancelUserData = nullptr
     );
-    bool findByCode(const char* code, utilities::sota::Summit& summit);
 
     utilities::ota::SearchStatus findNearby(double latitude, double longitude, double radiusKm,
         utilities::ota::SearchResults &results,

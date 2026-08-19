@@ -26,20 +26,24 @@
 
 #include "services/dtc.h"
 #include "services/gps.h"
+#include "services/storage.h"
 #include "ui/settings/gps.h"
 
 namespace dtc      = services::dtc;
 namespace gps      = services::gps;
+namespace storage  = services::storage;
 namespace settings = ui::settings::gps;
 
 namespace {
     portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
+    enum class GPSInitResult : uint8_t {SUCCESS, ALLOCATION_FAILED, DEVICE_NOT_FOUND};
 
-    SFE_UBLOX_GNSS *_gps       = nullptr;
-    int _dateYear              = 0;
-    int _dateMonth             = 0;
-    int _dateDay               = 0;
-    bool _hasSnapshot          = false;
+    SFE_UBLOX_GNSS *_gps = nullptr;
+    int _dateYear        = 0;
+    int _dateMonth       = 0;
+    int _dateDay         = 0;
+    bool _hasSnapshot    = false;
+    bool _initialized    = false;
     gps::Snapshot _snapshot {};
 
     bool _readCache() {
@@ -97,43 +101,62 @@ namespace {
         _dateMonth   = 0;
         _dateDay     = 0;
     }
+
+    GPSInitResult _initializeGPS(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const uint32_t finalBaud, const uint32_t timeout) {
+        if (!_gps) {
+            _gps = new (std::nothrow) SFE_UBLOX_GNSS();
+            if (!_gps) { return GPSInitResult::ALLOCATION_FAILED; }
+        }
+
+        static constexpr uint32_t BAUD_COUNT    = 4U;
+        static const uint32_t bauds[BAUD_COUNT] = {
+            9600U, 38400U, 57600U, 115200U
+        };
+
+        for (const uint32_t baud : bauds) {
+            uart.begin(baud, SERIAL_8N1, rx, tx);
+            while (uart.available())
+                { uart.read(); }
+            delay(100);
+
+            const uint32_t start = millis();
+            do {
+                if (_gps->begin(uart)) {
+                    _gps->setAutoPVT(true);
+                    _gps->setAutoDOPrate(1);
+                    _gps->setNavigationFrequency(settings::NAVIGATION_RATE_HZ);
+                    _gps->setSerialRate(finalBaud);
+
+                    delay(100);
+                    uart.updateBaudRate(finalBaud);
+                    delay(100);
+                    return GPSInitResult::SUCCESS;
+                }
+                delay(250);
+            } while ((millis() - start) < timeout * 1000U);
+        }
+        return GPSInitResult::DEVICE_NOT_FOUND;
+    }
 }
 
-bool gps::begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
-    if (!_gps) {
-        _gps = new (std::nothrow) SFE_UBLOX_GNSS();
-        if (!_gps) { return false; }
+void gps::begin(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const uint32_t finalBaud, const uint32_t timeout) {
+    const GPSInitResult result = _initializeGPS(uart, rx, tx, finalBaud, timeout);
+    _initialized               = result == GPSInitResult::SUCCESS;
+
+    if (_initialized) {
+        storage::appendLogRecord("GPS_READY");
+        return;
     }
 
-    static constexpr uint32_t BAUD_COUNT    = 4;
-    static const uint32_t bauds[BAUD_COUNT] = {9600, 38400, 57600, 115200};
-
-    for (const uint32_t baud : bauds) {
-        uart.begin(baud, SERIAL_8N1, rx, tx);
-        while (uart.available())
-            { uart.read(); }
-        delay(100);
-
-        const uint32_t start = millis();
-        do {
-            if (_gps->begin(uart)) {
-                _gps->setAutoPVT(true);
-                _gps->setAutoDOPrate(1);
-                _gps->setNavigationFrequency(settings::NAVIGATION_RATE_HZ);
-                _gps->setSerialRate(finalBaud);
-
-                delay(100);
-                uart.updateBaudRate(finalBaud);
-                delay(100);
-                return true;
-            }
-            delay(250);
-        } while ((millis() - start) < timeout * 1000);
-    }
-    return false;
+    storage::appendErrorRecord(
+        result == GPSInitResult::ALLOCATION_FAILED
+            ? "GPS_ALLOCATION_FAILED"
+            : "GPS_INIT_FAILED"
+    );
 }
 
-bool gps::restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout) {
+bool gps::restart(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const uint32_t finalBaud, const uint32_t timeout) {
+    _initialized = false;
     uart.end();
     delay(500);
 
@@ -143,7 +166,25 @@ bool gps::restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBa
     }
 
     _resetCache();
-    return begin(uart, rx, tx, finalBaud, timeout);
+
+    const GPSInitResult result = _initializeGPS(uart, rx, tx, finalBaud, timeout);
+    _initialized               = result == GPSInitResult::SUCCESS;
+
+    if (_initialized) {
+        storage::appendLogRecord("GPS_RESTARTED");
+        return true;
+    }
+
+    storage::appendErrorRecord(
+        result == GPSInitResult::ALLOCATION_FAILED
+            ? "GPS_RESTART_ALLOCATION_FAILED"
+            : "GPS_RESTART_FAILED"
+    );
+    return false;
+}
+
+bool gps::isInitialized() {
+    return _initialized;
 }
 
 bool gps::update(uint32_t timeoutMs) {

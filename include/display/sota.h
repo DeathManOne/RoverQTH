@@ -1,5 +1,5 @@
 /*
- * include/services/power.h
+ * include/display/sota.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -24,24 +24,10 @@
 #pragma once
 #include <cstdint>
 
-namespace services::power {
-    enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
-
-    /**
-     * Initializes the power management service.
-     * @param buttonPin GPIO connected to the power button.
-     * @return true if the service was successfully initialized, false otherwise.
-     */
-    void begin(uint8_t buttonPin);
-
-    /**
-     * Updates the power management service.
-     */
-    void update();
-
-    /**
-     * Shuts down the device.
-     * @param reason Reason for shutting down the device.
-     */
-    void shutdown(ShutdownReason reason);
+namespace display::sota {
+    void preload();
+    void draw();
+    void update(uint32_t &nextRefreshIn);
+    bool handleTouch(int x, int y);
+    bool isEditing();
 }

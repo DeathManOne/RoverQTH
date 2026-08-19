@@ -1,5 +1,5 @@
 /*
- * include/services/power.h
+ * include/screens/sota.h
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -22,26 +22,14 @@
  */
 
 #pragma once
+
 #include <cstdint>
+#include <MSP4021.h>
 
-namespace services::power {
-    enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
-
-    /**
-     * Initializes the power management service.
-     * @param buttonPin GPIO connected to the power button.
-     * @return true if the service was successfully initialized, false otherwise.
-     */
-    void begin(uint8_t buttonPin);
-
-    /**
-     * Updates the power management service.
-     */
-    void update();
-
-    /**
-     * Shuts down the device.
-     * @param reason Reason for shutting down the device.
-     */
-    void shutdown(ShutdownReason reason);
+namespace screens::sota {
+    void preload();
+    void draw(ST7796S::MSP4021 &tft);
+    void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn);
+    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+    bool isEditing();
 }

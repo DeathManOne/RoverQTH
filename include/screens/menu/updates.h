@@ -25,6 +25,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <MSP4021.h>
 #include "screens/menu/page.h"
 
@@ -85,5 +86,14 @@ namespace screens::menu {
 
             void _actionCheckSota(ST7796S::MSP4021 &tft);
             void _actionDownloadSota(ST7796S::MSP4021 &tft);
+
+            void _preparePotaFields();
+            void _updatePotaFields(ST7796S::MSP4021 &tft);
+
+            void _setPotaStatus(const char* value, _Action action, uint16_t color);
+            void _setPotaRecords(uint32_t records);
+
+            void _actionCheckPota(ST7796S::MSP4021 &tft);
+            void _actionDownloadPota(ST7796S::MSP4021 &tft);
     };
 }

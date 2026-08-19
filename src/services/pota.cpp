@@ -1,5 +1,5 @@
 /*
- * src/services/sota.cpp
+ * src/services/pota.cpp
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
@@ -27,15 +27,15 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "database/sota.h"
-#include "services/sota.h"
+#include "database/pota.h"
+#include "services/pota.h"
 #include "services/storage.h"
 #include "services/update.h"
 #include "utilities/distance.h"
 #include "utilities/text.h"
 
-namespace sota     = services::sota;
-namespace sotaDB   = database::sota;
+namespace potaDB   = database::pota;
+namespace pota     = services::pota;
 namespace storage  = services::storage;
 namespace update   = services::update;
 namespace distance = utilities::distance;
@@ -56,12 +56,12 @@ namespace {
         NEARBY
     };
 
-    sota::Status _status             = sota::Status::UNAVAILABLE;
-    sota::NearbyStatus _nearbyStatus = sota::NearbyStatus::UNAVAILABLE;
+    pota::Status _status             = pota::Status::UNAVAILABLE;
+    pota::NearbyStatus _nearbyStatus = pota::NearbyStatus::UNAVAILABLE;
 
-    char _requestedCode[utilities::sota::CODE_SIZE] {};
+    char _requestedCode[utilities::pota::CODE_SIZE] {};
     char _requestedPrefix[ota::CODE_SIZE] {};
-    utilities::sota::Summit _summit   {};
+    utilities::pota::Park _park       {};
     ota::SearchResults _nearbyResults {};
     double _requestedRadiusKm    = 0.0;
     double _distanceKm           = 0.0;
@@ -75,7 +75,7 @@ namespace {
     TaskKind _taskKind           = TaskKind::NONE;
     bool _cancelNearbyRequested  = false;
 
-    bool _validPosition(double latitude, double longitude);
+    bool _validPosition(const double latitude, const double longitude);
     bool _nearbyCancellationRequested(void*);
     void _searchTask(void*);
     void _codeSearchTask(void*);
@@ -110,44 +110,45 @@ namespace {
         longitude = _requestedLongitude;
         portEXIT_CRITICAL(&_lock);
 
-        utilities::sota::Summit summit {};
+        utilities::pota::Park park {};
         double distanceKm = 0.0;
         double bearingDeg = 0.0;
-        const bool found = sotaDB::findNearest(
+        const bool found = potaDB::findNearest(
             latitude,
             longitude,
-            summit,
+            park,
             distanceKm,
             bearingDeg
         );
 
-        if (!found) { storage::appendErrorRecord("SOTA_SEARCH_FAILED"); }
+        if (!found) { storage::appendErrorRecord("POTA_SEARCH_FAILED"); }
         portENTER_CRITICAL(&_lock);
 
         if (found) {
-            _summit              = summit;
+            _park                = park;
             _distanceKm          = distanceKm;
             _bearingDeg          = bearingDeg;
             _searchedLatitude    = latitude;
             _searchedLongitude   = longitude;
             _hasSearchedPosition = true;
-            _status              = sota::Status::READY;
+            _status              = pota::Status::READY;
         } else {
-            _summit      = utilities::sota::Summit {};
-            _distanceKm  = 0.0;
-            _bearingDeg  = 0.0;
-            _status      = sota::Status::ERROR;
+            _park       = utilities::pota::Park {};
+            _distanceKm = 0.0;
+            _bearingDeg = 0.0;
+            _status     = pota::Status::ERROR;
         }
 
         _taskRunning           = false;
         _taskKind              = TaskKind::NONE;
         _cancelNearbyRequested = false;
         portEXIT_CRITICAL(&_lock);
+
         vTaskDelete(nullptr);
     }
 
     void _codeSearchTask(void*) {
-        char code[utilities::sota::CODE_SIZE] {};
+        char code[utilities::pota::CODE_SIZE] {};
         double latitude;
         double longitude;
 
@@ -157,25 +158,25 @@ namespace {
         longitude = _requestedLongitude;
         portEXIT_CRITICAL(&_lock);
 
-        utilities::sota::Summit summit {};
+        utilities::pota::Park park {};
         double distanceKm = 0.0;
         double bearingDeg = 0.0;
 
-        bool found = sotaDB::findByCode(code, summit);
+        bool found = potaDB::findByCode(code, park);
 
         if (found) {
             distanceKm = distance::betweenKilometers(
                 latitude,
                 longitude,
-                summit.latitude,
-                summit.longitude
+                park.latitude,
+                park.longitude
             );
 
             bearingDeg = distance::bearingDegrees(
                 latitude,
                 longitude,
-                summit.latitude,
-                summit.longitude
+                park.latitude,
+                park.longitude
             );
 
             found =
@@ -184,21 +185,21 @@ namespace {
         }
 
         if (!found) {
-            storage::appendErrorRecord("SOTA_CODE_SEARCH_FAILED");
+            storage::appendErrorRecord("POTA_CODE_SEARCH_FAILED");
         }
 
         portENTER_CRITICAL(&_lock);
 
         if (found) {
-            _summit     = summit;
+            _park       = park;
             _distanceKm = distanceKm;
             _bearingDeg = bearingDeg;
-            _status     = sota::Status::READY;
+            _status     = pota::Status::READY;
         } else {
-            _summit     = utilities::sota::Summit {};
+            _park       = utilities::pota::Park {};
             _distanceKm = 0.0;
             _bearingDeg = 0.0;
-            _status     = sota::Status::ERROR;
+            _status     = pota::Status::ERROR;
         }
 
         _hasSearchedPosition   = false;
@@ -229,7 +230,7 @@ namespace {
         ota::SearchStatus searchStatus = ota::SearchStatus::ERROR;
 
         if (taskKind == TaskKind::BY_PREFIX) {
-            searchStatus = sotaDB::findByPrefix(
+            searchStatus = potaDB::findByPrefix(
                 latitude,
                 longitude,
                 prefix,
@@ -238,7 +239,7 @@ namespace {
                 nullptr
             );
         } else if (taskKind == TaskKind::NEARBY) {
-            searchStatus = sotaDB::findNearby(
+            searchStatus = potaDB::findNearby(
                 latitude,
                 longitude,
                 radiusKm,
@@ -251,14 +252,14 @@ namespace {
         if (searchStatus == ota::SearchStatus::ERROR) {
             storage::appendErrorRecord(
                 taskKind == TaskKind::BY_PREFIX
-                    ? "SOTA_PREFIX_SEARCH_FAILED"
-                    : "SOTA_NEARBY_SEARCH_FAILED"
+                    ? "POTA_PREFIX_SEARCH_FAILED"
+                    : "POTA_NEARBY_SEARCH_FAILED"
             );
         } else if (searchStatus == ota::SearchStatus::CANCELLED) {
             storage::appendLogRecord(
                 taskKind == TaskKind::BY_PREFIX
-                    ? "SOTA_PREFIX_SEARCH_CANCELLED"
-                    : "SOTA_NEARBY_SEARCH_CANCELLED"
+                    ? "POTA_PREFIX_SEARCH_CANCELLED"
+                    : "POTA_NEARBY_SEARCH_CANCELLED"
             );
         }
 
@@ -268,18 +269,18 @@ namespace {
             case ota::SearchStatus::SUCCESS:
                 _nearbyResults = results;
                 _nearbyStatus  = results.count > 0U
-                    ? sota::NearbyStatus::READY
-                    : sota::NearbyStatus::EMPTY;
+                    ? pota::NearbyStatus::READY
+                    : pota::NearbyStatus::EMPTY;
                 break;
 
             case ota::SearchStatus::CANCELLED:
                 ota::clear(_nearbyResults);
-                _nearbyStatus = sota::NearbyStatus::IDLE;
+                _nearbyStatus = pota::NearbyStatus::IDLE;
                 break;
 
             case ota::SearchStatus::ERROR:
                 ota::clear(_nearbyResults);
-                _nearbyStatus = sota::NearbyStatus::ERROR;
+                _nearbyStatus = pota::NearbyStatus::ERROR;
                 break;
         }
 
@@ -293,21 +294,19 @@ namespace {
     }
 }
 
-void sota::begin() {
-    sotaDB::Info info {};
-    const bool available  = sotaDB::info(info);
+void pota::begin() {
+    potaDB::Info info {};
+    const bool available = potaDB::info(info);
 
     portENTER_CRITICAL(&_lock);
     _status                 = available ? Status::IDLE : Status::UNAVAILABLE;
-    _summit                 = utilities::sota::Summit {};
+    _park                   = utilities::pota::Park {};
     _requestedCode[0]       = '\0';
     _requestedPrefix[0]     = '\0';
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _hasSearchedPosition    = false;
-    _nearbyStatus           = available
-        ? NearbyStatus::IDLE
-        : NearbyStatus::UNAVAILABLE;
+    _nearbyStatus           = available ? NearbyStatus::IDLE : NearbyStatus::UNAVAILABLE;
     ota::clear(_nearbyResults);
     _requestedRadiusKm      = 0.0;
     _taskRunning            = false;
@@ -317,15 +316,15 @@ void sota::begin() {
 
     storage::appendLogRecord(
         available
-            ? "SOTA_SERVICE_READY status=available"
-            : "SOTA_SERVICE_READY status=unavailable"
+            ? "POTA_SERVICE_READY status=available"
+            : "POTA_SERVICE_READY status=unavailable"
     );
 }
 
-void sota::invalidate() {
+void pota::invalidate() {
     portENTER_CRITICAL(&_lock);
     _status                 = Status::IDLE;
-    _summit                 = utilities::sota::Summit {};
+    _park                   = utilities::pota::Park {};
     _requestedCode[0]       = '\0';
     _requestedPrefix[0]     = '\0';
     _distanceKm             = 0.0;
@@ -340,7 +339,7 @@ void sota::invalidate() {
     portEXIT_CRITICAL(&_lock);
 }
 
-bool sota::requestNearest(const double latitude, const double longitude) {
+bool pota::requestNearest(const double latitude, const double longitude) {
     if (!_validPosition(latitude, longitude) || update::isBusy()) { return false; }
 
     bool hasSearchedPosition;
@@ -365,8 +364,7 @@ bool sota::requestNearest(const double latitude, const double longitude) {
             searchedLatitude, searchedLongitude,
             latitude,         longitude
         );
-        if (std::isfinite(movedKm) && movedKm < REFRESH_DISTANCE_KM)
-            { return true; }
+        if (std::isfinite(movedKm) && movedKm < REFRESH_DISTANCE_KM) { return true; }
     }
 
     portENTER_CRITICAL(&_lock);
@@ -377,7 +375,7 @@ bool sota::requestNearest(const double latitude, const double longitude) {
     _requestedLatitude     = latitude;
     _requestedLongitude    = longitude;
     _status                = Status::SEARCHING;
-    _summit                = utilities::sota::Summit {};
+    _park                  = utilities::pota::Park {};
     _distanceKm            = 0.0;
     _bearingDeg            = 0.0;
     _hasSearchedPosition   = false;
@@ -386,7 +384,14 @@ bool sota::requestNearest(const double latitude, const double longitude) {
     _cancelNearbyRequested = false;
     portEXIT_CRITICAL(&_lock);
 
-    const BaseType_t created = xTaskCreate(_searchTask, "SOTA nearest", TASK_STACK_SIZE, nullptr, 1, nullptr);
+    const BaseType_t created = xTaskCreate(
+        _searchTask,
+        "POTA nearest",
+        TASK_STACK_SIZE,
+        nullptr,
+        1,
+        nullptr
+    );
     if (created == pdPASS) { return true; }
 
     portENTER_CRITICAL(&_lock);
@@ -394,21 +399,17 @@ bool sota::requestNearest(const double latitude, const double longitude) {
     _taskKind              = TaskKind::NONE;
     _cancelNearbyRequested = false;
     _status                = Status::ERROR;
-    _summit                = utilities::sota::Summit {};
-    _distanceKm            = 0.0;
-    _bearingDeg            = 0.0;
-    _hasSearchedPosition   = false;
     portEXIT_CRITICAL(&_lock);
 
-    storage::appendErrorRecord("SOTA_SEARCH_TASK_CREATE_FAILED");
+    storage::appendErrorRecord("POTA_SEARCH_TASK_CREATE_FAILED");
     return false;
 }
 
-bool sota::requestByCode(const char* const code, const double latitude, const double longitude) {
+bool pota::requestByCode(const char* const code, const double latitude, const double longitude) {
     if (
         code == nullptr ||
         code[0] == '\0' ||
-        std::memchr(code, '\0', utilities::sota::CODE_SIZE) == nullptr ||
+        std::memchr(code, '\0', utilities::pota::CODE_SIZE) == nullptr ||
         !_validPosition(latitude, longitude) ||
         update::isBusy()
     ) {
@@ -416,8 +417,8 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
     }
 
     Status status;
-    utilities::sota::Summit cachedSummit {};
-    char requestedCode[utilities::sota::CODE_SIZE] {};
+    utilities::pota::Park cachedPark {};
+    char requestedCode[utilities::pota::CODE_SIZE] {};
 
     portENTER_CRITICAL(&_lock);
 
@@ -426,8 +427,8 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
         return false;
     }
 
-    status       = _status;
-    cachedSummit = _summit;
+    status     = _status;
+    cachedPark = _park;
     text::copy(requestedCode, sizeof(requestedCode), _requestedCode);
 
     portEXIT_CRITICAL(&_lock);
@@ -439,20 +440,20 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
 
         if (
             status == Status::READY &&
-            cachedSummit.code[0] != '\0'
+            cachedPark.code[0] != '\0'
         ) {
             const double distanceKm = distance::betweenKilometers(
                 latitude,
                 longitude,
-                cachedSummit.latitude,
-                cachedSummit.longitude
+                cachedPark.latitude,
+                cachedPark.longitude
             );
 
             const double bearingDeg = distance::bearingDegrees(
                 latitude,
                 longitude,
-                cachedSummit.latitude,
-                cachedSummit.longitude
+                cachedPark.latitude,
+                cachedPark.longitude
             );
 
             if (
@@ -496,7 +497,7 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
     _requestedLatitude      = latitude;
     _requestedLongitude     = longitude;
     _status                 = Status::SEARCHING;
-    _summit                 = utilities::sota::Summit {};
+    _park                   = utilities::pota::Park {};
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _hasSearchedPosition    = false;
@@ -508,7 +509,7 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
 
     const BaseType_t created = xTaskCreate(
         _codeSearchTask,
-        "SOTA code",
+        "POTA code",
         TASK_STACK_SIZE,
         nullptr,
         1,
@@ -520,7 +521,7 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
     portENTER_CRITICAL(&_lock);
 
     _status                 = Status::ERROR;
-    _summit                 = utilities::sota::Summit {};
+    _park                   = utilities::pota::Park {};
     _distanceKm             = 0.0;
     _bearingDeg             = 0.0;
     _taskRunning            = false;
@@ -529,11 +530,11 @@ bool sota::requestByCode(const char* const code, const double latitude, const do
 
     portEXIT_CRITICAL(&_lock);
 
-    storage::appendErrorRecord("SOTA_CODE_TASK_CREATE_FAILED");
+    storage::appendErrorRecord("POTA_CODE_TASK_CREATE_FAILED");
     return false;
 }
 
-bool sota::requestByPrefix(const char* const prefix, const double latitude, const double longitude) {
+bool pota::requestByPrefix(const char* const prefix, const double latitude, const double longitude) {
     char normalizedPrefix[ota::CODE_SIZE] {};
 
     if (
@@ -579,7 +580,7 @@ bool sota::requestByPrefix(const char* const prefix, const double latitude, cons
 
     const BaseType_t created = xTaskCreate(
         _nearbySearchTask,
-        "SOTA prefix",
+        "POTA prefix",
         TASK_STACK_SIZE,
         nullptr,
         1,
@@ -602,13 +603,13 @@ bool sota::requestByPrefix(const char* const prefix, const double latitude, cons
     portEXIT_CRITICAL(&_lock);
 
     storage::appendErrorRecord(
-        "SOTA_PREFIX_TASK_CREATE_FAILED"
+        "POTA_PREFIX_TASK_CREATE_FAILED"
     );
 
     return false;
 }
 
-bool sota::requestNearby(const double latitude, const double longitude, const double radiusKm) {
+bool pota::requestNearby(const double latitude, const double longitude, const double radiusKm) {
     if (!_validPosition(latitude, longitude) || !std::isfinite(radiusKm) ||
         radiusKm < 0.0                       || update::isBusy()
     ) { return false; }
@@ -622,11 +623,11 @@ bool sota::requestNearby(const double latitude, const double longitude, const do
         return false;
     }
 
-    _requestedPrefix[0]     = '\0';
-    _requestedLatitude      = latitude;
-    _requestedLongitude     = longitude;
-    _requestedRadiusKm      = radiusKm;
-    _nearbyStatus           = NearbyStatus::SEARCHING;
+    _requestedPrefix[0]    = '\0';
+    _requestedLatitude     = latitude;
+    _requestedLongitude    = longitude;
+    _requestedRadiusKm     = radiusKm;
+    _nearbyStatus          = NearbyStatus::SEARCHING;
     ota::clear(_nearbyResults);
     _taskRunning            = true;
     _taskKind               = TaskKind::NEARBY;
@@ -635,7 +636,7 @@ bool sota::requestNearby(const double latitude, const double longitude, const do
 
     const BaseType_t created = xTaskCreate(
         _nearbySearchTask,
-        "SOTA nearby",
+        "POTA nearby",
         TASK_STACK_SIZE,
         nullptr,
         1,
@@ -653,12 +654,12 @@ bool sota::requestNearby(const double latitude, const double longitude, const do
     portEXIT_CRITICAL(&_lock);
 
     storage::appendErrorRecord(
-        "SOTA_NEARBY_TASK_CREATE_FAILED"
+        "POTA_NEARBY_TASK_CREATE_FAILED"
     );
     return false;
 }
 
-bool sota::cancelNearby() {
+bool pota::cancelNearby() {
     portENTER_CRITICAL(&_lock);
 
     if (
@@ -679,7 +680,7 @@ bool sota::cancelNearby() {
     return true;
 }
 
-sota::NearbySnapshot sota::nearbySnapshot() {
+pota::NearbySnapshot pota::nearbySnapshot() {
     NearbySnapshot value;
 
     portENTER_CRITICAL(&_lock);
@@ -690,7 +691,7 @@ sota::NearbySnapshot sota::nearbySnapshot() {
     return value;
 }
 
-bool sota::nearbyResult(const size_t index, ota::SearchResult &result) {
+bool pota::nearbyResult(const size_t index, ota::SearchResult &result) {
     result = ota::SearchResult {};
 
     portENTER_CRITICAL(&_lock);
@@ -707,20 +708,23 @@ bool sota::nearbyResult(const size_t index, ota::SearchResult &result) {
     return true;
 }
 
-sota::Snapshot sota::snapshot() {
+pota::Snapshot pota::snapshot() {
     Snapshot value;
+
     portENTER_CRITICAL(&_lock);
     value.status     = _status;
-    value.summit     = _summit;
+    value.park       = _park;
     value.distanceKm = _distanceKm;
     value.bearingDeg = _bearingDeg;
     portEXIT_CRITICAL(&_lock);
+
     return value;
 }
 
-bool sota::isBusy() {
+bool pota::isBusy() {
     portENTER_CRITICAL(&_lock);
     const bool busy = _taskRunning;
     portEXIT_CRITICAL(&_lock);
+
     return busy;
 }

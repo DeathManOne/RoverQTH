@@ -250,9 +250,165 @@ void Updates::_actionDownloadSota(ST7796S::MSP4021 &tft) {
     _updateSotaFields(tft);
 }
 
+void Updates::_preparePotaFields() {
+    const update::PotaSnapshot snapshot = update::potaSnapshot();
+
+    _setPotaRecords(snapshot.records);
+
+    switch (snapshot.status) {
+        case update::Status::NOT_INSTALLED:
+        case update::Status::IDLE:
+            _setPotaStatus("Check", _Action::CHECK_POTA, theme::CYAN);
+            break;
+
+        case update::Status::CHECKING:
+            std::snprintf(
+                _potaStatusValue,
+                sizeof(_potaStatusValue),
+                "Checking %u%%",
+                static_cast<unsigned int>(snapshot.progress)
+            );
+            _potaStatusField.value  = _potaStatusValue;
+            _potaStatusField.action = _Action::NONE;
+            _potaStatusField.color  = theme::GREY;
+            break;
+
+        case update::Status::UP_TO_DATE:
+            _setPotaStatus(
+                "Up to date",
+                _Action::CHECK_POTA,
+                theme::GREEN
+            );
+            break;
+
+        case update::Status::AVAILABLE:
+            _setPotaStatus(
+                "Download",
+                _Action::DOWNLOAD_POTA,
+                theme::CYAN
+            );
+            break;
+
+        case update::Status::DOWNLOADING:
+            std::snprintf(
+                _potaStatusValue,
+                sizeof(_potaStatusValue),
+                "Downloading %u%%",
+                static_cast<unsigned int>(snapshot.progress)
+            );
+            _potaStatusField.value  = _potaStatusValue;
+            _potaStatusField.action = _Action::NONE;
+            _potaStatusField.color  = theme::YELLOW;
+            break;
+
+        case update::Status::INSTALLING:
+            std::snprintf(
+                _potaStatusValue,
+                sizeof(_potaStatusValue),
+                "Installing %u%%",
+                static_cast<unsigned int>(snapshot.progress)
+            );
+            _potaStatusField.value  = _potaStatusValue;
+            _potaStatusField.action = _Action::NONE;
+            _potaStatusField.color  = theme::ORANGE;
+            break;
+
+        case update::Status::VERIFYING:
+            _setPotaStatus(
+                "Verifying...",
+                _Action::NONE,
+                theme::YELLOW
+            );
+            break;
+
+        case update::Status::SUCCESS:
+            _setPotaStatus(
+                "Installed",
+                _Action::CHECK_POTA,
+                theme::GREEN
+            );
+            break;
+
+        case update::Status::ERROR:
+            _setPotaStatus(
+                snapshot.error[0] != '\0'
+                    ? snapshot.error
+                    : "Update failed",
+                _Action::CHECK_POTA,
+                theme::RED
+            );
+            break;
+
+        default:
+            _setPotaStatus(
+                "Unknown state",
+                _Action::NONE,
+                theme::RED
+            );
+            break;
+    }
+}
+
+void Updates::_updatePotaFields(ST7796S::MSP4021 &tft) {
+    _preparePotaFields();
+    _updateField(tft, _potaVersionField);
+    _updateField(tft, _potaStatusField);
+}
+
+void Updates::_setPotaStatus(const char* const value, const _Action action, const uint16_t color) {
+    text::copy(
+        _potaStatusValue,
+        sizeof(_potaStatusValue),
+        value
+    );
+
+    _potaStatusField.value  = _potaStatusValue;
+    _potaStatusField.action = action;
+    _potaStatusField.color  = color;
+}
+
+void Updates::_setPotaRecords(const uint32_t records) {
+    if (records == 0U) {
+        text::copy(
+            _potaVersionValue,
+            sizeof(_potaVersionValue),
+            "Not installed"
+        );
+    } else {
+        std::snprintf(
+            _potaVersionValue,
+            sizeof(_potaVersionValue),
+            "%lu parks",
+            static_cast<unsigned long>(records)
+        );
+    }
+
+    _potaVersionField.value = _potaVersionValue;
+}
+
+void Updates::_actionCheckPota(ST7796S::MSP4021 &tft) {
+    update::checkPotaUpdate();
+    _updatePotaFields(tft);
+}
+
+void Updates::_actionDownloadPota(ST7796S::MSP4021 &tft) {
+    if (update::startPotaUpdate()) {
+        _setPotaStatus(
+            "Starting...",
+            _Action::NONE,
+            theme::YELLOW
+        );
+        _updateField(tft, _potaStatusField);
+        return;
+    }
+
+    _updatePotaFields(tft);
+}
+
 void Updates::update(ST7796S::MSP4021 &tft) {
     _updateFirmwareFields(tft);
     _updateSotaFields(tft);
+    _updatePotaFields(tft);
 }
 
 void Updates::draw(ST7796S::MSP4021 &tft) {
@@ -272,12 +428,7 @@ void Updates::draw(ST7796S::MSP4021 &tft) {
 
     _prepareFirmwareFields();
     _prepareSotaFields();
-
-    text::copy(_potaVersionValue, sizeof(_potaVersionValue), "Not installed");
-    text::copy(_potaStatusValue,  sizeof(_potaStatusValue),  "Not checked");
-
-    _potaVersionField.value = _potaVersionValue;
-    _potaStatusField.value  = _potaStatusValue;
+    _preparePotaFields();
 
     _drawTitle(tft, x, y, w, rowH, gap, "updates");
     for (Field<_Action>* field : _fields)
@@ -301,7 +452,11 @@ bool Updates::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
                 _actionDownloadSota(tft);
                 return true;
             case _Action::CHECK_POTA:
+                _actionCheckPota(tft);
+                return true;
             case _Action::DOWNLOAD_POTA:
+                _actionDownloadPota(tft);
+                return true;
             case _Action::NONE:
             default: return false;
         }

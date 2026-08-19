@@ -26,10 +26,12 @@
 #include "database/nvs.h"
 #include "services/settings.h"
 #include "services/storage.h"
+#include "utilities/text.h"
 
 namespace nvs      = database::nvs;
 namespace settings = services::settings;
 namespace storage  = services::storage;
+namespace text     = utilities::text;
 
 namespace {
     SemaphoreHandle_t _mutex = nullptr;
@@ -104,6 +106,17 @@ namespace {
         }
     }
 
+    bool _isValid(const settings::OtaType type) {
+        switch (type) {
+            case settings::OtaType::SOTA:
+            case settings::OtaType::POTA:
+                return true;
+            case settings::OtaType::NONE:
+            default:
+                return false;
+        }
+    }
+
     class SettingsGuard {
         public:
             SettingsGuard(){
@@ -128,16 +141,27 @@ namespace {
         };
 }
 
-bool settings::begin() {
+void settings::begin() {
     if (_mutex == nullptr) {
         _mutex = xSemaphoreCreateRecursiveMutex();
-        if (_mutex == nullptr) { return false; }
+        if (_mutex == nullptr) {
+            storage::appendErrorRecord("SETTINGS_MUTEX_CREATE_FAILED");
+            return;
+        }
     }
 
     SettingsGuard guard;
-    if (!guard) { return false; }
+    if (!guard) {
+        storage::appendErrorRecord("SETTINGS_MUTEX_LOCK_FAILED");
+        return;
+    }
 
-    return nvs::begin();
+    if (!nvs::begin()) {
+        storage::appendErrorRecord("NVS_INIT_FAILED");
+        return;
+    }
+
+    storage::appendLogRecord("NVS_READY");
 }
 
 bool settings::getTouchCalibration(Calibration &calibration) {
@@ -390,4 +414,61 @@ bool settings::shouldConnectWifiAtBoot() {
         case WifiBootMode::NEVER:
         default:                       return false;
     }
+}
+
+bool settings::getOtaSelection(OtaSelection &selection) {
+    selection = OtaSelection {};
+
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
+    char type[5] {};
+    if (!nvs::getOtaSelection(
+        type,           sizeof(type),
+        selection.code, sizeof(selection.code)
+    )) { return false; }
+
+    if (text::equals(type, "SOTA")) {
+        selection.type = OtaType::SOTA;
+        return true;
+    }
+
+    if (text::equals(type, "POTA")) {
+        selection.type = OtaType::POTA;
+        return true;
+    }
+
+    selection = OtaSelection {};
+    return false;
+}
+
+bool settings::setOtaSelection(const OtaType type, const char* const code) {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+
+    if (!_isValid(type) || !_fits(code, OTA_CODE_SIZE) || code[0] == '\0')
+        { return false; }
+
+    const char* typeText =type == OtaType::SOTA ? "SOTA" : "POTA";
+    if (!_checkWrite(nvs::setOtaSelection(typeText, code), "OTA_SELECTION_SAVE_FAILED"))
+        { return false; }
+
+    char logRecord[64];
+    const int written = std::snprintf(
+        logRecord, sizeof(logRecord),
+        "OTA_SELECTION_SAVED type=%s code=%s",
+        typeText, code
+    );
+
+    storage::appendLogRecord(written > 0 &&
+        static_cast<size_t>(written) < sizeof(logRecord) ? logRecord : "OTA_SELECTION_SAVED"
+    );
+
+    return true;
+}
+
+bool settings::resetOtaSelection() {
+    SettingsGuard guard;
+    if (!guard) { return false; }
+    return _checkWrite(nvs::resetOtaSelection(), "OTA_SELECTION_RESET_FAILED");
 }

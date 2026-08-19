@@ -81,16 +81,20 @@ namespace {
     }
 }
 
-bool power::begin(const uint8_t buttonPin) {
+void power::begin(const uint8_t buttonPin) {
     const int gpio = digitalPinToGPIONumber(buttonPin);
-    if (gpio < 0) { return false; }
+    if (gpio < 0) {
+        storage::appendErrorRecord("POWER_INVALID_BUTTON_GPIO");
+        return;
+    }
 
     _buttonPin  = buttonPin;
     _wakeupGpio = static_cast<gpio_num_t>(gpio);
 
     if (!esp_sleep_is_valid_wakeup_gpio(_wakeupGpio)) {
+        storage::appendErrorRecord("POWER_INVALID_WAKEUP_GPIO");
         _wakeupGpio = GPIO_NUM_NC;
-        return false;
+        return;
     }
 
     rtc_gpio_deinit(_wakeupGpio);
@@ -102,7 +106,8 @@ bool power::begin(const uint8_t buttonPin) {
     _lastButtonChange = millis();
     _shutdownPending  = false;
     _initialized      = true;
-    return true;
+
+    storage::appendLogRecord("POWER_READY");
 }
 
 void power::update() {

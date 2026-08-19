@@ -28,33 +28,42 @@
 #include "display/manager.h"
 #include "display/menu.h"
 #include "display/mockup.h"
+#include "display/sota.h"
 #include "screens/menu.h"
 #include "services/navigation.h"
+#include "services/pota.h"
 #include "services/qth.h"
 #include "services/storage.h"
+#include "services/sota.h"
 #include "ui/widgets/buttons.h"
 
-namespace manager    = core::screenManager;
-namespace state      = core::state;
-namespace main       = display::main;
-namespace menu       = display::menu;
-namespace mockup     = display::mockup;
-namespace sMenu      = screens::menu;
-namespace navigation = services::navigation;
-namespace qth        = services::qth;
-namespace storage    = services::storage;
-namespace buttons    = ui::widgets::buttons;
+namespace manager     = core::screenManager;
+namespace state       = core::state;
+namespace main        = display::main;
+namespace menu        = display::menu;
+namespace mockup      = display::mockup;
+namespace sota        = display::sota;
+namespace sMenu       = screens::menu;
+namespace navigation  = services::navigation;
+namespace potaService = services::pota;
+namespace qth         = services::qth;
+namespace sotaService = services::sota;
+namespace storage     = services::storage;
+namespace buttons     = ui::widgets::buttons;
 
 namespace {
     uint32_t _lastTouchMs                = 0;
     constexpr uint32_t TOUCH_DEBOUNCE_MS = 180;
 
     bool _touchDebounced();
+    void _syncSotaAvailability();
     void _toggleMARK();
     void _drawMain();
     void _drawMenu();
+    void _drawSota();
     bool _handleMainTouch(int x, int y);
     bool _handleMenuTouch(int x, int y);
+    bool _handleSotaTouch(int x, int y);
 
     bool _touchDebounced() {
         const uint32_t now = millis();
@@ -63,6 +72,18 @@ namespace {
             return false;
         }
         return true;
+    }
+
+    void _syncSotaAvailability() {
+        if (state::buttonState(state::Button::SOTA) != state::ButtonState::UNAVAILABLE)
+            { return; }
+
+        const bool sotaAvailable = sotaService::snapshot().status != sotaService::Status::UNAVAILABLE;
+        const bool potaAvailable = potaService::snapshot().status != potaService::Status::UNAVAILABLE;
+        if (!sotaAvailable && !potaAvailable) { return; }
+
+        state::setButtonState(state::Button::SOTA, state::ButtonState::READY);
+        mockup::updateSOTA();
     }
 
     void _toggleMARK() {
@@ -160,10 +181,23 @@ namespace {
         menu::draw();
     }
 
+    void _drawSota() {
+        sota::preload();
+        sota::draw();
+    }
+
     bool _handleMainTouch(int x, int y) {
         if (state::buttonState(state::Button::MARK_QTH) != state::ButtonState::UNAVAILABLE) {
             if (buttons::isPressed(buttons::markQTH, x, y)) {
                 _toggleMARK();
+                return true;
+            }
+        }
+        if (state::buttonState(state::Button::SOTA) != state::ButtonState::UNAVAILABLE) {
+            if (buttons::isPressed(buttons::sota, x, y)) {
+                state::setButtonState(state::Button::SOTA, state::ButtonState::RUNNING);
+                state::setScreen(state::Screen::SOTA);
+                manager::draw();
                 return true;
             }
         }
@@ -180,6 +214,18 @@ namespace {
 
     bool _handleMenuTouch(int x, int y) {
         if (sMenu::isEditing()) { return menu::handleTouch(x, y); }
+
+        if (state::buttonState(state::Button::SOTA) != state::ButtonState::UNAVAILABLE) {
+            if (buttons::isPressed(buttons::sota, x, y)) {
+                sMenu::reset();
+                state::setButtonState(state::Button::MENU, state::ButtonState::READY);
+                state::setButtonState(state::Button::SOTA, state::ButtonState::RUNNING);
+                state::setScreen(state::Screen::SOTA);
+                manager::draw();
+                return true;
+            }
+        }
+
         if (buttons::isPressed(buttons::menu, x, y)) {
             sMenu::reset();
             state::setButtonState(state::Button::MENU, state::ButtonState::READY);
@@ -187,7 +233,31 @@ namespace {
             manager::draw();
             return true;
         }
+
         return menu::handleTouch(x, y);
+    }
+
+    bool _handleSotaTouch(int x, int y) {
+        if (sota::isEditing()) { return sota::handleTouch(x, y); }
+
+        if (buttons::isPressed(buttons::sota, x, y)) {
+            state::setButtonState(state::Button::SOTA, state::ButtonState::READY);
+            state::setScreen(state::Screen::MAIN);
+            manager::draw();
+            return true;
+        }
+
+        if (state::buttonState(state::Button::MENU) != state::ButtonState::UNAVAILABLE) {
+            if (buttons::isPressed(buttons::menu, x, y)) {
+                state::setButtonState(state::Button::SOTA, state::ButtonState::READY);
+                state::setButtonState(state::Button::MENU, state::ButtonState::RUNNING);
+                state::setScreen(state::Screen::MENU);
+                manager::draw();
+                return true;
+            }
+        }
+
+        return sota::handleTouch(x, y);
     }
 }
 
@@ -200,9 +270,8 @@ void manager::draw() {
         case state::Screen::MENU:
             _drawMenu();
             break;
-        case state::Screen::MAP:
-            break;
         case state::Screen::SOTA:
+            _drawSota();
             break;
         case state::Screen::MAIN:
         default:
@@ -212,15 +281,13 @@ void manager::draw() {
 }
 
 void manager::update(uint32_t &nextRefreshIn) {
+    _syncSotaAvailability();
     switch (state::currentScreen()) {
         case state::Screen::MENU:
             menu::update(nextRefreshIn);
             break;
-        case state::Screen::MAP:
-            nextRefreshIn = 1000;
-            break;
         case state::Screen::SOTA:
-            nextRefreshIn = 1000;
+            sota::update(nextRefreshIn);
             break;
         case state::Screen::MAIN:
         default:
@@ -243,8 +310,10 @@ void manager::handleTouch() {
             if (_handleMenuTouch(x, y))
                 { return; }
             break;
-        case state::Screen::MAP:
         case state::Screen::SOTA:
+            if (_handleSotaTouch(x, y))
+                { return; }
+            break;
         default: break;
     }
 }
