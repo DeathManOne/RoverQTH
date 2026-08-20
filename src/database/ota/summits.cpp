@@ -1,54 +1,38 @@
-/*
- * src/database/pota.cpp
- *
- * Copyright (c) 2026 DeathManOne
- * https://github.com/DeathManOne
- * 
- * This file is part of the RoverQTH project.
- *
- * RoverQTH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * RoverQTH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with RoverQTH.
- * If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 
 #include <esp_heap_caps.h>
 
-#include "database/pota.h"
+#include "database/ota/summits.h"
 #include "services/storage.h"
 #include "utilities/distance.h"
+#include "utilities/ota.h"
+#include "utilities/ota/summits.h"
 #include "utilities/text.h"
 
-namespace pota     = database::pota;
+namespace summits  = database::ota::summits;
 namespace storage  = services::storage;
 namespace distance = utilities::distance;
-namespace ota      = utilities::ota;
+namespace ota      = database::ota;
+namespace uOta     = utilities::ota;
 namespace text     = utilities::text;
-namespace uPota    = utilities::pota;
+namespace uSummits = utilities::ota::summits;
 
 namespace {
-    constexpr const char* DATABASE_PATH  = "/RoverQTH/database/pota.bin";
-    constexpr const char* CANDIDATE_PATH = "/RoverQTH/tmp/pota.bin";
-    constexpr const char* BACKUP_PATH    = "/RoverQTH/tmp/pota.bak";
-    constexpr const char* CSV_HEADER     = "\"reference\",\"name\",\"active\",\"entityId\",\"locationDesc\",\"latitude\",\"longitude\",\"grid\"";
+    constexpr const char* DATABASE_PATH  = "/RoverQTH/database/sota.bin";
+    constexpr const char* CANDIDATE_PATH = "/RoverQTH/tmp/sota.bin";
+    constexpr const char* BACKUP_PATH    = "/RoverQTH/tmp/sota.bak";
+    constexpr const char* CSV_HEADER     =
+        "SummitCode,AssociationName,RegionName,SummitName,"
+        "AltM,AltFt,GridRef1,GridRef2,Longitude,Latitude,"
+        "Points,BonusPoints,ValidFrom,ValidTo,ActivationCount,"
+        "ActivationDate,ActivationCall";
 
-    constexpr uint8_t MAGIC[4] = {'R', 'Q', 'P', 'T'};
-    constexpr uint16_t FORMAT_VERSION = 1U;
-    constexpr uint32_t MINIMUM_RECORDS = 10000U;
-    constexpr size_t RECORD_BUFFER_COUNT = 4U;
+    constexpr uint8_t MAGIC[4] = {'R', 'Q', 'S', 'T'};
+    constexpr uint16_t FORMAT_VERSION = 3U;
+    constexpr uint32_t MINIMUM_RECORDS = 1000U;
+    constexpr size_t RECORD_BUFFER_COUNT = 8U;
 
     struct __attribute__((packed)) Header {
         uint8_t magic[4];
@@ -58,14 +42,18 @@ namespace {
         uint16_t reserved;
         uint32_t recordCount;
         uint64_t sourceSize;
-        char etag[pota::ETAG_SIZE];
+        char version[summits::VERSION_SIZE];
+        char etag[summits::ETAG_SIZE];
     };
 
     struct __attribute__((packed)) Record {
-        char code[uPota::CODE_SIZE];
-        char area[uPota::AREA_SIZE];
+        char code[summits::CODE_SIZE];
+        char area[summits::AREA_SIZE];
         float latitude;
         float longitude;
+        int16_t altitude;
+        uint8_t points;
+        uint8_t bonus;
     };
 
     struct HeaderReadContext {
@@ -74,6 +62,7 @@ namespace {
     };
 
     struct ValidateCsvContext {
+        const char* version;
         size_t line;
         uint32_t records;
         bool valid;
@@ -83,9 +72,10 @@ namespace {
         size_t line;
         uint32_t records;
         uint32_t totalRecords;
+        const char* version;
         Record buffer[RECORD_BUFFER_COUNT];
         size_t buffered;
-        pota::ProgressCallback callback;
+        summits::ProgressCallback callback;
         void* userData;
         bool valid;
         bool writeFailed;
@@ -99,7 +89,7 @@ namespace {
         size_t received;
         double latitude;
         double longitude;
-        uPota::Park nearest;
+        summits::Summit nearest;
         double distanceKm;
         bool found;
         bool valid;
@@ -116,19 +106,19 @@ namespace {
         Record record;
         size_t received;
         const char* code;
-        uPota::Park park;
+        summits::Summit summit;
         bool found;
         bool valid;
     };
 
     void _logCandidateFailure(const char* code, uint32_t records, uint32_t totalRecords, size_t buffered);
     bool _validHeader(const Header& header);
-    bool _readHeaderChunk(const uint8_t* const data, const size_t length, void* const userData);
     bool _readHeader(const char* const path, Header& header);
+    bool _readHeaderChunk(const uint8_t* const data, const size_t length, void* const userData);
     bool _validateCsvLine(const char* const line, void* const userData);
     bool _flushRecords(WriteCsvContext& context);
     bool _writeCsvLine(const char* const line, void* const userData);
-    uPota::Park _toPark(const Record& record);
+    summits::Summit _toSummit(const Record& record);
     bool _searchCodeChunk(const uint8_t* data, size_t length, void* userData);
     bool _searchChunk(const uint8_t* data, size_t length, void* const userData);
     ota::SearchStatus _findResults(double latitude, double longitude, double radiusKm,
@@ -200,7 +190,9 @@ namespace {
             header.reserved      == 0U              &&
             header.recordCount   >= MINIMUM_RECORDS &&
             header.sourceSize    > 0U               &&
-            header.etag[0]       != '\0'            &&
+            std::memchr(header.version, '\0', sizeof(header.version)) != nullptr &&
+            uSummits::isVersionValid(header.version)   &&
+            header.etag[0] != '\0'                  &&
             std::memchr(header.etag, '\0', sizeof(header.etag)) != nullptr;
     }
 
@@ -214,8 +206,8 @@ namespace {
         if (copyLength > length) { copyLength = length; }
 
         std::memcpy(reinterpret_cast<uint8_t*>(context->header) + context->received, data, copyLength);
-        context->received += copyLength;
 
+        context->received += copyLength;
         return context->received < sizeof(Header);
     }
 
@@ -227,9 +219,13 @@ namespace {
             context.received != sizeof(Header) || !_validHeader(header)
         ) { return false; }
 
-        const uint64_t expectedSize = sizeof(Header) +
+        const uint64_t expectedSize =
+            sizeof(Header) +
             static_cast<uint64_t>(header.recordCount) * sizeof(Record);
-        return static_cast<uint64_t>(storage::fileSize(path)) == expectedSize;
+
+        return
+            static_cast<uint64_t>(storage::fileSize(path)) ==
+            expectedSize;
     }
 
     bool _validateCsvLine(const char* const line, void* const userData) {
@@ -238,17 +234,18 @@ namespace {
         ValidateCsvContext* const context = static_cast<ValidateCsvContext*>(userData);
         if (!context->valid) { return false; }
 
-        if (context->line++ == 0U) {
+        if (context->line == 0U) {
+            char version[summits::VERSION_SIZE];
+            context->valid = uSummits::parseListVersion(line, version, sizeof(version)) && text::equals(version, context->version);
+        } else if (context->line == 1U) {
             context->valid = text::equals(line, CSV_HEADER);
-            return context->valid;
+        } else if (line[0] != '\0') {
+            summits::Summit summit;
+            context->valid = uSummits::parseCsvRecord(line, summit);
+            if (context->valid)
+                { ++context->records; }
         }
-        if (line[0] == '\0') { return true; }
-
-        uPota::Park park;
-        bool active = false;
-        context->valid = uPota::parseCsvRecord(line, park, active);
-        if (context->valid && active) { ++context->records; }
-
+        ++context->line;
         return context->valid;
     }
 
@@ -259,8 +256,9 @@ namespace {
             reinterpret_cast<const uint8_t*>(context.buffer),
             context.buffered * sizeof(Record)
         );
-        if (written) { context.buffered = 0U; }
 
+        if (written)
+            { context.buffered = 0U; }
         return written;
     }
 
@@ -269,7 +267,17 @@ namespace {
 
         WriteCsvContext* const context = static_cast<WriteCsvContext*>(userData);
         if (!context->valid) { return false; }
+
         if (context->line == 0U) {
+            char version[summits::VERSION_SIZE];
+            context->valid =
+                uSummits::parseListVersion(line, version, sizeof(version)) &&
+                text::equals(version, context->version);
+            ++context->line;
+            return context->valid;
+        }
+
+        if (context->line == 1U) {
             context->valid = text::equals(line, CSV_HEADER);
             ++context->line;
             return context->valid;
@@ -278,35 +286,49 @@ namespace {
         ++context->line;
         if (line[0] == '\0') { return true; }
 
-        uPota::Park park;
-        bool active = false;
-        if (!uPota::parseCsvRecord(line, park, active)) {
+        summits::Summit summit;
+        if (!uSummits::parseCsvRecord(line, summit)) {
             context->valid = false;
             return false;
         }
-        if (!active) { return true; }
 
         Record& record = context->buffer[context->buffered++];
         record         = Record {};
 
-        if (!text::copy(record.code, sizeof(record.code), park.code) ||
-            !text::copy(record.area, sizeof(record.area), park.area)
+        if (
+            !text::copy(
+                record.code,
+                sizeof(record.code),
+                summit.code
+            ) ||
+            !text::copy(
+                record.area,
+                sizeof(record.area),
+                summit.area
+            )
         ) {
             context->valid = false;
             return false;
         }
 
-        record.latitude  = static_cast<float>(park.latitude);
-        record.longitude = static_cast<float>(park.longitude);
+        record.latitude  = static_cast<float>(summit.latitude);
+        record.longitude = static_cast<float>(summit.longitude);
+        record.altitude  = summit.altitude;
+        record.points    = summit.points;
+        record.bonus     = summit.bonus;
         ++context->records;
 
-        if (context->buffered == RECORD_BUFFER_COUNT && !_flushRecords(*context)) {
-            context->valid = false;
+        if (
+            context->buffered == RECORD_BUFFER_COUNT &&
+            !_flushRecords(*context)
+        ) {
+            context->valid       = false;
             context->writeFailed = true;
             return false;
         }
 
-        if (context->callback != nullptr && context->totalRecords > 0U &&
+        if (context->callback != nullptr &&
+            context->totalRecords > 0U &&
             (context->records & 0x7FU) == 0U
         ) {
             const uint64_t calculated =
@@ -320,20 +342,21 @@ namespace {
                 context->userData
             );
         }
-
         return true;
     }
 
-    uPota::Park _toPark(const Record& record) {
-        uPota::Park park;
+    summits::Summit _toSummit(const Record& record) {
+        summits::Summit summit;
 
-        text::copy(park.code, sizeof(park.code), record.code);
-        text::copy(park.area, sizeof(park.area), record.area);
+        text::copy(summit.code, sizeof(summit.code), record.code);
+        text::copy(summit.area, sizeof(summit.area), record.area);
 
-        park.latitude  = record.latitude;
-        park.longitude = record.longitude;
-
-        return park;
+        summit.latitude  = record.latitude;
+        summit.longitude = record.longitude;
+        summit.altitude  = record.altitude;
+        summit.points    = record.points;
+        summit.bonus     = record.bonus;
+        return summit;
     }
 
     bool _searchCodeChunk(const uint8_t* data, size_t length, void* const userData) {
@@ -388,8 +411,8 @@ namespace {
             }
 
             if (text::equals(context->record.code, context->code)) {
-                context->park  = _toPark(context->record);
-                context->found = true;
+                context->summit = _toSummit(context->record);
+                context->found  = true;
                 return false;
             }
 
@@ -439,8 +462,7 @@ namespace {
             length            -= copyLength;
             if (context->received != sizeof(Record)) { continue; }
 
-            if (context->record.code[0] == '\0' ||
-                context->record.area[0] == '\0' ||
+            if (context->record.code[0] == '\0' || context->record.area[0] == '\0' ||
                 std::memchr(context->record.code, '\0', sizeof(context->record.code)) == nullptr ||
                 std::memchr(context->record.area, '\0', sizeof(context->record.area)) == nullptr
             ) {
@@ -448,10 +470,10 @@ namespace {
                 return false;
             }
 
-            const uPota::Park candidate = _toPark(context->record);
+            const summits::Summit candidate = _toSummit(context->record);
 
             if (context->nearbyResults == nullptr) {
-                context->valid = uPota::selectNearest(
+                context->valid = uSummits::selectNearest(
                     context->latitude,
                     context->longitude,
                     candidate,
@@ -461,10 +483,10 @@ namespace {
                 );
             } else {
                 bool candidateValid = false;
-                uPota::Park validatedCandidate {};
+                summits::Summit validatedCandidate {};
                 double candidateDistanceKm = 0.0;
 
-                context->valid = uPota::selectNearest(
+                context->valid = uSummits::selectNearest(
                     context->latitude,
                     context->longitude,
                     candidate,
@@ -485,7 +507,7 @@ namespace {
                     if (context->normalizedPrefix != nullptr) {
                         char normalizedCode[ota::CODE_SIZE] {};
 
-                        if (!ota::normalizeCodePrefix(
+                        if (!uOta::normalizeCodePrefix(
                             candidate.code,
                             normalizedCode,
                             sizeof(normalizedCode)
@@ -510,6 +532,8 @@ namespace {
 
                         if (context->valid) {
                             result.distanceKm = candidateDistanceKm;
+                            result.points     = candidate.points;
+                            result.bonus      = candidate.bonus;
 
                             ota::retainNearest(
                                 *context->nearbyResults,
@@ -522,12 +546,9 @@ namespace {
 
             context->received = 0U;
             ++context->records;
-            if (!context->valid || context->records > context->expectedRecords) {
-                context->valid = false;
-                return false;
-            }
+            if (!context->valid || context->records > context->expectedRecords)
+                { context->valid = false; return false; }
         }
-
         return true;
     }
 
@@ -538,7 +559,6 @@ namespace {
         void* cancelUserData
     ) {
         ota::clear(results);
-
         if (
             !std::isfinite(latitude) ||
             !std::isfinite(longitude) ||
@@ -556,7 +576,7 @@ namespace {
             char validatedPrefix[ota::CODE_SIZE] {};
 
             if (
-                !ota::normalizeCodePrefix(
+                !uOta::normalizeCodePrefix(
                     normalizedPrefix,
                     validatedPrefix,
                     sizeof(validatedPrefix)
@@ -620,7 +640,7 @@ namespace {
     }
 }
 
-bool pota::info(Info& value) {
+bool summits::info(Info& value) {
     value = Info {};
 
     Header header {};
@@ -634,51 +654,54 @@ bool pota::info(Info& value) {
         ) { return false; }
 
         header = backup;
-        storage::appendErrorRecord("POTA_BACKUP_RECOVERED");
+        storage::appendErrorRecord("SOTA_BACKUP_RECOVERED");
     }
 
     value.records    = header.recordCount;
     value.sourceSize = header.sourceSize;
 
-    return text::copy(value.etag, sizeof(value.etag), header.etag);
+    return
+        text::copy(value.version, sizeof(value.version), header.version) &&
+        text::copy(value.etag,    sizeof(value.etag),    header.etag);
 }
 
-bool pota::buildCandidate(const char* const csvPath, const char* const etag,
+bool summits::buildCandidate(const char* const csvPath, const char* const version, const char* const etag,
     const uint64_t sourceSize, const ProgressCallback callback, void* const userData
 ) {
     discardCandidate();
 
     if (csvPath == nullptr || csvPath[0] == '\0' ||
-        etag == nullptr    || etag[0] == '\0'    ||
-        sourceSize == 0U
+        etag    == nullptr || etag[0]    == '\0' ||
+        sourceSize == 0U   ||
+        !uSummits::isVersionValid(version)
     ) {
-        storage::appendErrorRecord("POTA_CANDIDATE_INPUT_INVALID");
+        storage::appendErrorRecord("SOTA_CANDIDATE_INPUT_INVALID");
         return false;
     }
 
     if (static_cast<uint64_t>(storage::fileSize(csvPath)) != sourceSize) {
-        storage::appendErrorRecord("POTA_SOURCE_SIZE_MISMATCH");
+        storage::appendErrorRecord("SOTA_SOURCE_SIZE_MISMATCH");
         return false;
     }
 
-    ValidateCsvContext validation {0U, 0U, true};
+    ValidateCsvContext validation {version, 0U, 0U, true};
     const bool validationRead =
         storage::readFileLines(csvPath, _validateCsvLine, &validation);
 
     if (!validationRead) {
-        storage::appendErrorRecord("POTA_SOURCE_READ_FAILED");
+        storage::appendErrorRecord("SOTA_SOURCE_READ_FAILED");
         return false;
     }
     if (!validation.valid) {
-        storage::appendErrorRecord("POTA_SOURCE_CSV_INVALID");
+        storage::appendErrorRecord("SOTA_SOURCE_CSV_INVALID");
         return false;
     }
-    if (validation.line < 2U) {
-        storage::appendErrorRecord("POTA_SOURCE_TRUNCATED");
+    if (validation.line < 3U) {
+        storage::appendErrorRecord("SOTA_SOURCE_TRUNCATED");
         return false;
     }
     if (validation.records < MINIMUM_RECORDS) {
-        storage::appendErrorRecord("POTA_SOURCE_RECORDS_INSUFFICIENT");
+        storage::appendErrorRecord("SOTA_SOURCE_RECORDS_INSUFFICIENT");
         return false;
     }
 
@@ -691,14 +714,16 @@ bool pota::buildCandidate(const char* const csvPath, const char* const etag,
     header.recordCount   = validation.records;
     header.sourceSize    = sourceSize;
 
-    if (!text::copy(header.etag, sizeof(header.etag), etag)) {
-        storage::appendErrorRecord("POTA_CANDIDATE_METADATA_INVALID");
+    if (!text::copy(header.version, sizeof(header.version), version) ||
+        !text::copy(header.etag,    sizeof(header.etag),    etag)
+    ) {
+        storage::appendErrorRecord("SOTA_CANDIDATE_METADATA_INVALID");
         return false;
     }
 
     if (!storage::beginFileWrite(CANDIDATE_PATH)) {
         _logCandidateFailure(
-            "POTA_CANDIDATE_OPEN_FAILED",
+            "SOTA_CANDIDATE_OPEN_FAILED",
             0U,
             validation.records,
             0U
@@ -707,12 +732,14 @@ bool pota::buildCandidate(const char* const csvPath, const char* const etag,
     }
 
     const bool headerWritten = storage::writeFileChunk(
-        reinterpret_cast<const uint8_t*>(&header), sizeof(header)
+        reinterpret_cast<const uint8_t*>(&header),
+        sizeof(header)
     );
+
     if (!headerWritten) {
         storage::endFileWrite();
         _logCandidateFailure(
-            "POTA_CANDIDATE_WRITE_FAILED",
+            "SOTA_CANDIDATE_WRITE_FAILED",
             0U,
             validation.records,
             0U
@@ -721,54 +748,84 @@ bool pota::buildCandidate(const char* const csvPath, const char* const etag,
         return false;
     }
 
-    WriteCsvContext writer {0U, 0U, validation.records, {}, 0U, callback, userData, true, false};
-    const bool read = storage::readFileLines(csvPath, _writeCsvLine, &writer);
+    WriteCsvContext writer {
+        0U,
+        0U,
+        validation.records,
+        version,
+        {},
+        0U,
+        callback,
+        userData,
+        true,
+        false
+    };
+
+    const bool read =
+        storage::readFileLines(
+            csvPath,
+            _writeCsvLine,
+            &writer
+        );
 
     bool flushed = false;
-    if (read && writer.valid && writer.records == validation.records) {
+
+    if (
+        read &&
+        writer.valid &&
+        writer.records == validation.records
+    ) {
         flushed = _flushRecords(writer);
         writer.writeFailed = !flushed;
     }
 
     storage::endFileWrite();
-    if (!read || !writer.valid || writer.records != validation.records || !flushed) {
+
+    if (
+        !read ||
+        !writer.valid ||
+        writer.records != validation.records ||
+        !flushed
+    ) {
         if (writer.writeFailed) {
             _logCandidateFailure(
-                "POTA_CANDIDATE_WRITE_FAILED",
+                "SOTA_CANDIDATE_WRITE_FAILED",
                 writer.records,
                 validation.records,
                 writer.buffered
             );
         } else if (!writer.valid) {
             _logCandidateFailure(
-                "POTA_CANDIDATE_PARSE_FAILED",
+                "SOTA_CANDIDATE_PARSE_FAILED",
                 writer.records,
                 validation.records,
                 writer.buffered
             );
         } else if (writer.records != validation.records) {
             _logCandidateFailure(
-                "POTA_CANDIDATE_COUNT_MISMATCH",
+                "SOTA_CANDIDATE_COUNT_MISMATCH",
                 writer.records,
                 validation.records,
                 writer.buffered
             );
         } else {
             _logCandidateFailure(
-                "POTA_CANDIDATE_READ_FAILED",
+                "SOTA_CANDIDATE_READ_FAILED",
                 writer.records,
                 validation.records,
                 writer.buffered
             );
         }
+
         discardCandidate();
         return false;
     }
 
     Header candidate {};
+
     if (!_readHeader(CANDIDATE_PATH, candidate)) {
         _logCandidateFailure(
-            "POTA_CANDIDATE_HEADER_INVALID",
+            "SOTA_CANDIDATE_HEADER_INVALID",
             validation.records,
             validation.records,
             0U
@@ -791,7 +848,7 @@ bool pota::buildCandidate(const char* const csvPath, const char* const etag,
         !verification.found
     ) {
         _logCandidateFailure(
-            "POTA_CANDIDATE_CONTENT_INVALID",
+            "SOTA_CANDIDATE_CONTENT_INVALID",
             verification.records,
             candidate.recordCount,
             0U
@@ -800,74 +857,70 @@ bool pota::buildCandidate(const char* const csvPath, const char* const etag,
         return false;
     }
 
-    if (callback != nullptr) { callback(100U, userData); }
+    if (callback != nullptr)
+        { callback(100U, userData); }
     return true;
 }
 
-bool pota::installCandidate() {
+bool summits::installCandidate() {
     Header candidate {};
     if (!_readHeader(CANDIDATE_PATH, candidate)) {
-        storage::appendErrorRecord("POTA_CANDIDATE_INVALID");
+        storage::appendErrorRecord("SOTA_CANDIDATE_INVALID");
         return false;
     }
 
-    if (storage::fileExists(BACKUP_PATH) &&
-        !storage::deleteFile(BACKUP_PATH)
-    ) {
-        storage::appendErrorRecord("POTA_BACKUP_DELETE_FAILED");
+    if (storage::fileExists(BACKUP_PATH) && !storage::deleteFile(BACKUP_PATH)) {
+        storage::appendErrorRecord("SOTA_BACKUP_DELETE_FAILED");
         return false;
     }
 
     const bool hadInstalled = storage::fileExists(DATABASE_PATH);
 
     if (hadInstalled && !storage::renameFile(DATABASE_PATH, BACKUP_PATH)) {
-        storage::appendErrorRecord("POTA_BACKUP_CREATE_FAILED");
+        storage::appendErrorRecord("SOTA_BACKUP_CREATE_FAILED");
         return false;
     }
 
     if (!storage::renameFile(CANDIDATE_PATH, DATABASE_PATH)) {
-        storage::appendErrorRecord("POTA_CANDIDATE_INSTALL_FAILED");
+        storage::appendErrorRecord("SOTA_CANDIDATE_INSTALL_FAILED");
 
         if (hadInstalled && !storage::renameFile(BACKUP_PATH, DATABASE_PATH))
-            { storage::appendErrorRecord("POTA_ROLLBACK_FAILED"); }
+            { storage::appendErrorRecord("SOTA_ROLLBACK_FAILED"); }
         return false;
     }
 
     Info installed;
     if (!info(installed)) {
-        storage::appendErrorRecord("POTA_INSTALLED_INVALID");
+        storage::appendErrorRecord("SOTA_INSTALLED_INVALID");
 
         bool rollbackValid = storage::deleteFile(DATABASE_PATH);
-
         if (rollbackValid && hadInstalled) {
             rollbackValid = storage::renameFile(BACKUP_PATH, DATABASE_PATH);
         }
 
         if (!rollbackValid) {
-            storage::appendErrorRecord("POTA_ROLLBACK_FAILED");
+            storage::appendErrorRecord("SOTA_ROLLBACK_FAILED");
         }
         return false;
     }
 
     if (hadInstalled && !storage::deleteFile(BACKUP_PATH))
-        { storage::appendErrorRecord("POTA_BACKUP_DELETE_FAILED"); }
+        { storage::appendErrorRecord("SOTA_BACKUP_DELETE_FAILED"); }
     return true;
 }
 
-void pota::discardCandidate() {
+void summits::discardCandidate() {
     storage::deleteFile(CANDIDATE_PATH);
 }
 
-bool pota::findByCode(
-    const char* const code,
-    uPota::Park& park
-) {
-    park = uPota::Park {};
+
+bool summits::findByCode(const char* const code, summits::Summit& summit) {
+    summit = summits::Summit {};
 
     if (
         code == nullptr ||
         code[0] == '\0' ||
-        std::memchr(code, '\0', uPota::CODE_SIZE) == nullptr
+        std::memchr(code, '\0', summits::CODE_SIZE) == nullptr
     ) {
         return false;
     }
@@ -896,14 +949,14 @@ bool pota::findByCode(
         return false;
     }
 
-    park = context.park;
+    summit = context.summit;
     return true;
 }
 
-bool pota::findNearest(const double latitude, const double longitude,
-    uPota::Park& park, double& distanceKm, double& bearing
+bool summits::findNearest(const double latitude, const double longitude,
+    summits::Summit& summit, double& distanceKm, double& bearing
 ) {
-    park       = uPota::Park {};
+    summit     = summits::Summit {};
     distanceKm = 0.0;
     bearing    = 0.0;
 
@@ -918,21 +971,25 @@ bool pota::findNearest(const double latitude, const double longitude,
     };
 
     if (!storage::readFileChunks(DATABASE_PATH, _searchChunk, &context) ||
-        !context.valid || context.received != 0U ||
-        context.records != header.recordCount || !context.found
+        !context.valid         ||
+        context.received != 0U ||
+        context.records != header.recordCount ||
+        !context.found
     ) { return false; }
 
-    park       = context.nearest;
+    summit     = context.nearest;
     distanceKm = context.distanceKm;
     bearing    = distance::bearingDegrees(
-        latitude,      longitude,
-        park.latitude, park.longitude
+        latitude,        longitude,
+        summit.latitude, summit.longitude
     );
 
     return true;
 }
 
-ota::SearchStatus pota::findByPrefix(const double latitude, const double longitude,
+ota::SearchStatus summits::findByPrefix(
+    const double latitude,
+    const double longitude,
     const char* const normalizedPrefix,
     ota::SearchResults &results,
     const ota::CancelCallback cancelCallback,
@@ -957,7 +1014,10 @@ ota::SearchStatus pota::findByPrefix(const double latitude, const double longitu
     );
 }
 
-ota::SearchStatus pota::findNearby(const double latitude, const double longitude, const double radiusKm,
+ota::SearchStatus summits::findNearby(
+    const double latitude,
+    const double longitude,
+    const double radiusKm,
     ota::SearchResults &results,
     const ota::CancelCallback cancelCallback,
     void* const cancelUserData

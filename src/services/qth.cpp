@@ -31,7 +31,8 @@
 #include "services/settings.h"
 #include "services/storage.h"
 #include "utilities/distance.h"
-#include "utilities/json.h"
+#include "utilities/json/reader.h"
+#include "utilities/json/writer.h"
 #include "utilities/text.h"
 
 namespace navigation = services::navigation;

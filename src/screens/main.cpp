@@ -31,9 +31,8 @@
 #include "services/dtc.h"
 #include "services/gps.h"
 #include "services/navigation.h"
-#include "services/pota.h"
+#include "services/ota.h"
 #include "services/settings.h"
-#include "services/sota.h"
 #include "ui/mockup/buttons.h"
 #include "ui/settings/gps.h"
 #include "ui/settings/themes/defaults.h"
@@ -50,9 +49,8 @@ namespace battery     = services::battery;
 namespace dtc         = services::dtc;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
-namespace pota        = services::pota;
+namespace ota         = services::ota;
 namespace settings    = services::settings;
-namespace sota        = services::sota;
 namespace buttons     = ui::mockup::buttons;
 namespace uiGps       = ui::settings::gps;
 namespace theme       = ui::settings::themes::defaults;
@@ -333,16 +331,17 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
     }
 
     if (_otaSelection.type == settings::OtaType::POTA) {
-        pota::requestByCode(
+        ota::requestByCode(
+            ota::Type::PARKS,
             _otaSelection.code,
             gpsData.latitude,
             gpsData.longitude
         );
 
-        const pota::Snapshot result = pota::snapshot();
-        if (result.park.code[0] == '\0') {
+        const ota::Snapshot result = ota::snapshot(ota::Type::PARKS);
+        if (result.reference.code[0] == '\0') {
             const char* const status =
-                result.status == pota::Status::SEARCHING
+                result.status == ota::Status::SEARCHING
                     ? "Searching"
                     : "---";
 
@@ -382,7 +381,7 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
             code,
             sizeof(code),
             "POTA: %s",
-            result.park.code
+            result.reference.code
         );
 
         if (
@@ -400,15 +399,19 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         return;
     }
 
-    sota::requestByCode(
+    ota::requestByCode(
+        ota::Type::SUMMITS,
         _otaSelection.code,
         gpsData.latitude,
         gpsData.longitude
     );
 
-    const sota::Snapshot result = sota::snapshot();
-    if (result.summit.code[0] == '\0') {
-        const char* const status = result.status == sota::Status::SEARCHING ? "Searching" : "---";
+    const ota::Snapshot result = ota::snapshot(ota::Type::SUMMITS);
+    if (result.reference.code[0] == '\0') {
+        const char* const status =
+            result.status == ota::Status::SEARCHING
+                ? "Searching"
+                : "---";
         locator::updateSOTABearing (tft, "---");
         locator::updateSOTADistance(tft, "---");
         locator::updateSOTAPoints  (tft, "---");
@@ -432,18 +435,18 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
     if (!format::distance(result.distanceKm, imperial, distance, sizeof(distance)))
         { text::copy(distance, sizeof(distance), "---"); }
 
-    if (!format::altitude(result.summit.altitude, imperial, altitude, sizeof(altitude)))
+    if (!format::altitude(result.reference.altitude, imperial, altitude, sizeof(altitude)))
         { text::copy(altitude, sizeof(altitude), "---"); }
 
-    const int pointsWritten = result.summit.bonus > 0U
+    const int pointsWritten = result.reference.bonus > 0U
         ? snprintf(
             points, sizeof(points), "%u+%u",
-            static_cast<unsigned int>(result.summit.points),
-            static_cast<unsigned int>(result.summit.bonus)
+            static_cast<unsigned int>(result.reference.points),
+            static_cast<unsigned int>(result.reference.bonus)
         )
         : snprintf(
             points, sizeof(points), "%u",
-            static_cast<unsigned int>(result.summit.points)
+            static_cast<unsigned int>(result.reference.points)
         );
 
     if (pointsWritten < 0 || static_cast<size_t>(pointsWritten) >= sizeof(points))
@@ -453,7 +456,7 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         code,
         sizeof(code),
         "SOTA: %s",
-        result.summit.code
+        result.reference.code
     );
 
     if (

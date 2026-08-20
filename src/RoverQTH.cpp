@@ -32,36 +32,34 @@
 #include "core/screenManager.h"
 #include "core/state.h"
 #include "display/manager.h"
-#include "RoverQTH.h"
 #include "services/battery.h"
 #include "services/gps.h"
 #include "services/navigation.h"
-#include "services/pota.h"
+#include "services/ota.h"
 #include "services/power.h"
 #include "services/qth.h"
 #include "services/settings.h"
-#include "services/sota.h"
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
 #include "ui/settings/gps.h"
+#include "RoverQTH.h"
 
 namespace boot        = core::boot;
 namespace manager     = core::screenManager;
 namespace state       = core::state;
-namespace app         = RoverQTH;
 namespace battery     = services::battery;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
-namespace pota        = services::pota;
+namespace ota         = services::ota;
 namespace power       = services::power;
 namespace qth         = services::qth;
 namespace settings    = services::settings;
-namespace sota        = services::sota;
 namespace storage     = services::storage;
 namespace update      = services::update;
 namespace wifi        = services::wifi;
 namespace gpsSettings = ui::settings::gps;
+namespace app         = RoverQTH;
 
 namespace {
     SPIClass _sdSPI(HSPI);
@@ -140,11 +138,9 @@ void app::setup() {
     boot::run(_gpsUART, _sdSPI);
     update::begin();
 
-    sota::begin();
-    pota::begin();
-
-    if (sota::snapshot().status != sota::Status::UNAVAILABLE ||
-        pota::snapshot().status != pota::Status::UNAVAILABLE
+    ota::begin();
+    if (ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE ||
+        ota::snapshot(ota::Type::PARKS).status   != ota::Status::UNAVAILABLE
     ) { state::setButtonState(state::Button::SOTA, state::ButtonState::READY); }
 
     manager::begin();

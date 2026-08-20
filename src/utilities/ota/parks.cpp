@@ -1,27 +1,4 @@
-/*
- * src/utilities/pota.cpp
- *
- * Copyright (c) 2026 DeathManOne
- * https://github.com/DeathManOne
- * 
- * This file is part of the RoverQTH project.
- *
- * RoverQTH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * RoverQTH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with RoverQTH.
- * If not, see <https://www.gnu.org/licenses/>.
- */
-
-#include "utilities/pota.h"
+#include "utilities/ota/parks.h"
 
 #include <cerrno>
 #include <cmath>
@@ -30,7 +7,8 @@
 
 #include "utilities/distance.h"
 
-namespace pota = utilities::pota;
+namespace parks   = utilities::ota::parks;
+namespace parksDB = database::ota::parks;
 namespace distance = utilities::distance;
 
 namespace {
@@ -127,14 +105,14 @@ namespace {
     }
 }
 
-bool pota::parseCsvRecord(const char* const line, Park& park, bool& active) {
-    park   = Park {};
+bool parks::parseCsvRecord(const char* const line, parksDB::Park& park, bool& active) {
+    park   = parksDB::Park {};
     active = false;
     if (line == nullptr || line[0] == '\0') { return false; }
 
     const char* cursor = line;
     char unused[512];
-    char code[CODE_SIZE];
+    char code[parksDB::CODE_SIZE];
     char activeValue[2];
     char area[512];
     char latitude[32];
@@ -170,7 +148,7 @@ bool pota::parseCsvRecord(const char* const line, Park& park, bool& active) {
         !_parseCoordinate(longitude, -180.0, 180.0, park.longitude)
     ) {
         active = false;
-        park   = Park {};
+        park   = parksDB::Park {};
         return true;
     }
 
@@ -185,9 +163,9 @@ bool pota::parseCsvRecord(const char* const line, Park& park, bool& active) {
     return true;
 }
 
-bool pota::selectNearest(const double latitude, const double longitude,
-    const Park& candidate, bool& found,
-    Park& nearest,         double& distanceKm
+bool parks::selectNearest(const double latitude, const double longitude,
+    const parksDB::Park& candidate, bool& found,
+    parksDB::Park& nearest,         double& distanceKm
 ) {
     if (!std::isfinite(latitude)           || !std::isfinite(longitude)           ||
         latitude  < -90.0  || latitude  > 90.0  ||
@@ -212,3 +190,4 @@ bool pota::selectNearest(const double latitude, const double longitude,
 
     return true;
 }
+

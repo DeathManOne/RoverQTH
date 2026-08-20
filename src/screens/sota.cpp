@@ -24,13 +24,13 @@
 #include <cstdio>
 #include <cstring>
 
+#include "database/ota.h"
 #include "screens/main/title.h"
 #include "screens/sota.h"
 #include "services/dtc.h"
 #include "services/gps.h"
-#include "services/pota.h"
+#include "services/ota.h"
 #include "services/settings.h"
-#include "services/sota.h"
 #include "utilities/ota.h"
 #include "ui/mockup/buttons.h"
 #include "ui/mockup/grid.h"
@@ -46,9 +46,9 @@ namespace title    = screens::main::title;
 namespace sota     = screens::sota;
 namespace dtc      = services::dtc;
 namespace gps      = services::gps;
-namespace sPota    = services::pota;
+namespace sOta     = services::ota;
 namespace settings = services::settings;
-namespace sSota    = services::sota;
+namespace otaDB    = database::ota;
 namespace ota      = utilities::ota;
 namespace buttons  = ui::mockup::buttons;
 namespace grid     = ui::mockup::grid;
@@ -61,7 +61,7 @@ namespace {
     constexpr uint8_t DEFAULT_RADIUS_INDEX = 6U;
     constexpr uint8_t RADIUS_COUNT         = 14U;
     constexpr size_t RESULTS_PER_PAGE      = 6U;
-    constexpr size_t NO_RESULT_SELECTED    = ota::RESULT_CAPACITY;
+    constexpr size_t NO_RESULT_SELECTED    = otaDB::RESULT_CAPACITY;
     constexpr int RESULTS_NAV_HEIGHT       = 24;
     constexpr int RESULT_ROW_HEIGHT        = 34;
 
@@ -134,8 +134,8 @@ namespace {
     ResultsViewStatus _displayedResultStatus   = ResultsViewStatus::UNKNOWN;
     ClearSelectionStatus _clearSelectionStatus = ClearSelectionStatus::HIDDEN;
 
-    char _codePrefix[ota::CODE_SIZE] {};
-    size_t _resultOrder[ota::RESULT_CAPACITY] {};
+    char _codePrefix[otaDB::CODE_SIZE] {};
+    size_t _resultOrder[otaDB::RESULT_CAPACITY] {};
     size_t _displayedResultCount  = 0U;
     size_t _displayedResultPage   = 0U;
     size_t _resultPage            = 0U;
@@ -163,7 +163,7 @@ namespace {
         const char* const label, const bool available, const bool selected
     );
     void _drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
-        const ota::SearchResult &result, SelectionStatus selectionStatus
+        const otaDB::SearchResult &result, SelectionStatus selectionStatus
     );
     void _drawTypeSelector(ST7796S::MSP4021 &tft);
     void _drawModeSelector(ST7796S::MSP4021 &tft);
@@ -172,9 +172,9 @@ namespace {
     void _drawSearchButton(ST7796S::MSP4021 &tft, const bool searching);
     bool _requestSearch();
     ResultsView _currentResultsView();
-    bool _sourceResultAt(size_t index, ota::SearchResult &result);
-    bool _resultAt(const size_t index, ota::SearchResult &result);
-    bool _resultComesBefore(const ota::SearchResult &left, const ota::SearchResult &right);
+    bool _sourceResultAt(size_t index, otaDB::SearchResult &result);
+    bool _resultAt(const size_t index, otaDB::SearchResult &result);
+    bool _resultComesBefore(const otaDB::SearchResult &left, const otaDB::SearchResult &right);
     void _rebuildResultOrder(size_t resultCount);
     bool _saveSelectedResult();
     void _drawClearSelection(ST7796S::MSP4021 &tft);
@@ -231,10 +231,16 @@ namespace {
         _potaTypeButton = button::makeArea(potaX, buttonY, buttonW, buttonH);
 
         const bool controlsEnabled = !_searchButtonShowingStop;
-        const bool sotaAvailable   = controlsEnabled &&
-            sSota::snapshot().status != sSota::Status::UNAVAILABLE;
-        const bool potaAvailable   = controlsEnabled &&
-            sPota::snapshot().status != sPota::Status::UNAVAILABLE;
+
+        const bool sotaAvailable =
+            controlsEnabled &&
+            sOta::snapshot(sOta::Type::SUMMITS).status !=
+                sOta::Status::UNAVAILABLE;
+
+        const bool potaAvailable =
+            controlsEnabled &&
+            sOta::snapshot(sOta::Type::PARKS).status !=
+                sOta::Status::UNAVAILABLE;
 
         _drawChoiceButton(tft, _sotaTypeButton, "SOTA", sotaAvailable, _searchType == SearchType::SOTA);
         _drawChoiceButton(tft, _potaTypeButton, "POTA", potaAvailable, _searchType == SearchType::POTA);
@@ -379,48 +385,32 @@ namespace {
             return false;
         }
 
+        const sOta::Type type = _searchType == SearchType::POTA
+            ? sOta::Type::PARKS
+            : sOta::Type::SUMMITS;
+
         if (_searchMode == SearchMode::CODE) {
             if (_codePrefix[0] == '\0') {
                 return false;
             }
 
-            switch (_searchType) {
-                case SearchType::POTA:
-                    return sPota::requestByPrefix(
-                        _codePrefix,
-                        position.latitude,
-                        position.longitude
-                    );
-
-                case SearchType::SOTA:
-                default:
-                    return sSota::requestByPrefix(
-                        _codePrefix,
-                        position.latitude,
-                        position.longitude
-                    );
-            }
+            return sOta::requestByPrefix(
+                type,
+                _codePrefix,
+                position.latitude,
+                position.longitude
+            );
         }
 
         const double radiusKm =
             RADIUS_VALUES[_radiusIndex];
 
-        switch (_searchType) {
-            case SearchType::POTA:
-                return sPota::requestNearby(
-                    position.latitude,
-                    position.longitude,
-                    radiusKm
-                );
-
-            case SearchType::SOTA:
-            default:
-                return sSota::requestNearby(
-                    position.latitude,
-                    position.longitude,
-                    radiusKm
-                );
-        }
+        return sOta::requestNearby(
+            type,
+            position.latitude,
+            position.longitude,
+            radiusKm
+        );
     }
 
     ResultsView _currentResultsView() {
@@ -428,56 +418,40 @@ namespace {
             return {ResultsViewStatus::HIDDEN, 0U};
         }
 
-        if (_submittedSearchType == SearchType::SOTA) {
-            const sSota::NearbySnapshot snapshot =
-                sSota::nearbySnapshot();
+        const sOta::Type type =
+            _submittedSearchType == SearchType::POTA
+                ? sOta::Type::PARKS
+                : sOta::Type::SUMMITS;
 
-            switch (snapshot.status) {
-                case sSota::NearbyStatus::SEARCHING:
-                    return {ResultsViewStatus::SEARCHING, 0U};
-                case sSota::NearbyStatus::READY:
-                    return {ResultsViewStatus::READY, snapshot.count};
-                case sSota::NearbyStatus::EMPTY:
-                    return {ResultsViewStatus::EMPTY, 0U};
-                case sSota::NearbyStatus::IDLE:
-                    return {ResultsViewStatus::HIDDEN, 0U};
-                case sSota::NearbyStatus::ERROR:
-                case sSota::NearbyStatus::UNAVAILABLE:
-                default:
-                    return {ResultsViewStatus::ERROR, 0U};
-            }
-        }
-
-        const sPota::NearbySnapshot snapshot =
-            sPota::nearbySnapshot();
+        const sOta::NearbySnapshot snapshot =
+            sOta::nearbySnapshot(type);
 
         switch (snapshot.status) {
-            case sPota::NearbyStatus::SEARCHING:
+            case sOta::NearbyStatus::SEARCHING:
                 return {ResultsViewStatus::SEARCHING, 0U};
-            case sPota::NearbyStatus::READY:
+            case sOta::NearbyStatus::READY:
                 return {ResultsViewStatus::READY, snapshot.count};
-            case sPota::NearbyStatus::EMPTY:
+            case sOta::NearbyStatus::EMPTY:
                 return {ResultsViewStatus::EMPTY, 0U};
-            case sPota::NearbyStatus::IDLE:
+            case sOta::NearbyStatus::IDLE:
                 return {ResultsViewStatus::HIDDEN, 0U};
-            case sPota::NearbyStatus::ERROR:
-            case sPota::NearbyStatus::UNAVAILABLE:
+            case sOta::NearbyStatus::ERROR:
+            case sOta::NearbyStatus::UNAVAILABLE:
             default:
                 return {ResultsViewStatus::ERROR, 0U};
         }
     }
 
-    bool _sourceResultAt(const size_t index, ota::SearchResult &result) {
-        switch (_submittedSearchType) {
-            case SearchType::POTA:
-                return sPota::nearbyResult(index, result);
-            case SearchType::SOTA:
-            default:
-                return sSota::nearbyResult(index, result);
-        }
+    bool _sourceResultAt(const size_t index, otaDB::SearchResult &result) {
+        const sOta::Type type =
+            _submittedSearchType == SearchType::POTA
+                ? sOta::Type::PARKS
+                : sOta::Type::SUMMITS;
+
+        return sOta::nearbyResult(type, index, result);
     }
 
-    bool _resultAt(const size_t index, ota::SearchResult &result) {
+    bool _resultAt(const size_t index, otaDB::SearchResult &result) {
         if (_resultOrderCount == 0U) {
             return _sourceResultAt(index, result);
         }
@@ -487,7 +461,7 @@ namespace {
         return _sourceResultAt(_resultOrder[index], result);
     }
 
-    bool _resultComesBefore(const ota::SearchResult &left, const ota::SearchResult &right) {
+    bool _resultComesBefore(const otaDB::SearchResult &left, const otaDB::SearchResult &right) {
         const int codeOrder = std::strcmp(left.code, right.code);
 
         switch (_sortMode) {
@@ -527,9 +501,9 @@ namespace {
     }
 
     void _rebuildResultOrder(const size_t resultCount) {
-        _resultOrderCount = resultCount < ota::RESULT_CAPACITY
+        _resultOrderCount = resultCount < otaDB::RESULT_CAPACITY
             ? resultCount
-            : ota::RESULT_CAPACITY;
+            : otaDB::RESULT_CAPACITY;
 
         for (size_t index = 0U; index < _resultOrderCount; ++index) {
             _resultOrder[index] = index;
@@ -537,7 +511,7 @@ namespace {
 
         for (size_t index = 1U; index < _resultOrderCount; ++index) {
             const size_t sourceIndex = _resultOrder[index];
-            ota::SearchResult current {};
+            otaDB::SearchResult current {};
 
             if (!_sourceResultAt(sourceIndex, current)) {
                 _resultOrderCount = 0U;
@@ -547,7 +521,7 @@ namespace {
             size_t insertionIndex = index;
 
             while (insertionIndex > 0U) {
-                ota::SearchResult previous {};
+                otaDB::SearchResult previous {};
 
                 if (!_sourceResultAt(
                     _resultOrder[insertionIndex - 1U],
@@ -572,7 +546,7 @@ namespace {
     }
 
     void _drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
-        const ota::SearchResult &result, SelectionStatus selectionStatus
+        const otaDB::SearchResult &result, SelectionStatus selectionStatus
     ) {
         constexpr int PADDING        = 6;
         constexpr int CODE_WIDTH     = 120;
@@ -667,7 +641,7 @@ namespace {
             return false;
         }
 
-        ota::SearchResult result {};
+        otaDB::SearchResult result {};
 
         if (!_resultAt(_selectedResultIndex, result)) {
             return false;
@@ -844,7 +818,7 @@ namespace {
             visibleIndex < visibleCount;
             ++visibleIndex
         ) {
-            ota::SearchResult result {};
+            otaDB::SearchResult result {};
             const size_t resultIndex =
                 firstResultIndex + visibleIndex;
 
@@ -960,8 +934,13 @@ void sota::preload() {
         ? ClearSelectionStatus::AVAILABLE
         : ClearSelectionStatus::HIDDEN;
 
-    const bool sotaAvailable = sSota::snapshot().status != sSota::Status::UNAVAILABLE;
-    const bool potaAvailable = sPota::snapshot().status != sPota::Status::UNAVAILABLE;
+    const bool sotaAvailable =
+        sOta::snapshot(sOta::Type::SUMMITS).status !=
+            sOta::Status::UNAVAILABLE;
+
+    const bool potaAvailable =
+        sOta::snapshot(sOta::Type::PARKS).status !=
+            sOta::Status::UNAVAILABLE;
 
     if      (sotaAvailable) { _searchType = SearchType::SOTA; }
     else if (potaAvailable) { _searchType = SearchType::POTA; }
@@ -1031,20 +1010,17 @@ bool sota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
         return true;
     }
 
-    const bool sotaAvailable = sSota::snapshot().status != sSota::Status::UNAVAILABLE;
-    const bool potaAvailable = sPota::snapshot().status != sPota::Status::UNAVAILABLE;
+    const bool sotaAvailable =
+        sOta::snapshot(sOta::Type::SUMMITS).status !=
+            sOta::Status::UNAVAILABLE;
+
+    const bool potaAvailable =
+        sOta::snapshot(sOta::Type::PARKS).status !=
+            sOta::Status::UNAVAILABLE;
 
     if (_searchButtonShowingStop) {
         if (button::isPressed(_searchButton, x, y)) {
-            switch (_searchType) {
-                case SearchType::POTA:
-                    sPota::cancelNearby();
-                    break;
-                case SearchType::SOTA:
-                default:
-                    sSota::cancelNearby();
-                    break;
-            }
+            sOta::cancel();
             return true;
         }
         return false;

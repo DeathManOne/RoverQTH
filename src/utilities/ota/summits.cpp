@@ -1,27 +1,4 @@
-/*
- * src/utilities/sota.cpp
- *
- * Copyright (c) 2026 DeathManOne
- * https://github.com/DeathManOne
- * 
- * This file is part of the RoverQTH project.
- *
- * RoverQTH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * RoverQTH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with RoverQTH.
- * If not, see <https://www.gnu.org/licenses/>.
- */
-
-#include "utilities/sota.h"
+#include "utilities/ota/summits.h"
 
 #include <cerrno>
 #include <cmath>
@@ -31,7 +8,8 @@
 
 #include "utilities/distance.h"
 
-namespace sota     = utilities::sota;
+namespace summits  = utilities::ota::summits;
+namespace summitsDB = database::ota::summits;
 namespace distance = utilities::distance;
 
 namespace {
@@ -134,9 +112,9 @@ namespace {
     }
 
     bool _isDate(const char* const value) {
-        if (value == nullptr || std::strlen(value) != sota::VERSION_SIZE - 1U) { return false; }
+        if (value == nullptr || std::strlen(value) != summitsDB::VERSION_SIZE - 1U) { return false; }
 
-        for (size_t index = 0U; index < sota::VERSION_SIZE - 1U; ++index) {
+        for (size_t index = 0U; index < summitsDB::VERSION_SIZE - 1U; ++index) {
             if (index == 4U || index == 7U) {
                 if (value[index] != '-')
                     { return false; }
@@ -158,10 +136,10 @@ namespace {
     }
 }
 
-bool sota::parseListVersion(const char* const line, char* const version, const size_t size) {
+bool summits::parseListVersion(const char* const line, char* const version, const size_t size) {
     if (version == nullptr || size == 0U)       { return false; }
     version[0] = '\0';
-    if (line == nullptr || size < VERSION_SIZE) { return false; }
+    if (line == nullptr || size < summitsDB::VERSION_SIZE) { return false; }
 
     const char* date = std::strstr(line, "Date=");
     if (date != nullptr) { date += 5; }
@@ -198,13 +176,13 @@ bool sota::parseListVersion(const char* const line, char* const version, const s
     return true;
 }
 
-bool sota::parseCsvRecord(const char* const line, Summit& summit) {
-    summit = Summit {};
+bool summits::parseCsvRecord(const char* const line, summitsDB::Summit& summit) {
+    summit = summitsDB::Summit {};
     if (line == nullptr || line[0] == '\0') { return false; }
 
     const char* cursor = line;
     char field[512];
-    char code[CODE_SIZE];
+    char code[summitsDB::CODE_SIZE];
     char area[512];
     char altitude[16];
     char longitude[32];
@@ -259,19 +237,19 @@ bool sota::parseCsvRecord(const char* const line, Summit& summit) {
     return true;
 }
 
-bool sota::isVersionNewer(const char* const candidate, const char* const installed) {
+bool summits::isVersionNewer(const char* const candidate, const char* const installed) {
     if (!_isDate(candidate)) { return false; }
     if (!_isDate(installed)) { return true; }
     return std::strcmp(candidate, installed) > 0;
 }
 
-bool sota::isVersionValid(const char* const version) {
+bool summits::isVersionValid(const char* const version) {
     return _isDate(version);
 }
 
-bool sota::selectNearest(const double latitude, const double longitude,
-    const Summit& candidate, bool& found,
-    Summit& nearest,         double& distanceKm
+bool summits::selectNearest(const double latitude, const double longitude,
+    const summitsDB::Summit& candidate, bool& found,
+    summitsDB::Summit& nearest,         double& distanceKm
 ) {
     if (!std::isfinite(latitude)           || !std::isfinite(longitude)           ||
         latitude  < -90.0  || latitude  > 90.0  ||

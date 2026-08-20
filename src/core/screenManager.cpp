@@ -31,10 +31,9 @@
 #include "display/sota.h"
 #include "screens/menu.h"
 #include "services/navigation.h"
-#include "services/pota.h"
+#include "services/ota.h"
 #include "services/qth.h"
 #include "services/storage.h"
-#include "services/sota.h"
 #include "ui/widgets/buttons.h"
 
 namespace manager     = core::screenManager;
@@ -45,9 +44,8 @@ namespace mockup      = display::mockup;
 namespace sota        = display::sota;
 namespace sMenu       = screens::menu;
 namespace navigation  = services::navigation;
-namespace potaService = services::pota;
+namespace ota         = services::ota;
 namespace qth         = services::qth;
-namespace sotaService = services::sota;
 namespace storage     = services::storage;
 namespace buttons     = ui::widgets::buttons;
 
@@ -78,8 +76,11 @@ namespace {
         if (state::buttonState(state::Button::SOTA) != state::ButtonState::UNAVAILABLE)
             { return; }
 
-        const bool sotaAvailable = sotaService::snapshot().status != sotaService::Status::UNAVAILABLE;
-        const bool potaAvailable = potaService::snapshot().status != potaService::Status::UNAVAILABLE;
+        const bool sotaAvailable =
+            ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE;
+        const bool potaAvailable =
+            ota::snapshot(ota::Type::PARKS).status   != ota::Status::UNAVAILABLE;
+
         if (!sotaAvailable && !potaAvailable) { return; }
 
         state::setButtonState(state::Button::SOTA, state::ButtonState::READY);

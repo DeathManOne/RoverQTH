@@ -27,33 +27,31 @@
 #include <Update.h>
 #include <WiFiClientSecure.h>
 
-#include "database/pota.h"
-#include "database/sota.h"
+#include "database/ota/parks.h"
+#include "database/ota/summits.h"
 #include "security/otaRootCA.h"
-#include "services/pota.h"
-#include "services/sota.h"
+#include "services/ota.h"
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
 #include "utilities/hash.h"
-#include "utilities/json.h"
-#include "utilities/sota.h"
+#include "utilities/json/reader.h"
+#include "utilities/ota/summits.h"
 #include "utilities/text.h"
 #include "utilities/version.h"
 
-namespace potaDB    = database::pota;
-namespace sotaDB    = database::sota;
+namespace parksDB   = database::ota::parks;
+namespace summitsDB = database::ota::summits;
 namespace otaRootCA = security::otaRootCA;
-namespace pota      = services::pota;
-namespace sota      = services::sota;
+namespace ota       = services::ota;
 namespace storage   = services::storage;
 namespace update    = services::update;
 namespace wifi      = services::wifi;
 namespace hash      = utilities::hash;
 namespace json      = utilities::json;
-namespace uSota     = utilities::sota;
+namespace summits   = utilities::ota::summits;
 namespace text      = utilities::text;
-namespace uVersion  = utilities::version;
+namespace version   = utilities::version;
 
 namespace {
     portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
@@ -84,7 +82,7 @@ namespace {
 
     struct DatabaseSourceInfo {
         uint64_t size = 0U;
-        char etag[sotaDB::ETAG_SIZE] {};
+        char etag[summitsDB::ETAG_SIZE] {};
     };
 
     update::Status _firmwareStatus = update::Status::IDLE;
@@ -400,9 +398,9 @@ namespace {
         }
 
         const uint32_t size = static_cast<uint32_t>(manifestSize);
-        uVersion::Comparison comparison;
+        version::Comparison comparison;
     
-        if (!uVersion::compare(remoteVersion, PROJECT_VERSION, comparison) ||
+        if (!version::compare(remoteVersion, PROJECT_VERSION, comparison) ||
             size == 0 || !hash::isSha256Text(sha256)
         ) {
             _setFirmwareError("Invalid manifest", "OTA_MANIFEST_FIELDS_INVALID");
@@ -415,7 +413,7 @@ namespace {
             return;
         }
 
-        const bool updateAvailable = comparison == uVersion::Comparison::NEWER;
+        const bool updateAvailable = comparison == version::Comparison::NEWER;
         portENTER_CRITICAL(&_lock);
     
         text::copy(_firmwareLatestVersion,  sizeof(_firmwareLatestVersion),  remoteVersion);
@@ -458,15 +456,15 @@ namespace {
         http.end();
         _setSotaProgress(75U);
 
-        sotaDB::Info installed;
-        const bool installedAvailable = sotaDB::info(installed);
+        summitsDB::Info installed;
+        const bool installedAvailable = summitsDB::info(installed);
         const bool updateAvailable    =
             !installedAvailable                        ||
             !text::equals(installed.etag, remote.etag) ||
             installed.sourceSize != remote.size;
 
         if (!installedAvailable) {
-            sota::begin();
+            ota::invalidate(ota::Type::SUMMITS);
         }
 
         portENTER_CRITICAL(&_lock);
@@ -512,15 +510,15 @@ namespace {
         http.end();
         _setPotaProgress(75U);
 
-        potaDB::Info installed;
-        const bool installedAvailable = potaDB::info(installed);
+        parksDB::Info installed;
+        const bool installedAvailable = parksDB::info(installed);
         const bool updateAvailable =
             !installedAvailable                        ||
             !text::equals(installed.etag, remote.etag) ||
             installed.sourceSize != remote.size;
 
         if (!installedAvailable) {
-            pota::begin();
+            ota::invalidate(ota::Type::PARKS);
         }
 
         portENTER_CRITICAL(&_lock);
@@ -700,8 +698,8 @@ namespace {
         }
         http.end();
 
-        sotaDB::Info current;
-        if (sotaDB::info(current)                   &&
+        summitsDB::Info current;
+        if (summitsDB::info(current)                   &&
             text::equals(current.etag, remote.etag) &&
             current.sourceSize == remote.size
         ) {
@@ -746,7 +744,7 @@ namespace {
         _sotaStatus   = update::Status::INSTALLING;
         portEXIT_CRITICAL(&_lock);
 
-        if (!sotaDB::buildCandidate(
+        if (!summitsDB::buildCandidate(
             SOTA_CSV_PATH,
             version,
             downloaded.etag,
@@ -764,8 +762,8 @@ namespace {
         _setSotaProgress(95U);
         _setSotaStatus(update::Status::VERIFYING);
 
-        if (!sotaDB::installCandidate()) {
-            sotaDB::discardCandidate();
+        if (!summitsDB::installCandidate()) {
+            summitsDB::discardCandidate();
 
             if (!storage::deleteFile(SOTA_CSV_PATH)) {
                 storage::appendErrorRecord("SOTA_TEMP_DELETE_FAILED");
@@ -775,10 +773,10 @@ namespace {
             return;
         }
 
-        sota::invalidate();
+        ota::invalidate(ota::Type::SUMMITS);
 
-        sotaDB::Info installedInfo;
-        if (!sotaDB::info(installedInfo)                       ||
+        summitsDB::Info installedInfo;
+        if (!summitsDB::info(installedInfo)                       ||
             !text::equals(installedInfo.etag, downloaded.etag) ||
             installedInfo.sourceSize != downloaded.size
         ) {
@@ -786,7 +784,7 @@ namespace {
                 storage::appendErrorRecord("SOTA_TEMP_DELETE_FAILED");
             }
 
-            sota::begin();
+            ota::invalidate(ota::Type::SUMMITS);
             _setSotaError("SOTA validation failed", "SOTA_VALIDATION_FAILED");
             return;
         }
@@ -820,9 +818,9 @@ namespace {
 
         http.end();
 
-        potaDB::Info current;
+        parksDB::Info current;
         if (
-            potaDB::info(current)                   &&
+            parksDB::info(current)                   &&
             text::equals(current.etag, remote.etag) &&
             current.sourceSize == remote.size
         ) {
@@ -859,7 +857,7 @@ namespace {
         _potaStatus   = update::Status::INSTALLING;
         portEXIT_CRITICAL(&_lock);
 
-        if (!potaDB::buildCandidate(
+        if (!parksDB::buildCandidate(
             POTA_CSV_PATH,
             downloaded.etag,
             downloaded.size,
@@ -876,8 +874,8 @@ namespace {
         _setPotaProgress(95U);
         _setPotaStatus(update::Status::VERIFYING);
 
-        if (!potaDB::installCandidate()) {
-            potaDB::discardCandidate();
+        if (!parksDB::installCandidate()) {
+            parksDB::discardCandidate();
 
             if (!storage::deleteFile(POTA_CSV_PATH)) {
                 storage::appendErrorRecord("POTA_TEMP_DELETE_FAILED");
@@ -887,10 +885,10 @@ namespace {
             return;
         }
 
-        pota::invalidate();
+        ota::invalidate(ota::Type::PARKS);
 
-        potaDB::Info installedInfo;
-        if (!potaDB::info(installedInfo)                       ||
+        parksDB::Info installedInfo;
+        if (!parksDB::info(installedInfo)                       ||
             !text::equals(installedInfo.etag, downloaded.etag) ||
             installedInfo.sourceSize != downloaded.size
         ) {
@@ -898,7 +896,7 @@ namespace {
                 storage::appendErrorRecord("POTA_TEMP_DELETE_FAILED");
             }
 
-            pota::begin();
+            ota::invalidate(ota::Type::PARKS);
             _setPotaError(
                 "POTA validation failed",
                 "POTA_VALIDATION_FAILED"
@@ -920,7 +918,7 @@ namespace {
     }
 
     bool _startTask(const TaskFunction_t function, const char* const name, const uint32_t stackSize, const OperationTarget target, const update::Status initialStatus) {
-        if (sota::isBusy() || pota::isBusy()) { return false; }
+        if (ota::isBusy()) { return false; }
 
         portENTER_CRITICAL(&_lock);
         if (_taskRunning) {
@@ -930,7 +928,7 @@ namespace {
         _taskRunning = true;
         portEXIT_CRITICAL(&_lock);
 
-        if (sota::isBusy() || pota::isBusy()) {
+        if (ota::isBusy()) {
             portENTER_CRITICAL(&_lock);
             _taskRunning = false;
             portEXIT_CRITICAL(&_lock);
@@ -1034,7 +1032,7 @@ namespace {
             if (character == '\r') { continue; }
             if (character == '\n') {
                 context->line[context->length] = '\0';
-                context->parsed = uSota::parseListVersion(context->line, context->version, context->size);
+                context->parsed = summits::parseListVersion(context->line, context->version, context->size);
                 context->valid  = context->parsed;
                 return false;
             }
@@ -1048,7 +1046,7 @@ namespace {
     }
 
     bool _readSotaVersion(char* const version, const size_t size) {
-        if (version == nullptr || size < uSota::VERSION_SIZE) { return false; }
+        if (version == nullptr || size < summitsDB::VERSION_SIZE) { return false; }
 
         version[0] = '\0';
         SotaVersionContext context {version, size, {}, 0U, false, true};
@@ -1377,7 +1375,7 @@ namespace {
 }
 
 void update::begin() {
-    if (sota::isBusy() || pota::isBusy()) {
+    if (ota::isBusy()) {
         storage::appendErrorRecord("UPDATE_INIT_BUSY");
         return;
     }
@@ -1391,7 +1389,7 @@ void update::begin() {
     _taskRunning = true;
     portEXIT_CRITICAL(&_lock);
 
-    if (sota::isBusy() || pota::isBusy()) {
+    if (ota::isBusy()) {
         portENTER_CRITICAL(&_lock);
         _taskRunning = false;
         portEXIT_CRITICAL(&_lock);
@@ -1399,12 +1397,12 @@ void update::begin() {
         return;
     }
 
-    sotaDB::Info sotaInfo;
-    potaDB::Info potaInfo;
+    summitsDB::Info sotaInfo;
+    parksDB::Info potaInfo;
 
     const bool storageReady  = storage::isReady();
-    const bool sotaInstalled = storageReady && sotaDB::info(sotaInfo);
-    const bool potaInstalled = storageReady && potaDB::info(potaInfo);
+    const bool sotaInstalled = storageReady && summitsDB::info(sotaInfo);
+    const bool potaInstalled = storageReady && parksDB::info(potaInfo);
 
     if (sotaInstalled) {
         char databaseRecord[96];
@@ -1460,7 +1458,7 @@ void update::begin() {
 }
 
 bool update::checkFirmwareUpdate() {
-    if (isBusy() || sota::isBusy() || pota::isBusy()) {
+    if (isBusy() || ota::isBusy()) {
         return false;
     }
 
@@ -1472,7 +1470,7 @@ bool update::checkFirmwareUpdate() {
 }
 
 bool update::checkSotaUpdate() {
-    if (isBusy() || sota::isBusy() || pota::isBusy()) {
+    if (isBusy() || ota::isBusy()) {
         return false;
     }
 
@@ -1490,7 +1488,7 @@ bool update::checkSotaUpdate() {
 }
 
 bool update::checkPotaUpdate() {
-    if (isBusy() || sota::isBusy() || pota::isBusy()) {
+    if (isBusy() || ota::isBusy()) {
         return false;
     }
 
@@ -1508,7 +1506,7 @@ bool update::checkPotaUpdate() {
 }
 
 bool update::startFirmwareUpdate() {
-    if (isBusy() || sota::isBusy() || pota::isBusy()) {
+    if (isBusy() || ota::isBusy()) {
         return false;
     }
 
@@ -1528,7 +1526,7 @@ bool update::startFirmwareUpdate() {
 }
 
 bool update::startSotaUpdate() {
-    if (isBusy() || sota::isBusy() || pota::isBusy()) {
+    if (isBusy() || ota::isBusy()) {
         return false;
     }
 
@@ -1553,7 +1551,7 @@ bool update::startSotaUpdate() {
 }
 
 bool update::startPotaUpdate() {
-    if (isBusy() || sota::isBusy() || pota::isBusy()) {
+    if (isBusy() || ota::isBusy()) {
         return false;
     }
 
