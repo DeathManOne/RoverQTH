@@ -41,7 +41,7 @@
 #include "utilities/locator.h"
 #include "utilities/text.h"
 
-namespace main        = screens::main;
+using screens::Main;
 namespace datas       = screens::main::datas;
 namespace locator     = screens::main::locator;
 namespace title       = screens::main::title;
@@ -60,8 +60,6 @@ namespace uLocator    = utilities::locator;
 namespace text        = utilities::text;
 
 namespace {
-    settings::OtaSelection _otaSelection {};
-
     void _getFormattedPosition(const gps::Snapshot& snapshot,
         const settings::CoordinateFormat coordinateFormat,
         char* const latitude,  const size_t latitudeSize,
@@ -101,18 +99,18 @@ namespace {
     }
 }
 
-void main::preload() {
+void Main::preload() {
     char battery[8] = {};
 
     title::getBatteryLevel(battery, sizeof(battery));
     title::setBattery(battery);
 
-    preloadGPS();
-    preloadSOTA();
-    preloadMARK();
+    _preloadGPS();
+    _preloadOTA();
+    _preloadMARK();
 }
 
-void main::preloadGPS() {
+void Main::_preloadGPS() {
     const settings::General configuration = settings::general();
     const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
@@ -188,18 +186,18 @@ void main::preloadGPS() {
     locator::setStatusBottom (gpsStatus);
 }
 
-void main::preloadSOTA() {
+void Main::_preloadOTA() {
     _otaSelection = settings::OtaSelection {};
     settings::getOtaSelection(_otaSelection);
 
-    locator::setSOTABearing ("---");
-    locator::setSOTADistance("---");
-    locator::setSOTAPoints  ("---");
-    locator::setSOTAAltitude("---");
-    locator::setSOTACode    ("---");
+    locator::setOTABearing ("---");
+    locator::setOTADistance("---");
+    locator::setOTAPoints  ("---");
+    locator::setOTAAltitude("---");
+    locator::setOTACode    ("---");
 }
 
-void main::preloadMARK() {
+void Main::_preloadMARK() {
     const settings::General configuration = settings::general();
     const bool imperial = configuration.units == settings::Units::IMPERIAL;
 
@@ -229,7 +227,7 @@ void main::preloadMARK() {
     locator::setMarkTimer(timer);
 }
 
-void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
+void Main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     const settings::General configuration = settings::general();
     const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
     nextRefreshIn                         = 1000;
@@ -301,18 +299,18 @@ void main::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     locator::updateLocator(tft, qth);
 
     locator::updateStatusBottom(tft, gpsStatus);
-    updateSOTA(tft);
+    _updateOTA(tft);
     updateMARK(tft);
 }
 
-void main::updateSOTA(ST7796S::MSP4021& tft) {
+void Main::_updateOTA(ST7796S::MSP4021& tft) {
     gps::Snapshot gpsData {};
     if (!gps::getSnapshot(gpsData) || !gpsData.positionValid) {
-        locator::updateSOTABearing (tft, "---");
-        locator::updateSOTADistance(tft, "---");
-        locator::updateSOTAPoints  (tft, "---");
-        locator::updateSOTAAltitude(tft, "---");
-        locator::updateSOTACode    (tft, "---");
+        locator::updateOTABearing (tft, "---");
+        locator::updateOTADistance(tft, "---");
+        locator::updateOTAPoints  (tft, "---");
+        locator::updateOTAAltitude(tft, "---");
+        locator::updateOTACode    (tft, "---");
         return;
     }
 
@@ -322,11 +320,11 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         _otaSelection.type != settings::OtaType::POTA
     ) || _otaSelection.code[0] == '\0'
     ) {
-        locator::updateSOTABearing (tft, "---");
-        locator::updateSOTADistance(tft, "---");
-        locator::updateSOTAPoints  (tft, "---");
-        locator::updateSOTAAltitude(tft, "---");
-        locator::updateSOTACode    (tft, "---");
+        locator::updateOTABearing (tft, "---");
+        locator::updateOTADistance(tft, "---");
+        locator::updateOTAPoints  (tft, "---");
+        locator::updateOTAAltitude(tft, "---");
+        locator::updateOTACode    (tft, "---");
         return;
     }
 
@@ -345,11 +343,11 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
                     ? "Searching"
                     : "---";
 
-            locator::updateSOTABearing (tft, "---");
-            locator::updateSOTADistance(tft, "---");
-            locator::updateSOTAPoints  (tft, "---");
-            locator::updateSOTAAltitude(tft, "---");
-            locator::updateSOTACode    (tft, status);
+            locator::updateOTABearing (tft, "---");
+            locator::updateOTADistance(tft, "---");
+            locator::updateOTAPoints  (tft, "---");
+            locator::updateOTAAltitude(tft, "---");
+            locator::updateOTACode    (tft, status);
             return;
         }
 
@@ -391,11 +389,11 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
             text::copy(code, sizeof(code), "POTA: ---");
         }
 
-        locator::updateSOTABearing (tft, bearing);
-        locator::updateSOTADistance(tft, distance);
-        locator::updateSOTAPoints  (tft, "---");
-        locator::updateSOTAAltitude(tft, "---");
-        locator::updateSOTACode    (tft, code);
+        locator::updateOTABearing (tft, bearing);
+        locator::updateOTADistance(tft, distance);
+        locator::updateOTAPoints  (tft, "---");
+        locator::updateOTAAltitude(tft, "---");
+        locator::updateOTACode    (tft, code);
         return;
     }
 
@@ -412,11 +410,11 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
             result.status == ota::Status::SEARCHING
                 ? "Searching"
                 : "---";
-        locator::updateSOTABearing (tft, "---");
-        locator::updateSOTADistance(tft, "---");
-        locator::updateSOTAPoints  (tft, "---");
-        locator::updateSOTAAltitude(tft, "---");
-        locator::updateSOTACode    (tft, status);
+        locator::updateOTABearing (tft, "---");
+        locator::updateOTADistance(tft, "---");
+        locator::updateOTAPoints  (tft, "---");
+        locator::updateOTAAltitude(tft, "---");
+        locator::updateOTACode    (tft, status);
         return;
     }
 
@@ -466,14 +464,14 @@ void main::updateSOTA(ST7796S::MSP4021& tft) {
         text::copy(code, sizeof(code), "SOTA: ---");
     }
 
-    locator::updateSOTABearing (tft, bearing);
-    locator::updateSOTADistance(tft, distance);
-    locator::updateSOTAPoints  (tft, points);
-    locator::updateSOTAAltitude(tft, altitude);
-    locator::updateSOTACode    (tft, code);
+    locator::updateOTABearing (tft, bearing);
+    locator::updateOTADistance(tft, distance);
+    locator::updateOTAPoints  (tft, points);
+    locator::updateOTAAltitude(tft, altitude);
+    locator::updateOTACode    (tft, code);
 }
 
-void main::updateMARK(ST7796S::MSP4021& tft) {
+void Main::updateMARK(ST7796S::MSP4021& tft) {
     const settings::General configuration = settings::general();
     const bool imperial = configuration.units == settings::Units::IMPERIAL;
 
@@ -503,7 +501,7 @@ void main::updateMARK(ST7796S::MSP4021& tft) {
     locator::updateMarkTimer(tft, timer);
 }
 
-void main::draw(ST7796S::MSP4021 &tft) {
+void Main::draw(ST7796S::MSP4021 &tft) {
     tft.fillScreen(theme::BLACK);
 
     title::draw(tft);
@@ -511,4 +509,12 @@ void main::draw(ST7796S::MSP4021 &tft) {
     datas::draw(tft);
 
     buttons::draw(tft);
+}
+
+bool Main::handleTouch(
+    ST7796S::MSP4021&,
+    const int,
+    const int
+) {
+    return false;
 }

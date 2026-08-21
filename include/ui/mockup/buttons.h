@@ -25,10 +25,15 @@
 #include <MSP4021.h>
 
 namespace ui::mockup::buttons {
+    enum class Id {MARK_QTH, OTA, MENU, COUNT};
+    enum class State {UNAVAILABLE, READY, RUNNING};
+
+    void setState(Id id, State state);
+
     void clear     (ST7796S::MSP4021 &tft);
     void draw      (ST7796S::MSP4021 &tft);
 
     void updateMARK(ST7796S::MSP4021 &tft);
-    void updateSOTA(ST7796S::MSP4021 &tft);
+    void updateOTA(ST7796S::MSP4021 &tft);
     void updateMENU(ST7796S::MSP4021 &tft);
 }

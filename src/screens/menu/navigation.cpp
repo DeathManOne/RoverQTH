@@ -21,13 +21,15 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "screens/menu.h"
+#include <cstddef>
+
 #include "screens/menu/navigation.h"
-#include "ui/fonts/RobotoMono_Bold_16.h"
-#include "ui/fonts/RobotoMono_Regular_14.h"
 #include "ui/mockup/right.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
+
+#include "ui/fonts/RobotoMono_Bold_16.h"
+#include "ui/fonts/RobotoMono_Regular_14.h"
 
 namespace menu       = screens::menu;
 namespace navigation = screens::menu::navigation;
@@ -91,7 +93,10 @@ namespace {
     }
 }
 
-void navigation::draw(ST7796S::MSP4021 &tft) {
+void navigation::draw(
+    ST7796S::MSP4021 &tft,
+    const menu::Item current
+) {
     right::draw(tft);
 
     const int gap       = uiMockup::GAP;
@@ -100,8 +105,6 @@ void navigation::draw(ST7796S::MSP4021 &tft) {
     const int outerW    = right::innerWidth();
     const int outerH    = right::innerHeight();
     const int rowH      = outerH / ROW_COUNT;
-
-    const auto current = menu::current();
 
     for (size_t i = 0; i < ROW_COUNT; i++) {
         Row &row = rows[i];
@@ -144,10 +147,14 @@ void navigation::draw(ST7796S::MSP4021 &tft) {
     }
 }
 
-bool navigation::handleTouch(int x, int y) {
+bool navigation::handleTouch(
+    const int x,
+    const int y,
+    menu::Item &selected
+) {
     for (size_t i = 0; i < ROW_COUNT; i++) {
         if (!_isPressed(rows[i], x, y)) { continue; }
-        menu::select(rows[i].item);
+        selected = rows[i].item;
         return true;
     }
     return false;

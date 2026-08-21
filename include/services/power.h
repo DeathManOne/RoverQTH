@@ -29,10 +29,9 @@ namespace services::power {
 
     /**
      * Initializes the power management service.
-     * @param buttonPin GPIO connected to the power button.
      * @return true if the service was successfully initialized, false otherwise.
      */
-    void begin(uint8_t buttonPin);
+    void begin();
 
     /**
      * Updates the power management service.

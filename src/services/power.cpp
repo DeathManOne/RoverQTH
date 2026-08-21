@@ -22,17 +22,19 @@
  */
 
 #include <Arduino.h>
+
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
-#include "display/manager.h"
+#include "services/display.h"
 #include "services/power.h"
 #include "services/storage.h"
 #include "services/update.h"
 
-namespace power   = services::power;
-namespace storage = services::storage;
-namespace update  = services::update;
+namespace sDisplay = services::display;
+namespace power    = services::power;
+namespace storage  = services::storage;
+namespace update   = services::update;
 
 namespace {
     constexpr uint32_t BUTTON_DEBOUNCE_MS = 50;
@@ -75,20 +77,20 @@ namespace {
         }
 
         storage::appendLogRecord(_shutdownLog(_shutdownReason));
-        display::shutdown();
+        sDisplay::shutdown();
         delay(20);
         esp_deep_sleep_start();
     }
 }
 
-void power::begin(const uint8_t buttonPin) {
-    const int gpio = digitalPinToGPIONumber(buttonPin);
+void power::begin() {
+    const int gpio = digitalPinToGPIONumber(BTN_PIN);
     if (gpio < 0) {
         storage::appendErrorRecord("POWER_INVALID_BUTTON_GPIO");
         return;
     }
 
-    _buttonPin  = buttonPin;
+    _buttonPin  = BTN_PIN;
     _wakeupGpio = static_cast<gpio_num_t>(gpio);
 
     if (!esp_sleep_is_valid_wakeup_gpio(_wakeupGpio)) {

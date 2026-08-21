@@ -34,60 +34,66 @@
 #include "screens/menu/updates.h"
 #include "services/dtc.h"
 #include "ui/mockup/buttons.h"
+#include "ui/settings/themes/defaults.h"
 
-using screens::menu::About;
-using screens::menu::Battery;
-using screens::menu::Displayer;
-using screens::menu::General;
-using screens::menu::Wifi;
+using screens::Menu;
 using screens::menu::Page;
-using screens::menu::Storage;
-using screens::menu::Updates;
 
 namespace title      = screens::main::title;
 namespace menu       = screens::menu;
 namespace navigation = screens::menu::navigation;
 namespace dtc        = services::dtc;
 namespace buttons    = ui::mockup::buttons;
+namespace theme      = ui::settings::themes::defaults;
 
-namespace {
-    menu::Item _currentItem = menu::Item::GENERAL;
-
-    General _general;
-    Displayer _displayer;
-    Wifi _wifi;
-    Updates _updates;
-    Storage _storage;
-    Battery _battery;
-    About _about;
-
-    Page& _pageFromItem(menu::Item item) {
-        switch (item) {
-            case menu::Item::GENERAL:   return _general;
-            case menu::Item::DISPLAYER: return _displayer;
-            case menu::Item::WIFI:      return _wifi;
-            case menu::Item::UPDATES:   return _updates;
-            case menu::Item::STORAGE:   return _storage;
-            case menu::Item::BATTERY:   return _battery;
-            case menu::Item::ABOUT:     return _about;
-            case menu::Item::COUNT:
-            default:                    return _general;
-        }
+Page& Menu::_pageFromItem(const menu::Item item) {
+    switch (item) {
+        case menu::Item::GENERAL:   return _general;
+        case menu::Item::DISPLAYER: return _displayer;
+        case menu::Item::WIFI:      return _wifi;
+        case menu::Item::UPDATES:   return _updates;
+        case menu::Item::STORAGE:   return _storage;
+        case menu::Item::BATTERY:   return _battery;
+        case menu::Item::ABOUT:     return _about;
+        case menu::Item::COUNT:
+        default:                    return _general;
     }
-    Page& _currentPage() { return _pageFromItem(_currentItem); }
 }
 
-bool menu::isEditing    () { return _currentPage().isEditing(); }
-menu::Item menu::current() { return _currentItem; }
+Page& Menu::_currentPage() {
+    return _pageFromItem(_currentItem);
+}
 
-void menu::select(Item item) {
-    if (item == Item::COUNT)
+const Page& Menu::_currentPage() const {
+    switch (_currentItem) {
+        case menu::Item::GENERAL:   return _general;
+        case menu::Item::DISPLAYER: return _displayer;
+        case menu::Item::WIFI:      return _wifi;
+        case menu::Item::UPDATES:   return _updates;
+        case menu::Item::STORAGE:   return _storage;
+        case menu::Item::BATTERY:   return _battery;
+        case menu::Item::ABOUT:     return _about;
+        case menu::Item::COUNT:
+        default:                    return _general;
+    }
+}
+
+bool Menu::isEditing() const {
+    return _currentPage().isEditing();
+}
+
+menu::Displayer::Request Menu::takeDisplayRequest() {
+    return _displayer.takeRequest();
+}
+
+void Menu::select(const menu::Item item) {
+    if (item == menu::Item::COUNT)
         { return; }
     _currentItem = item;
 }
 
-void menu::reset() {
-    _currentItem = Item::GENERAL;
+void Menu::reset() {
+    _currentItem = menu::Item::GENERAL;
 
     _general.reset();
     _displayer.reset();
@@ -98,14 +104,23 @@ void menu::reset() {
     _about.reset();
 }
 
-void menu::draw(ST7796S::MSP4021 &tft) {
+void Menu::preload() {
+    reset();
+}
+
+void Menu::draw(ST7796S::MSP4021 &tft) {
     title::draw(tft);
-    navigation::draw(tft);
+    navigation::draw(tft, _currentItem);
     buttons::draw(tft);
     _currentPage().draw(tft);
 }
 
-void menu::update(ST7796S::MSP4021 &tft) {
+void Menu::update(
+    ST7796S::MSP4021 &tft,
+    uint32_t &nextRefreshIn
+) {
+    nextRefreshIn = 1000U;
+
     if (isEditing()) { return; }
 
     char date[16];
@@ -122,4 +137,31 @@ void menu::update(ST7796S::MSP4021 &tft) {
     _currentPage().update(tft);
 }
 
-bool menu::handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return _currentPage().handleTouch(tft, x, y); }
+bool Menu::handleTouch(
+    ST7796S::MSP4021 &tft,
+    const int x,
+    const int y
+) {
+    if (isEditing()) {
+        const bool handled = _currentPage().handleTouch(tft, x, y);
+
+        if (handled && !isEditing()) {
+            tft.fillScreen(theme::BLACK);
+            draw(tft);
+        }
+
+        return true;
+    }
+
+    menu::Item selected = _currentItem;
+
+    if (navigation::handleTouch(x, y, selected)) {
+        select(selected);
+        draw(tft);
+        return true;
+    }
+
+    const bool handled = _currentPage().handleTouch(tft, x, y);
+    if (handled && _currentItem == menu::Item::DISPLAYER) { draw(tft); }
+    return handled;
+}

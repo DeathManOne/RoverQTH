@@ -31,54 +31,20 @@
 #include "ui/widgets/buttons.h"
 #include "utilities/format.h"
 
-namespace boot    = screens::boot;
 namespace mockup  = ui::settings::mockup;
 namespace theme   = ui::settings::themes::defaults;
 namespace buttons = ui::widgets::buttons;
 namespace format  = utilities::format;
 
-namespace {
-    uint8_t _gpsProgress = 0;
-    struct Field {
-        int outerX  = 0;
-        int outerY  = 0;
-        int outerW  = 0;
-        int outerH  = 0;
-        int innerX  = 0;
-        int innerY  = 0;
-        int innerW  = 0;
-        int innerH  = 0;
-        int row     = 0;
-
-        const char* label = nullptr;
-        bool* state       = nullptr;
-
-        Field(int rowIndex, const char* name)
-        : row(rowIndex), label(name) {}
-    };
-
-    Field _wifi(0, "WiFi");
-    Field _sd  (1, "SD");
-    Field _gps (2, "GPS");
-
-    void _clearModule     (ST7796S::MSP4021 &tft, const Field &field);
-    void _drawModuleStatus(ST7796S::MSP4021 &tft, Field &field);
-
-    void _updateField(ST7796S::MSP4021 &tft, Field &field, bool* state);
-
-    void _drawGPSSearch  (ST7796S::MSP4021 &tft);
-    void _drawGPSAction  (ST7796S::MSP4021 &tft);
-    void _drawGPSProgress(ST7796S::MSP4021 &tft, uint8_t value);
-
-    void _clearModule(ST7796S::MSP4021 &tft, const Field &field) {
+void screens::Boot::_clearModule(ST7796S::MSP4021 &tft, const Field &field) {
         tft.rectFill(
             field.outerX + 1, field.outerY + 1,
             field.outerW - 2, field.outerH - 2,
             theme::BLACK
         );
-    }
+}
     
-    void _drawModuleStatus(ST7796S::MSP4021 &tft, Field &field) {
+void screens::Boot::_drawModuleStatus(ST7796S::MSP4021 &tft, Field &field) {
         _clearModule(tft, field);
 
         const int gap         = mockup::GAP;
@@ -105,16 +71,14 @@ namespace {
 
         tft.setTextColor(color);
         tft.text(innerValueX, innerValueY, status);
-    }
+}
 
-    void _updateField(ST7796S::MSP4021 &tft, Field &field, bool* state) {
-        if (field.state == state)
-            { return; }
+void screens::Boot::_updateField(ST7796S::MSP4021 &tft, Field &field, bool* state) {
         field.state = state;
         _drawModuleStatus(tft, field);
-    }
+}
 
-    void _drawGPSSearch(ST7796S::MSP4021 &tft) {
+void screens::Boot::_drawGPSSearch(ST7796S::MSP4021 &tft) {
         const buttons::ButtonArea &btn = buttons::bootSearchGPS;
 
         tft.setFont(ST7796S::DejaVuSans_Bold_18);
@@ -134,9 +98,9 @@ namespace {
             btn.width,  btn.height,
             "Search GPS"
         );
-    }
+}
 
-    void _drawGPSProgress(ST7796S::MSP4021 &tft, uint8_t value) {
+void screens::Boot::_drawGPSProgress(ST7796S::MSP4021 &tft, uint8_t value) {
         const buttons::ButtonArea &bar = buttons::bootSearchGPS;
         constexpr size_t TEXT_SIZE = 8;
 
@@ -157,9 +121,9 @@ namespace {
             bar.width,  bar.height,
             text
         );
-    }
+}
 
-    void _drawGPSAction(ST7796S::MSP4021 &tft) {
+void screens::Boot::_drawGPSAction(ST7796S::MSP4021 &tft) {
         const buttons::ButtonArea &area = buttons::bootSearchGPS;
         tft.rectFill(
             area.x,     area.y,
@@ -173,12 +137,11 @@ namespace {
             return;
         }
         _drawGPSProgress(tft, _gpsProgress);
-    }
 }
 
-void boot::clear(ST7796S::MSP4021 &tft) { tft.fillScreen(theme::BLACK); }
+void screens::Boot::clear(ST7796S::MSP4021 &tft) { tft.fillScreen(theme::BLACK); }
 
-void boot::draw(ST7796S::MSP4021 &tft) {
+void screens::Boot::draw(ST7796S::MSP4021 &tft) {
     const int gap          = mockup::GAP;
     const int imgGapX      = 10;
     const int imgW         = ST7796S::logo_width;
@@ -213,16 +176,22 @@ void boot::draw(ST7796S::MSP4021 &tft) {
     _drawGPSAction(tft);
 }
 
-void boot::updateWifi(ST7796S::MSP4021 &tft, bool* value) { _updateField(tft, _wifi, value); }
-void boot::updateSD  (ST7796S::MSP4021 &tft, bool* value) { _updateField(tft, _sd,   value); }
-void boot::updateGPS (ST7796S::MSP4021 &tft, bool* value) {
+void screens::Boot::drawLogo(ST7796S::MSP4021 &tft) { tft.image(0, 10, ST7796S::logo); }
+
+void screens::Boot::updateWifi(ST7796S::MSP4021 &tft, bool* value) { _updateField(tft, _wifi, value); }
+void screens::Boot::updateSD  (ST7796S::MSP4021 &tft, bool* value) { _updateField(tft, _sd,   value); }
+void screens::Boot::updateGPS (ST7796S::MSP4021 &tft, bool* value) {
     _updateField(tft, _gps, value);
     _drawGPSAction(tft);
 }
 
-void boot::updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress) {
+void screens::Boot::updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress) {
     if (_gpsProgress == progress)
         { return; }
     _gpsProgress = progress;
     _drawGPSAction(tft);
+}
+
+bool screens::Boot::handleTouch(int x, int y) const {
+    return buttons::isPressed(buttons::bootSearchGPS, x, y);
 }

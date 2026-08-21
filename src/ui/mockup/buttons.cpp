@@ -21,7 +21,9 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "core/state.h"
+#include <array>
+#include <cstddef>
+
 #include "ui/fonts/RobotoMono_Bold_16.h"
 #include "ui/mockup/buttons.h"
 #include "ui/mockup/grid.h"
@@ -29,7 +31,6 @@
 #include "ui/settings/themes/defaults.h"
 #include "ui/widgets/buttons.h"
 
-namespace state     = core::state;
 namespace buttons   = ui::mockup::buttons;
 namespace grid      = ui::mockup::grid;
 namespace uiMockup  = ui::settings::mockup;
@@ -47,34 +48,36 @@ namespace {
     struct ButtonField {
         const uiButtons::ButtonArea &area;
         const char* label;
-        state::Button id;
+        buttons::Id id;
     };
 
     void _drawButton(ST7796S::MSP4021 &tft, const ButtonField &field);
     
     Area _area;
-    ButtonField _mark {uiButtons::markQTH, " MARK QTH ", state::Button::MARK_QTH};
-    ButtonField _sota {uiButtons::sota,    " S/P OTA ",  state::Button::SOTA};
-    ButtonField _menu {uiButtons::menu,    " MENU ",     state::Button::MENU};
+    std::array<buttons::State, static_cast<size_t>(buttons::Id::COUNT)> _states {};
+
+    ButtonField _mark {uiButtons::markQTH, " MARK QTH ", buttons::Id::MARK_QTH};
+    ButtonField _ota  {uiButtons::ota,     " S/P OTA ",  buttons::Id::OTA};
+    ButtonField _menu {uiButtons::menu,    " MENU ",     buttons::Id::MENU};
 
     void _drawButton(ST7796S::MSP4021 &tft, const ButtonField &field) {
         const auto &button = field.area;
-        const auto state   = state::buttonState(field.id);
+        const auto state   = _states[static_cast<size_t>(field.id)];
         const int radius   = uiMockup::RADIUS;
 
         uint16_t borderColor = theme::GREY;
         uint16_t fillColor   = theme::BLACK;
         uint16_t textColor   = theme::GREY;
         switch (state) {
-            case state::ButtonState::UNAVAILABLE:
+            case buttons::State::UNAVAILABLE:
                 fillColor = theme::GREY;
                 textColor = theme::BLACK;
                 break;
-            case state::ButtonState::READY:
+            case buttons::State::READY:
                 borderColor = theme::GREEN;
                 textColor   = theme::GREEN;
                 break;
-            case state::ButtonState::RUNNING:
+            case buttons::State::RUNNING:
                 borderColor = theme::GREEN;
                 fillColor   = theme::GREEN;
                 textColor   = theme::BLACK;
@@ -110,6 +113,22 @@ namespace {
     }
 }
 
+void buttons::setState(const Id id, const State state) {
+    const size_t index = static_cast<size_t>(id);
+    if (index >= _states.size()) { return; }
+
+    switch (state) {
+        case State::UNAVAILABLE:
+        case State::READY:
+        case State::RUNNING:
+            break;
+        default:
+            return;
+    }
+
+    _states[index] = state;
+}
+
 void buttons::clear(ST7796S::MSP4021 &tft) {
     tft.rectFill(
         _area.outerX, _area.outerY,
@@ -129,14 +148,14 @@ void buttons::draw(ST7796S::MSP4021 &tft) {
     const int btnCount = uiMockup::BUTTON_COUNT;
     const int btnW = (_area.outerW - (gap * (btnCount - 1))) / btnCount;
     uiButtons::markQTH = uiButtons::makeArea(_area.outerX,                      _area.outerY, btnW, _area.outerH);
-    uiButtons::sota    = uiButtons::makeArea(_area.outerX + btnW + gap,         _area.outerY, btnW, _area.outerH);
+    uiButtons::ota     = uiButtons::makeArea(_area.outerX + btnW + gap,         _area.outerY, btnW, _area.outerH);
     uiButtons::menu    = uiButtons::makeArea(_area.outerX + ((btnW + gap) * 2), _area.outerY, btnW, _area.outerH);
 
     _drawButton(tft, _mark);
-    _drawButton(tft, _sota);
+    _drawButton(tft, _ota);
     _drawButton(tft, _menu);
 }
 
 void buttons::updateMARK(ST7796S::MSP4021 &tft) { _drawButton(tft, _mark); }
-void buttons::updateSOTA(ST7796S::MSP4021 &tft) { _drawButton(tft, _sota); }
+void buttons::updateOTA(ST7796S::MSP4021 &tft) { _drawButton(tft, _ota); }
 void buttons::updateMENU(ST7796S::MSP4021 &tft) { _drawButton(tft, _menu); }

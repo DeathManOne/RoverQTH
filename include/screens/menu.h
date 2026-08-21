@@ -22,7 +22,20 @@
  */
 
 #pragma once
+
+#include <cstdint>
+
 #include <MSP4021.h>
+
+#include "screens/menu/about.h"
+#include "screens/menu/battery.h"
+#include "screens/menu/displayer.h"
+#include "screens/menu/general.h"
+#include "screens/menu/page.h"
+#include "screens/menu/storage.h"
+#include "screens/menu/updates.h"
+#include "screens/menu/wifi.h"
+#include "screens/screen.h"
 
 namespace screens::menu {
     enum class Item {
@@ -35,14 +48,44 @@ namespace screens::menu {
         ABOUT,
         COUNT
     };
-    Item current();
+}
 
-    bool isEditing();
+namespace screens {
+    class Menu final : public Screen {
+        private:
+            menu::Item _currentItem = menu::Item::GENERAL;
 
-    void select(Item item);
-    void reset();
+            menu::General _general;
+            menu::Displayer _displayer;
+            menu::Wifi _wifi;
+            menu::Updates _updates;
+            menu::Storage _storage;
+            menu::Battery _battery;
+            menu::About _about;
 
-    void draw       (ST7796S::MSP4021 &tft);
-    void update     (ST7796S::MSP4021 &tft);
-    bool handleTouch(ST7796S::MSP4021 &tft, int x, int y);
+            menu::Page& _pageFromItem(menu::Item item);
+            menu::Page& _currentPage();
+            const menu::Page& _currentPage() const;
+            void select(menu::Item item);
+
+        public:
+            void reset();
+
+            void preload() override;
+            void draw(ST7796S::MSP4021 &tft) override;
+
+            void update(
+                ST7796S::MSP4021 &tft,
+                uint32_t &nextRefreshIn
+            ) override;
+
+            bool handleTouch(
+                ST7796S::MSP4021 &tft,
+                int x,
+                int y
+            ) override;
+
+            bool isEditing() const override;
+            menu::Displayer::Request takeDisplayRequest();
+    };
 }

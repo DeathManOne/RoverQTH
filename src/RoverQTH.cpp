@@ -29,10 +29,8 @@
 #include <rom/rtc.h>
 
 #include "core/boot.h"
-#include "core/screenManager.h"
-#include "core/state.h"
-#include "display/manager.h"
 #include "services/battery.h"
+#include "services/display.h"
 #include "services/gps.h"
 #include "services/navigation.h"
 #include "services/ota.h"
@@ -46,9 +44,8 @@
 #include "RoverQTH.h"
 
 namespace boot        = core::boot;
-namespace manager     = core::screenManager;
-namespace state       = core::state;
 namespace battery     = services::battery;
+namespace sDisplay    = services::display;
 namespace gps         = services::gps;
 namespace navigation  = services::navigation;
 namespace ota         = services::ota;
@@ -120,30 +117,25 @@ void app::setup() {
     ) { storage::appendLogRecord(resetRecord); }
 
     settings::begin();
-    power::begin(BTN_PIN);
+    power::begin();
 
-    battery::begin(BATT_PIN);
+    battery::begin();
     if (battery::isCritical()) { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
 
-    display::begin(
-        TFT_CLK,        TFT_MISO,       TFT_MOSI,
-        TFT_TOUCH_CS,   TFT_SCREEN_CS,  TFT_SCREEN_DC,
-        TFT_SCREEN_RST, TFT_WIDTH,      TFT_HEIGHT
-    );
+    sDisplay::begin();
 
     navigation::begin();
     wifi::begin();
 
-    state::begin();
     boot::run(_gpsUART, _sdSPI);
     update::begin();
 
     ota::begin();
     if (ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE ||
         ota::snapshot(ota::Type::PARKS).status   != ota::Status::UNAVAILABLE
-    ) { state::setButtonState(state::Button::SOTA, state::ButtonState::READY); }
+    ) { sDisplay::setButtonState(sDisplay::Button::OTA, sDisplay::ButtonState::READY); }
 
-    manager::begin();
+    sDisplay::start();
 
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
@@ -212,11 +204,11 @@ void app::loop() {
         _nextBatteryRefresh = now + BATTERY_PERIOD_MS;
     }
 
-    manager::handleTouch();
+    sDisplay::handleTouch();
 
     if (static_cast<int32_t>(now - _nextScreenRefresh) < 0) { return; }
     uint32_t nextRefreshIn = SCREEN_REFRESH_MS;
 
-    manager::update(nextRefreshIn);
+    sDisplay::update(nextRefreshIn);
     _nextScreenRefresh = now + nextRefreshIn;
 }

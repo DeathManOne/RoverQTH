@@ -1,32 +1,11 @@
-/*
- * src/screens/sota.cpp
- *
- * Copyright (c) 2026 DeathManOne
- * https://github.com/DeathManOne
- * 
- * This file is part of the RoverQTH project.
- *
- * RoverQTH is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * RoverQTH is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with RoverQTH.
- * If not, see <https://www.gnu.org/licenses/>.
- */
+
 
 #include <cstdio>
 #include <cstring>
 
 #include "database/ota.h"
 #include "screens/main/title.h"
-#include "screens/sota.h"
+#include "screens/ota.h"
 #include "services/dtc.h"
 #include "services/gps.h"
 #include "services/ota.h"
@@ -43,7 +22,7 @@
 #include "ui/fonts/RobotoMono_Regular_14.h"
 
 namespace title    = screens::main::title;
-namespace sota     = screens::sota;
+using screens::Ota;
 namespace dtc      = services::dtc;
 namespace gps      = services::gps;
 namespace sOta     = services::ota;
@@ -60,8 +39,6 @@ namespace button   = ui::widgets::buttons;
 namespace {
     constexpr uint8_t DEFAULT_RADIUS_INDEX = 6U;
     constexpr uint8_t RADIUS_COUNT         = 14U;
-    constexpr size_t RESULTS_PER_PAGE      = 6U;
-    constexpr size_t NO_RESULT_SELECTED    = otaDB::RESULT_CAPACITY;
     constexpr int RESULTS_NAV_HEIGHT       = 24;
     constexpr int RESULT_ROW_HEIGHT        = 34;
 
@@ -98,93 +75,9 @@ namespace {
         250.0,
         0.0
     };
+}
 
-    enum class SearchType           : uint8_t {SOTA, POTA};
-    enum class SearchMode           : uint8_t {NEAREST, CODE};
-    enum class SortMode             : uint8_t {DISTANCE, CODE, POINTS};
-    enum class SelectionStatus      : uint8_t {NONE, PENDING, SAVED, ERROR};
-    enum class ClearSelectionStatus : uint8_t {HIDDEN, AVAILABLE, CLEARED, ERROR};
-    enum class ResultsViewStatus    : uint8_t {
-        UNKNOWN,
-        HIDDEN,
-        SEARCHING,
-        READY,
-        EMPTY,
-        ERROR
-    };
-
-    struct ResultsView {
-        ResultsView(
-            const ResultsViewStatus initialStatus = ResultsViewStatus::UNKNOWN,
-            const size_t initialCount = 0U
-        ) :
-            status(initialStatus),
-            count(initialCount) {}
-
-        ResultsViewStatus status;
-        size_t count;
-    };
-
-    SortMode _sortMode              = SortMode::DISTANCE;
-    SearchType _searchType          = SearchType::SOTA;
-    SearchType _submittedSearchType = SearchType::SOTA;
-    SearchMode _searchMode          = SearchMode::NEAREST;
-
-    SelectionStatus _selectionStatus           = SelectionStatus::NONE;
-    ResultsViewStatus _displayedResultStatus   = ResultsViewStatus::UNKNOWN;
-    ClearSelectionStatus _clearSelectionStatus = ClearSelectionStatus::HIDDEN;
-
-    char _codePrefix[otaDB::CODE_SIZE] {};
-    size_t _resultOrder[otaDB::RESULT_CAPACITY] {};
-    size_t _displayedResultCount  = 0U;
-    size_t _displayedResultPage   = 0U;
-    size_t _resultPage            = 0U;
-    size_t _visibleResultCount    = 0U;
-    size_t _resultOrderCount      = 0U;
-    size_t _selectedResultIndex   = NO_RESULT_SELECTED;
-    uint8_t _radiusIndex          = DEFAULT_RADIUS_INDEX;
-    bool _keyboardActive          = false;
-    bool _searchSubmitted         = false;
-    bool _searchButtonShowingStop = false;
-
-    button::ButtonArea _sotaTypeButton       {};
-    button::ButtonArea _potaTypeButton       {};
-    button::ButtonArea _nearestModeButton    {};
-    button::ButtonArea _codeModeButton       {};
-    button::ButtonArea _sortButton           {};
-    button::ButtonArea _parameterButton      {};
-    button::ButtonArea _searchButton         {};
-    button::ButtonArea _clearSelectionButton {};
-    button::ButtonArea _previousPageButton   {};
-    button::ButtonArea _nextPageButton       {};
-    button::ButtonArea _resultButtons[RESULTS_PER_PAGE] {};
-
-    void _drawChoiceButton(ST7796S::MSP4021 &tft, const button::ButtonArea &area,
-        const char* const label, const bool available, const bool selected
-    );
-    void _drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
-        const otaDB::SearchResult &result, SelectionStatus selectionStatus
-    );
-    void _drawTypeSelector(ST7796S::MSP4021 &tft);
-    void _drawModeSelector(ST7796S::MSP4021 &tft);
-    void _drawParameter(ST7796S::MSP4021 &tft);
-    void _openCodeKeyboard(ST7796S::MSP4021 &tft);
-    void _drawSearchButton(ST7796S::MSP4021 &tft, const bool searching);
-    bool _requestSearch();
-    ResultsView _currentResultsView();
-    bool _sourceResultAt(size_t index, otaDB::SearchResult &result);
-    bool _resultAt(const size_t index, otaDB::SearchResult &result);
-    bool _resultComesBefore(const otaDB::SearchResult &left, const otaDB::SearchResult &right);
-    void _rebuildResultOrder(size_t resultCount);
-    bool _saveSelectedResult();
-    void _drawClearSelection(ST7796S::MSP4021 &tft);
-    bool _clearSelection();
-    size_t _pageCount(const size_t resultCount);
-    void _drawPagination(ST7796S::MSP4021 &tft, const size_t resultCount);
-    bool _drawReadyResults(ST7796S::MSP4021 &tft, const size_t resultCount);
-    void _drawResultsStatus(ST7796S::MSP4021 &tft);
-
-    void _drawChoiceButton(ST7796S::MSP4021 &tft, const button::ButtonArea &area,
+void Ota::_drawChoiceButton(ST7796S::MSP4021 &tft, const button::ButtonArea &area,
         const char* const label, const bool available, const bool selected
     ) {
         tft.rectFill(
@@ -218,7 +111,7 @@ namespace {
         );
     }
 
-    void _drawTypeSelector(ST7796S::MSP4021 &tft) {
+    void Ota::_drawTypeSelector(ST7796S::MSP4021 &tft) {
         const int gap     = uiMockup::GAP;
         const int rowH    = right::innerHeight() / uiMockup::RIGHT_ROW_COUNT;
         const int buttonW = (right::innerWidth() - (gap * 3)) / 2;
@@ -246,7 +139,7 @@ namespace {
         _drawChoiceButton(tft, _potaTypeButton, "POTA", potaAvailable, _searchType == SearchType::POTA);
     }
 
-    void _drawModeSelector(ST7796S::MSP4021 &tft) {
+    void Ota::_drawModeSelector(ST7796S::MSP4021 &tft) {
         const int gap     = uiMockup::GAP;
         const int rowH    = right::innerHeight() / uiMockup::RIGHT_ROW_COUNT;
         const int buttonX = right::innerX() + gap;
@@ -309,7 +202,7 @@ namespace {
         );
     }
 
-    void _drawParameter(ST7796S::MSP4021 &tft) {
+    void Ota::_drawParameter(ST7796S::MSP4021 &tft) {
         const int gap     = uiMockup::GAP;
         const int rowH    = right::innerHeight() / uiMockup::RIGHT_ROW_COUNT;
         const int buttonX = right::innerX() + gap;
@@ -335,13 +228,13 @@ namespace {
         _drawChoiceButton(tft, _parameterButton, label, !_searchButtonShowingStop, false);
     }
 
-    void _openCodeKeyboard(ST7796S::MSP4021 &tft) {
+    void Ota::_openCodeKeyboard(ST7796S::MSP4021 &tft) {
         tft.KSetText(_codePrefix);
         tft.KDraw("Code prefix");
         _keyboardActive = true;
     }
 
-    void _drawSearchButton(ST7796S::MSP4021 &tft, const bool searching) {
+    void Ota::_drawSearchButton(ST7796S::MSP4021 &tft, const bool searching) {
         const int gap     = uiMockup::GAP;
         const int rowH    = right::innerHeight() / uiMockup::RIGHT_ROW_COUNT;
         const int buttonX = right::innerX() + gap;
@@ -375,7 +268,7 @@ namespace {
         _searchButtonShowingStop = searching;
     }
 
-    bool _requestSearch() {
+    bool Ota::_requestSearch() {
         gps::Snapshot position {};
 
         if (
@@ -413,7 +306,7 @@ namespace {
         );
     }
 
-    ResultsView _currentResultsView() {
+    Ota::ResultsView Ota::_currentResultsView() {
         if (!_searchSubmitted) {
             return {ResultsViewStatus::HIDDEN, 0U};
         }
@@ -442,7 +335,7 @@ namespace {
         }
     }
 
-    bool _sourceResultAt(const size_t index, otaDB::SearchResult &result) {
+    bool Ota::_sourceResultAt(const size_t index, otaDB::SearchResult &result) {
         const sOta::Type type =
             _submittedSearchType == SearchType::POTA
                 ? sOta::Type::PARKS
@@ -451,7 +344,7 @@ namespace {
         return sOta::nearbyResult(type, index, result);
     }
 
-    bool _resultAt(const size_t index, otaDB::SearchResult &result) {
+    bool Ota::_resultAt(const size_t index, otaDB::SearchResult &result) {
         if (_resultOrderCount == 0U) {
             return _sourceResultAt(index, result);
         }
@@ -461,7 +354,7 @@ namespace {
         return _sourceResultAt(_resultOrder[index], result);
     }
 
-    bool _resultComesBefore(const otaDB::SearchResult &left, const otaDB::SearchResult &right) {
+    bool Ota::_resultComesBefore(const otaDB::SearchResult &left, const otaDB::SearchResult &right) {
         const int codeOrder = std::strcmp(left.code, right.code);
 
         switch (_sortMode) {
@@ -500,7 +393,7 @@ namespace {
         }
     }
 
-    void _rebuildResultOrder(const size_t resultCount) {
+    void Ota::_rebuildResultOrder(const size_t resultCount) {
         _resultOrderCount = resultCount < otaDB::RESULT_CAPACITY
             ? resultCount
             : otaDB::RESULT_CAPACITY;
@@ -545,7 +438,7 @@ namespace {
         }
     }
 
-    void _drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
+    void Ota::_drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
         const otaDB::SearchResult &result, SelectionStatus selectionStatus
     ) {
         constexpr int PADDING        = 6;
@@ -636,7 +529,7 @@ namespace {
         }
     }
 
-    bool _saveSelectedResult() {
+    bool Ota::_saveSelectedResult() {
         if (_selectedResultIndex == NO_RESULT_SELECTED) {
             return false;
         }
@@ -655,7 +548,7 @@ namespace {
         return settings::setOtaSelection(type, result.code);
     }
 
-    void _drawClearSelection(ST7796S::MSP4021 &tft) {
+    void Ota::_drawClearSelection(ST7796S::MSP4021 &tft) {
         constexpr int BUTTON_WIDTH  = 210;
         constexpr int BUTTON_HEIGHT = 44;
 
@@ -716,11 +609,11 @@ namespace {
         );
     }
 
-    bool _clearSelection() {
+    bool Ota::_clearSelection() {
         return settings::resetOtaSelection();
     }
 
-    size_t _pageCount(const size_t resultCount) {
+    size_t Ota::_pageCount(const size_t resultCount) {
         if (resultCount == 0U) {
             return 0U;
         }
@@ -729,7 +622,7 @@ namespace {
             RESULTS_PER_PAGE;
     }
 
-    void _drawPagination(ST7796S::MSP4021 &tft, const size_t resultCount) {
+    void Ota::_drawPagination(ST7796S::MSP4021 &tft, const size_t resultCount) {
         constexpr int PAGE_BUTTON_WIDTH = 40;
 
         const size_t pageCount = _pageCount(resultCount);
@@ -802,7 +695,7 @@ namespace {
         }
     }
 
-    bool _drawReadyResults(ST7796S::MSP4021 &tft, const size_t resultCount) {
+    bool Ota::_drawReadyResults(ST7796S::MSP4021 &tft, const size_t resultCount) {
         _drawPagination(tft, resultCount);
 
         const size_t firstResultIndex =
@@ -840,7 +733,7 @@ namespace {
         return true;
     }
 
-    void _drawResultsStatus(ST7796S::MSP4021 &tft) {
+    void Ota::_drawResultsStatus(ST7796S::MSP4021 &tft) {
         const ResultsView view = _currentResultsView();
 
         if (view.status == _displayedResultStatus &&
@@ -911,9 +804,8 @@ namespace {
             label
         );
     }
-}
 
-void sota::preload() {
+void Ota::preload() {
     _searchMode            = SearchMode::NEAREST;
     _sortMode              = SortMode::DISTANCE;
     _radiusIndex           = DEFAULT_RADIUS_INDEX;
@@ -947,7 +839,7 @@ void sota::preload() {
     else                    { _searchType = SearchType::SOTA; }
 }
 
-void sota::draw(ST7796S::MSP4021& tft) {
+void Ota::draw(ST7796S::MSP4021& tft) {
     tft.fillScreen(theme::BLACK);
 
     title::draw(tft);
@@ -963,7 +855,7 @@ void sota::draw(ST7796S::MSP4021& tft) {
     buttons::draw(tft);
 }
 
-void sota::update(ST7796S::MSP4021& tft, uint32_t& nextRefreshIn) {
+void Ota::update(ST7796S::MSP4021& tft, uint32_t& nextRefreshIn) {
     if (_keyboardActive) {
         nextRefreshIn = 1000;
         return;
@@ -994,7 +886,7 @@ void sota::update(ST7796S::MSP4021& tft, uint32_t& nextRefreshIn) {
     nextRefreshIn = 1000;
 }
 
-bool sota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
+bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
     if (_keyboardActive) {
         if (tft.KUpdate(x, y)) {
             ota::normalizeCodePrefix(
@@ -1181,6 +1073,6 @@ bool sota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
     return false;
 }
 
-bool sota::isEditing() {
+bool Ota::isEditing() const {
     return _keyboardActive;
 }
