@@ -26,14 +26,34 @@
 #include <cstdint>
 #include <MSP4021.h>
 
-namespace screens::main {
-    void preload();
-    void preloadGPS();
-    void preloadSOTA();
-    void preloadMARK();
+#include "screens/screen.h"
+#include "services/settings.h"
 
-    void draw      (ST7796S::MSP4021 &tft);
-    void update    (ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn);
-    void updateSOTA(ST7796S::MSP4021 &tft);
-    void updateMARK(ST7796S::MSP4021 &tft);
+namespace screens {
+    class Main final : public Screen {
+        private:
+            services::settings::OtaSelection _otaSelection {};
+
+            void _preloadGPS();
+            void _preloadOTA();
+            void _preloadMARK();
+            void _updateOTA(ST7796S::MSP4021 &tft);
+
+        public:
+            void preload() override;
+            void draw(ST7796S::MSP4021 &tft) override;
+
+            void update(
+                ST7796S::MSP4021 &tft,
+                uint32_t &nextRefreshIn
+            ) override;
+
+            bool handleTouch(
+                ST7796S::MSP4021 &tft,
+                int x,
+                int y
+            ) override;
+
+            void updateMARK(ST7796S::MSP4021 &tft);
+    };
 }

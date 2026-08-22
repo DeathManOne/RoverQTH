@@ -24,25 +24,20 @@
 #include <cstring>
 
 #include "core/boot.h"
-#include "core/state.h"
-#include "display/boot.h"
-#include "display/manager.h"
+#include "services/display.h"
 #include "services/gps.h"
 #include "services/qth.h"
 #include "services/settings.h"
 #include "services/storage.h"
 #include "services/wifi.h"
-#include "ui/widgets/buttons.h"
 
 namespace boot     = core::boot;
-namespace state    = core::state;
-namespace dBoot    = display::boot;
+namespace sDisplay = services::display;
 namespace gps      = services::gps;
 namespace qth      = services::qth;
 namespace settings = services::settings;
 namespace storage  = services::storage;
 namespace wifi     = services::wifi;
-namespace buttons  = ui::widgets::buttons;
 
 namespace {
     bool _wifiOk = false;
@@ -58,13 +53,13 @@ namespace {
     void _initWifi() {
         if (!wifi::isInitialized()) {
             _wifiOk = false;
-            dBoot::updateWifi(&_wifiOk);
+            sDisplay::updateBootWifi(&_wifiOk);
             return;
         }
 
         if (!settings::shouldConnectWifiAtBoot()) {
             _wifiOk = true;
-            dBoot::updateWifi(&_wifiOk);
+            sDisplay::updateBootWifi(&_wifiOk);
             return;
         }
 
@@ -74,7 +69,7 @@ namespace {
             storage::appendErrorRecord("WIFI_SSID_LOAD_FAILED");
 
             _wifiOk = false;
-            dBoot::updateWifi(&_wifiOk);
+            sDisplay::updateBootWifi(&_wifiOk);
             return;
         }
 
@@ -84,7 +79,7 @@ namespace {
         if (!started) {
             storage::appendErrorRecord("WIFI_BOOT_CONNECT_FAILED");
             _wifiOk = false;
-            dBoot::updateWifi(&_wifiOk);
+            sDisplay::updateBootWifi(&_wifiOk);
             return;
         }
 
@@ -94,22 +89,22 @@ namespace {
         }
 
         _wifiOk = wifi::isConnected();
-        dBoot::updateWifi(&_wifiOk);
+        sDisplay::updateBootWifi(&_wifiOk);
     }
 
     void _initSdCard(SPIClass &sdSPI, uint32_t timeout) {
         storage::begin(sdSPI, timeout);
         _sdOk = storage::isReady();
 
-        dBoot::updateSD(&_sdOk);
-        if (_sdOk) { state::setButtonState(state::Button::MARK_QTH, state::ButtonState::READY); }
+        sDisplay::updateBootSD(&_sdOk);
+        if (_sdOk) { sDisplay::setButtonState(sDisplay::Button::MARK_QTH, sDisplay::ButtonState::READY); }
     }
 
     void _initGPS(HardwareSerial &gpsUART) {
         gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
         _gpsOk = gps::isInitialized();
 
-        dBoot::updateGPS(&_gpsOk);
+        sDisplay::updateBootGPS(&_gpsOk);
         if (_gpsOk) {
             _waitGPSAcquisition(gpsUART);
             return;
@@ -117,15 +112,15 @@ namespace {
 
         while (true) {
             int x, y;
-            if (display::TRead(x, y)) {
-                if (buttons::isPressed(buttons::bootSearchGPS, x, y)) {
-                    dBoot::updateGPS(nullptr);
-                    gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-                    _gpsOk = gps::isInitialized();
+            if (sDisplay::readTouch(x, y) &&
+                sDisplay::handleBootTouch(x, y)
+            ) {
+                sDisplay::updateBootGPS(nullptr);
+                gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+                _gpsOk = gps::isInitialized();
 
-                    dBoot::updateGPS(&_gpsOk);
-                    if (_gpsOk) { break; }
-                }
+                sDisplay::updateBootGPS(&_gpsOk);
+                if (_gpsOk) { break; }
             }
             delay(50);
         }
@@ -147,7 +142,7 @@ namespace {
                 progress       = currentProgress;
                 lastProgressAt = millis();
 
-                dBoot::updateGPSProgress(progress);
+                sDisplay::updateBootGPSProgress(progress);
                 if (progress >= 100) {
                     storage::appendLogRecord("GPS_ACQUISITION_COMPLETE");
                     break;
@@ -158,16 +153,16 @@ namespace {
             if (progress == 0U) { continue; }
             if ((millis() - lastProgressAt) >= STALL_TIMEOUT_MS) {
                 storage::appendErrorRecord("GPS_ACQUISITION_STALLED");
-                dBoot::updateGPS(nullptr);
+                sDisplay::updateBootGPS(nullptr);
 
                 _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
 
-                dBoot::updateGPS(&_gpsOk);
+                sDisplay::updateBootGPS(&_gpsOk);
                 if (!_gpsOk) { _initGPS(gpsUART); }
 
                 progress       = 0;
                 lastProgressAt = millis();
-                dBoot::updateGPSProgress(progress);
+                sDisplay::updateBootGPSProgress(progress);
             }
         }
     }
@@ -180,7 +175,7 @@ namespace {
             case qth::RecoveryStatus::NONE:
                 return;
             case qth::RecoveryStatus::RECORDING_RESTORED:
-                state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
+                sDisplay::setButtonState(sDisplay::Button::MARK_QTH, sDisplay::ButtonState::RUNNING);
                 storage::appendLogRecord("QTH_RECORDING_RESTORED");
                 return;
             case qth::RecoveryStatus::RECORD_FINALIZED:
@@ -199,15 +194,15 @@ bool boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
     _sdOk   = false;
     _gpsOk  = false;    
 
-    dBoot::clear();
-    dBoot::drawLogo();
-    dBoot::draw();
+    sDisplay::clearBoot();
+    sDisplay::drawBootLogo();
+    sDisplay::drawBoot();
 
     _initWifi();
     _initSdCard(sdSPI, 10);
     _initGPS(gpsUART);
     _restoreQTH();
 
-    state::setButtonState(state::Button::MENU, state::ButtonState::READY);
+    sDisplay::setButtonState(sDisplay::Button::MENU, sDisplay::ButtonState::READY);
     return _sdOk && _gpsOk;
 }

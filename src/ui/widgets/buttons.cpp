@@ -27,7 +27,7 @@ namespace buttons = ui::widgets::buttons;
 
 buttons::ButtonArea buttons::bootSearchGPS {};
 buttons::ButtonArea buttons::markQTH {};
-buttons::ButtonArea buttons::sota {};
+buttons::ButtonArea buttons::ota {};
 buttons::ButtonArea buttons::menu {};
 
 buttons::ButtonArea buttons::makeArea(int x, int y, int width, int height) {

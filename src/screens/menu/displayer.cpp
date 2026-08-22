@@ -24,14 +24,11 @@
 
 #include <cstdio>
 
-#include "display/manager.h"
-#include "screens/menu.h"
 #include "screens/menu/displayer.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
 
 using screens::menu::Displayer;
-namespace menu     = screens::menu;
 namespace settings = services::settings;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
@@ -61,16 +58,12 @@ void Displayer::_actionRotation(ST7796S::MSP4021 &tft) {
     if (!settings::setTFTRotation(rotation)) { return; }
 
     tft.setRotation(static_cast<uint8_t>(rotation));
-    display::TLoad();
-    display::clearScreen();
-    menu::draw(tft);
+    _request = Request::RELOAD_TOUCH_CALIBRATION;
 }
 
-void Displayer::_actionCalibration(ST7796S::MSP4021 &tft) {
+void Displayer::_actionCalibration() {
     if (!settings::resetTouchCalibration()) { return; }
-    while (!display::TCalibrate())          { delay(10); }
-    display::clearScreen();
-    menu::draw(tft);
+    _request = Request::RECALIBRATE_TOUCH;
 }
 
 void Displayer::draw(ST7796S::MSP4021 &tft) {
@@ -109,12 +102,18 @@ bool Displayer::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
                 _actionRotation(tft);
                 return true;
             case _Action::CALIBRATION:
-                _actionCalibration(tft);
+                _actionCalibration();
                 return true;
             case _Action::NONE:
             default: return false;
         }
     }
     return false;
+}
+
+Displayer::Request Displayer::takeRequest() {
+    const Request request = _request;
+    _request = Request::NONE;
+    return request;
 }
 

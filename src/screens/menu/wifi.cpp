@@ -66,8 +66,7 @@ void Wifi::_prepareConnectionFields() {
 void Wifi::_actionSSID(ST7796S::MSP4021& tft) {
     settings::Wifi configuration = settings::wifi();
 
-    if (configuration.ssid[0] != '\0')
-        { tft.KSetText(configuration.ssid); }
+    tft.KSetText(configuration.ssid);
     std::memset(configuration.password, 0, sizeof(configuration.password));
 
     _editingAction = _Action::SSID;

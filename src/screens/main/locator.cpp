@@ -61,7 +61,7 @@ namespace {
         char distance[VALUE_SIZE] = "---";
     };
 
-    struct Sota {
+    struct Ota {
         TargetInfo info;
         char points[VALUE_SIZE]   = "---";
         char altitude[VALUE_SIZE] = "---";
@@ -80,7 +80,7 @@ namespace {
         }
     };
 
-    Sota _sota;
+    Ota _ota;
     Mark _mark;
 
     Grid _locator("---- -- -- --");
@@ -94,8 +94,8 @@ namespace {
     void _drawGrid  (ST7796S::MSP4021 &tft, const Grid &grid, uint16_t color);
     void _updateGrid(ST7796S::MSP4021 &tft, Grid &grid, const char* value, void (*drawFn)(ST7796S::MSP4021 &));
 
-    void _drawSota(ST7796S::MSP4021 &tft);
-    void _updateSota(ST7796S::MSP4021 &tft, char* field, const char* value);
+    void _drawOta(ST7796S::MSP4021 &tft);
+    void _updateOta(ST7796S::MSP4021 &tft, char* field, const char* value);
 
     void _drawMark(ST7796S::MSP4021 &tft);
     void _updateMark(ST7796S::MSP4021 &tft, char* field, const char* value);
@@ -150,17 +150,17 @@ namespace {
         }
     }
 
-    void _updateSota(ST7796S::MSP4021 &tft, char* field, const char* value) {
+    void _updateOta(ST7796S::MSP4021 &tft, char* field, const char* value) {
         if (text::equals(field, value)) { return; }
 
         _setValue(field, value);
-        _computeTargetTitleArea(tft, _sota.info);
+        _computeTargetTitleArea(tft, _ota.info);
 
-        _clearArea(tft, _sota.info.oldTitleArea);
-        _clearArea(tft, _sota.info.titleArea);
-        _clearArea(tft, _sota.info.area);
+        _clearArea(tft, _ota.info.oldTitleArea);
+        _clearArea(tft, _ota.info.titleArea);
+        _clearArea(tft, _ota.info.area);
 
-        _drawSota(tft);
+        _drawOta(tft);
     }
 
     void _updateMark(ST7796S::MSP4021 &tft, char* field, const char* value) {
@@ -218,60 +218,60 @@ namespace {
         }
     }
 
-    void _drawSota(ST7796S::MSP4021 &tft) {
+    void _drawOta(ST7796S::MSP4021 &tft) {
         constexpr int COL_COUNT = 4;
-        const int colW          = _sota.info.area.innerW / COL_COUNT;
+        const int colW          = _ota.info.area.innerW / COL_COUNT;
 
         tft.setFont(ST7796S::RobotoMono_Regular_14);
         tft.setTextColor(theme::GREY);
         tft.textBottomCenter(
-            _sota.info.area.innerX, _sota.info.area.innerY,
-            colW,                   _sota.info.area.innerH / 2,
+            _ota.info.area.innerX, _ota.info.area.innerY,
+            colW,                   _ota.info.area.innerH / 2,
             "BRG"
         );
         tft.textBottomCenter(
-            _sota.info.area.innerX + colW, _sota.info.area.innerY,
-            colW,                          _sota.info.area.innerH / 2,
+            _ota.info.area.innerX + colW, _ota.info.area.innerY,
+            colW,                          _ota.info.area.innerH / 2,
             "DIST"
         );
         tft.textBottomCenter(
-            _sota.info.area.innerX + (colW * 2), _sota.info.area.innerY,
-            colW,                                _sota.info.area.innerH / 2,
+            _ota.info.area.innerX + (colW * 2), _ota.info.area.innerY,
+            colW,                                _ota.info.area.innerH / 2,
             "PTS"
         );
         tft.textBottomCenter(
-            _sota.info.area.innerX + (colW * 3), _sota.info.area.innerY,
-            colW,                                _sota.info.area.innerH / 2,
+            _ota.info.area.innerX + (colW * 3), _ota.info.area.innerY,
+            colW,                                _ota.info.area.innerH / 2,
             "ALT"
         );
         tft.setTextColor(theme::CYAN);
         tft.textTopCenter(
-            _sota.info.area.innerX, _sota.info.area.innerY + (_sota.info.area.innerH / 2),
-            colW,                   _sota.info.area.innerH / 2,
-            _sota.info.bearing
+            _ota.info.area.innerX, _ota.info.area.innerY + (_ota.info.area.innerH / 2),
+            colW,                   _ota.info.area.innerH / 2,
+            _ota.info.bearing
         );
 
         tft.setTextColor(theme::WHITE);
         tft.textTopCenter(
-            _sota.info.area.innerX + colW, _sota.info.area.innerY + (_sota.info.area.innerH / 2),
-            colW,                          _sota.info.area.innerH / 2,
-            _sota.info.distance
+            _ota.info.area.innerX + colW, _ota.info.area.innerY + (_ota.info.area.innerH / 2),
+            colW,                          _ota.info.area.innerH / 2,
+            _ota.info.distance
         );
 
         tft.setTextColor(theme::YELLOW);
         tft.textTopCenter(
-            _sota.info.area.innerX + (colW * 2), _sota.info.area.innerY + (_sota.info.area.innerH / 2),
-            colW,                                _sota.info.area.innerH / 2,
-            _sota.points
+            _ota.info.area.innerX + (colW * 2), _ota.info.area.innerY + (_ota.info.area.innerH / 2),
+            colW,                                _ota.info.area.innerH / 2,
+            _ota.points
         );
 
         tft.setTextColor(theme::WHITE);
         tft.textTopCenter(
-            _sota.info.area.innerX + (colW * 3), _sota.info.area.innerY + (_sota.info.area.innerH / 2),
-            colW,                                _sota.info.area.innerH / 2,
-            _sota.altitude
+            _ota.info.area.innerX + (colW * 3), _ota.info.area.innerY + (_ota.info.area.innerH / 2),
+            colW,                                _ota.info.area.innerH / 2,
+            _ota.altitude
         );
-        _drawTargetSeparator(tft, _sota.info, theme::ORANGE);
+        _drawTargetSeparator(tft, _ota.info, theme::ORANGE);
     }
 
     void _drawMark(ST7796S::MSP4021 &tft) {
@@ -406,11 +406,11 @@ void locator::setLocator     (const char* value) { _setValue(_locator.value,    
 void locator::setStatusTop   (const char* value) { _setValue(_statusTop.value,     value); }
 void locator::setStatusBottom(const char* value) { _setValue(_statusBottom.value,  value); }
 
-void locator::setSOTACode    (const char* value) { _setValue(_sota.info.title,     value); }
-void locator::setSOTABearing (const char* value) { _setValue(_sota.info.bearing,   value); }
-void locator::setSOTADistance(const char* value) { _setValue(_sota.info.distance,  value); }
-void locator::setSOTAPoints  (const char* value) { _setValue(_sota.points,         value); }
-void locator::setSOTAAltitude(const char* value) { _setValue(_sota.altitude,       value); }
+void locator::setOTACode    (const char* value) { _setValue(_ota.info.title,     value); }
+void locator::setOTABearing (const char* value) { _setValue(_ota.info.bearing,   value); }
+void locator::setOTADistance(const char* value) { _setValue(_ota.info.distance,  value); }
+void locator::setOTAPoints  (const char* value) { _setValue(_ota.points,         value); }
+void locator::setOTAAltitude(const char* value) { _setValue(_ota.altitude,       value); }
 
 void locator::setMarkLocator (const char* value) { _setValue(_mark.info.title,     value); }
 void locator::setMarkBearing (const char* value) { _setValue(_mark.info.bearing,   value); }
@@ -420,11 +420,11 @@ void locator::setMarkTimer   (const char* value) { _setValue(_mark.timer,       
 void locator::updateLocator     (ST7796S::MSP4021 &tft, const char* value) { _updateGrid(tft, _locator,   value, _drawLocator); }
 void locator::updateStatusTop   (ST7796S::MSP4021 &tft, const char* value) { _updateGrid(tft, _statusTop, value, _drawStatusTop); }
 
-void locator::updateSOTACode    (ST7796S::MSP4021 &tft, const char* value) { _updateSota(tft, _sota.info.title,    value); }
-void locator::updateSOTABearing (ST7796S::MSP4021 &tft, const char* value) { _updateSota(tft, _sota.info.bearing,  value); }
-void locator::updateSOTADistance(ST7796S::MSP4021 &tft, const char* value) { _updateSota(tft, _sota.info.distance, value); }
-void locator::updateSOTAPoints  (ST7796S::MSP4021 &tft, const char* value) { _updateSota(tft, _sota.points,        value); }
-void locator::updateSOTAAltitude(ST7796S::MSP4021 &tft, const char* value) { _updateSota(tft, _sota.altitude,      value); }
+void locator::updateOTACode    (ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.info.title,    value); }
+void locator::updateOTABearing (ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.info.bearing,  value); }
+void locator::updateOTADistance(ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.info.distance, value); }
+void locator::updateOTAPoints  (ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.points,        value); }
+void locator::updateOTAAltitude(ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.altitude,      value); }
 
 void locator::updateMarkLocator (ST7796S::MSP4021 &tft, const char* value) { _updateMark(tft, _mark.info.title,           value); }
 void locator::updateMarkBearing (ST7796S::MSP4021 &tft, const char* value) { _updateMarkColumn(tft, _mark.info.bearing,   value, 0); }
@@ -451,12 +451,12 @@ void locator::draw(ST7796S::MSP4021 &tft) {
     const int virtualRowH   = (gridH + (gap * 4)) / rowCount;
 
     _setArea(
-        _sota.info.area,
+        _ota.info.area,
         gridX,      gridY + gap,
         gridW,      virtualRowH
     );
-    _sota.info.separatorY = _sota.info.area.outerY + _sota.info.area.outerH + gap;
-    _computeTargetTitleArea(tft, _sota.info);
+    _ota.info.separatorY = _ota.info.area.outerY + _ota.info.area.outerH + gap;
+    _computeTargetTitleArea(tft, _ota.info);
 
     _setArea(
         _mark.info.area,                     gridX,
@@ -468,7 +468,7 @@ void locator::draw(ST7796S::MSP4021 &tft) {
 
     tft.setFont(ST7796S::RobotoMono_Regular_12);
     const int statusH    = tft.textHeight(_statusBottom.value) + (gap * 2);
-    const int statusTopY = _sota.info.titleArea.outerY + _sota.info.titleArea.outerH + gap;
+    const int statusTopY = _ota.info.titleArea.outerY + _ota.info.titleArea.outerH + gap;
 
     _setArea(
         _statusTop.area,
@@ -492,7 +492,7 @@ void locator::draw(ST7796S::MSP4021 &tft) {
         gridW - (gap * 2),  statusH
     );
 
-    _drawSota(tft);
+    _drawOta(tft);
     _drawLocator(tft);
     _drawStatusTop(tft);
     _drawStatusBottom(tft);

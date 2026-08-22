@@ -27,9 +27,8 @@
 namespace services::battery {
     /**
      * Initializes the battery monitoring service.
-     * @param pin ADC pin connected to the battery voltage divider.
      */
-    void begin(uint8_t pin);
+    void begin();
 
     /**
      * Updates the battery measurements.

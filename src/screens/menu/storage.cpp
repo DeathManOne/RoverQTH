@@ -66,7 +66,7 @@ void Storage::draw(ST7796S::MSP4021 &tft) {
 
     if (storage::readCardInfos(type, size, total, used)) {
         text::copy(_typeValue, sizeof(_typeValue), _typeToText(type));
-        format::storageCapacity(total, _capacityValue, sizeof(_capacityValue));
+        format::storageCapacity(size, _capacityValue, sizeof(_capacityValue));
 
         const uint64_t percentage = total > 0U ? (used * 100ULL) / total : 0U;
         format::percentage(percentage, _usageValue, sizeof(_usageValue));

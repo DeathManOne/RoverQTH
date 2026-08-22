@@ -31,13 +31,22 @@
 namespace screens::menu {
     class Displayer final : public Page {
         public:
+            enum class Request {
+                NONE,
+                RELOAD_TOUCH_CALIBRATION,
+                RECALIBRATE_TOUCH
+            };
+
             void draw       (ST7796S::MSP4021 &tft) override;
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
+            Request takeRequest();
+
         private:
             enum class _Action {NONE, ROTATION, CALIBRATION};
 
             char _widthValue[8]  = "";
             char _heightValue[8] = "";
+            Request _request = Request::NONE;
 
             Field<_Action> _rotationField    = _makeField("Rotation",    _Action::ROTATION,    ui::settings::themes::defaults::GREEN);
             Field<_Action> _widthField       = _makeField("Width",       _Action::NONE,        ui::settings::themes::defaults::WHITE);
@@ -55,6 +64,6 @@ namespace screens::menu {
             static const char* _rotationToText(services::settings::TFTRotation rotation);
             void _actionRotation(ST7796S::MSP4021 &tft);
 
-            void _actionCalibration(ST7796S::MSP4021 &tft);
+            void _actionCalibration();
     };
 }

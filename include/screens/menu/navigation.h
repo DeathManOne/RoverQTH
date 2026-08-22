@@ -24,7 +24,9 @@
 #pragma once
 #include <MSP4021.h>
 
+#include "screens/menu.h"
+
 namespace screens::menu::navigation {
-    void draw(ST7796S::MSP4021 &tft);
-    bool handleTouch(int x, int y);
+    void draw(ST7796S::MSP4021 &tft, Item current);
+    bool handleTouch(int x, int y, Item &selected);
 }

@@ -33,7 +33,7 @@ namespace ui::widgets::buttons {
 
     extern ButtonArea bootSearchGPS;
     extern ButtonArea markQTH;
-    extern ButtonArea sota;
+    extern ButtonArea ota;
     extern ButtonArea menu;
 
     ButtonArea makeArea(int x, int y, int width, int height);

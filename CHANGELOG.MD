@@ -7,6 +7,52 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [1.10.0] - 2026-08-22
+
+### Added
+
+- Stateful display service responsible for display initialization, screen ownership, navigation and touch routing
+- Common screen interface for consistent drawing, updating and touch handling
+- Dedicated object-oriented screen implementations for boot, main, menu and S/P OTA
+- Unified OTA database, utility and service modules for SOTA summits and POTA parks
+- Separate JSON reader and writer modules
+
+### Changed
+
+- Migrated the complete screen lifecycle from `core::screenManager` to `services::display`
+- Converted the main application screens into stateful classes
+- Renamed the SOTA search screen to the generic S/P OTA screen
+- Reorganized SOTA and POTA databases under `database::ota`
+- Reorganized SOTA and POTA utilities under `utilities::ota`
+- Replaced the separate SOTA and POTA services with the unified `services::ota`
+- Reorganized JSON utilities into dedicated reader and writer components
+- Simplified display initialization by using the configured build parameters internally
+- Improved menu field refresh and storage-capacity presentation
+- Improved screen-state synchronization and bounds validation
+
+### Fixed
+
+- Fixed boot-screen field refresh relying on pointer comparison
+- Fixed empty callsign and Wi-Fi SSID values not being propagated to the touchscreen keyboard
+- Fixed possible invalid screen and button state indexing
+- Fixed GNSS fields retaining stale placeholder characters after receiving valid values
+- Preserved the boot-screen GPS search button during the screen architecture migration
+
+### Removed
+
+- Legacy `core::screenManager` and global screen-state modules
+- Legacy `display` manager and screen wrapper modules
+- Separate SOTA and POTA database, utility and service interfaces
+
+### Internal
+
+- Centralized display hardware ownership and screen transitions in `services::display`
+- Reduced duplicated SOTA and POTA orchestration through a shared OTA snapshot model
+- Simplified the application entry point and screen dependencies
+- Reduced the codebase by consolidating superseded modules
+
+---
+
 ## [1.9.0] - 2026-08-19
 
 ### Added

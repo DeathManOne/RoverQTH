@@ -38,8 +38,7 @@ namespace text     = utilities::text;
 void General::_actionCallsign(ST7796S::MSP4021& tft) {
     const settings::General configuration = settings::general();
 
-    if (configuration.callsign[0] != '\0')
-        { tft.KSetText(configuration.callsign); }
+    tft.KSetText(configuration.callsign);
     tft.KDraw("Callsign");
 
     _mode = Mode::KEYBOARD;

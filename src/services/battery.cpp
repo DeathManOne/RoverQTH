@@ -80,8 +80,8 @@ bool battery::isCritical() {
     return value;
 }
 
-void battery::begin(uint8_t pin) {
-    _batteryPin = pin;
+void battery::begin() {
+    _batteryPin = BATT_PIN;
     pinMode(_batteryPin, INPUT);
 
     analogReadResolution(12);

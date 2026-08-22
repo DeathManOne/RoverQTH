@@ -26,13 +26,48 @@
 #include <cstdint>
 #include <MSP4021.h>
 
-namespace screens::boot {
-    void clear(ST7796S::MSP4021 &tft);
-    void draw (ST7796S::MSP4021 &tft);
+namespace screens {
+    class Boot final {
+        public:
+            void clear   (ST7796S::MSP4021 &tft);
+            void draw    (ST7796S::MSP4021 &tft);
+            void drawLogo(ST7796S::MSP4021 &tft);
 
-    void updateWifi (ST7796S::MSP4021 &tft, bool* value);
-    void updateSD   (ST7796S::MSP4021 &tft, bool* value);
-    void updateGSM  (ST7796S::MSP4021 &tft, bool* value);
-    void updateGPS  (ST7796S::MSP4021 &tft, bool* value);
-    void updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress);
+            void updateWifi(ST7796S::MSP4021 &tft, bool* value);
+            void updateSD  (ST7796S::MSP4021 &tft, bool* value);
+            void updateGPS (ST7796S::MSP4021 &tft, bool* value);
+            void updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress);
+            bool handleTouch(int x, int y) const;
+
+        private:
+            struct Field {
+                int outerX = 0;
+                int outerY = 0;
+                int outerW = 0;
+                int outerH = 0;
+                int innerX = 0;
+                int innerY = 0;
+                int innerW = 0;
+                int innerH = 0;
+                int row    = 0;
+
+                const char* label = nullptr;
+                bool* state       = nullptr;
+
+                Field(int rowIndex, const char* name)
+                : row(rowIndex), label(name) {}
+            };
+
+            uint8_t _gpsProgress = 0;
+            Field _wifi{0, "WiFi"};
+            Field _sd  {1, "SD"};
+            Field _gps {2, "GPS"};
+
+            void _clearModule     (ST7796S::MSP4021 &tft, const Field &field);
+            void _drawModuleStatus(ST7796S::MSP4021 &tft, Field &field);
+            void _updateField     (ST7796S::MSP4021 &tft, Field &field, bool* state);
+            void _drawGPSSearch   (ST7796S::MSP4021 &tft);
+            void _drawGPSAction   (ST7796S::MSP4021 &tft);
+            void _drawGPSProgress (ST7796S::MSP4021 &tft, uint8_t value);
+    };
 }
