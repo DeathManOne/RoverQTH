@@ -1,5 +1,27 @@
+/*
+ * src/services/ota.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include <cmath>
-#include <cstring>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -66,18 +88,42 @@ namespace {
     bool _cancelRequested = false;
 
     bool _validType(ota::Type type);
+    bool _databaseAvailable(ota::Type type);
+    bool _isListSearch(TaskKind kind);
     size_t _typeIndex(ota::Type type);
     RuntimeState& _state(ota::Type type);
-    bool _validPosition(double latitude, double longitude);
+    void _handleTaskCreationFailure(ota::Type type, const char* event);
+    void _resetRuntimeState(RuntimeState& state, bool available);
+    void _clearReferenceState(RuntimeState& state);
+    void _clearNearbyState(RuntimeState& state, ota::NearbyStatus status);
+    void _clearTaskStateLocked();
+    void _prepareTaskRequestLocked(ota::Type type, TaskKind kind, double latitude, double longitude, double radiusKm);
+    bool _canStartSearchLocked(const RuntimeState& state, bool listSearch);
+    bool _startSearchTask(ota::Type type, const char* taskName, const char* failureEvent);
+    ota::Reference _toReference(const char* code, const char* area, double latitude, double longitude);
     ota::Reference _toReference(const summitsDB::Summit &summit);
     ota::Reference _toReference(const parksDB::Park &park);
     bool _cancellationRequested(void* userData);
     void _searchTask(void* parameter);
 
     bool _validType(const ota::Type type) {
-        return
-            type == ota::Type::SUMMITS ||
-            type == ota::Type::PARKS;
+        return type == ota::Type::SUMMITS || type == ota::Type::PARKS;
+    }
+
+    bool _databaseAvailable(const ota::Type type) {
+        if (!_validType(type)) { return false; }
+
+        if (type == ota::Type::PARKS) {
+            parksDB::Info info {};
+            return parksDB::info(info);
+        }
+
+        summitsDB::Info info {};
+        return summitsDB::info(info);
+    }
+
+    bool _isListSearch(const TaskKind kind) {
+        return kind == TaskKind::BY_PREFIX || kind == TaskKind::NEARBY;
     }
 
     size_t _typeIndex(const ota::Type type) {
@@ -88,66 +134,117 @@ namespace {
         return _states[_typeIndex(type)];
     }
 
-    bool _validPosition(
-        const double latitude,
-        const double longitude
-    ) {
-        return
-            std::isfinite(latitude) &&
-            std::isfinite(longitude) &&
-            latitude >= -90.0 &&
-            latitude <= 90.0 &&
-            longitude >= -180.0 &&
-            longitude <= 180.0;
+    void _handleTaskCreationFailure(const ota::Type type, const char* const event) {
+        portENTER_CRITICAL(&_lock);
+
+        RuntimeState& state   = _state(type);
+        const bool listSearch = _isListSearch(_request.kind);
+
+        if (listSearch) { _clearNearbyState(state, ota::NearbyStatus::ERROR); }
+        else {
+            _clearReferenceState(state);
+            state.status = ota::Status::ERROR;
+        }
+
+        _clearTaskStateLocked();
+
+        portEXIT_CRITICAL(&_lock);
+
+        storage::appendErrorRecord(event);
     }
 
-    ota::Reference _toReference(
-        const summitsDB::Summit &summit
-    ) {
+    void _resetRuntimeState(RuntimeState& state, const bool available) {
+        state = RuntimeState {};
+        state.status = available
+            ? ota::Status::IDLE
+            : ota::Status::UNAVAILABLE;
+        state.nearbyStatus = available
+            ? ota::NearbyStatus::IDLE
+            : ota::NearbyStatus::UNAVAILABLE;
+    }
+
+    void _clearReferenceState(RuntimeState& state) {
+        state.reference           = ota::Reference {};
+        state.distanceKm          = 0.0;
+        state.bearingDeg          = 0.0;
+        state.hasSearchedPosition = false;
+    }
+
+    void _clearNearbyState(RuntimeState& state, const ota::NearbyStatus status) {
+        otaDB::clear(state.nearbyResults);
+        state.nearbyStatus = status;
+    }
+
+    void _clearTaskStateLocked() {
+        _request         = TaskRequest {};
+        _taskRunning     = false;
+        _cancelRequested = false;
+    }
+
+    void _prepareTaskRequestLocked(const ota::Type type, const TaskKind kind, const double latitude, const double longitude, const double radiusKm) {
+        _request = TaskRequest {};
+        _request.type      = type;
+        _request.kind      = kind;
+        _request.latitude  = latitude;
+        _request.longitude = longitude;
+        _request.radiusKm  = radiusKm;
+
+        _taskRunning     = true;
+        _cancelRequested = false;
+    }
+
+    bool _canStartSearchLocked(const RuntimeState& state, const bool listSearch) {
+        if (_taskRunning || update::isBusy()) { return false; }
+        return listSearch
+            ? state.nearbyStatus != ota::NearbyStatus::UNAVAILABLE
+            : state.status       != ota::Status::UNAVAILABLE;
+    }
+
+    bool _startSearchTask(const ota::Type type, const char* const taskName, const char* const failureEvent) {
+        const BaseType_t created = xTaskCreate(
+            _searchTask,
+            taskName,
+            TASK_STACK_SIZE,
+            nullptr,
+            1,
+            nullptr
+        );
+
+        if (created == pdPASS) {
+            return true;
+        }
+
+        _handleTaskCreationFailure(type, failureEvent);
+        return false;
+    }
+
+    ota::Reference _toReference(const char* const code, const char* const area, const double latitude, const double longitude) {
         ota::Reference reference {};
 
-        text::copy(
-            reference.code,
-            sizeof(reference.code),
-            summit.code
-        );
+        text::copy(reference.code, sizeof(reference.code), code);
+        text::copy(reference.area, sizeof(reference.area), area);
 
-        text::copy(
-            reference.area,
-            sizeof(reference.area),
-            summit.area
-        );
-
-        reference.latitude  = summit.latitude;
-        reference.longitude = summit.longitude;
-        reference.altitude  = summit.altitude;
-        reference.points    = summit.points;
-        reference.bonus     = summit.bonus;
+        reference.latitude  = latitude;
+        reference.longitude = longitude;
 
         return reference;
     }
 
-    ota::Reference _toReference(
-        const parksDB::Park &park
-    ) {
-        ota::Reference reference {};
-
-        text::copy(
-            reference.code,
-            sizeof(reference.code),
-            park.code
+    ota::Reference _toReference(const summitsDB::Summit& summit) {
+        ota::Reference reference = _toReference(
+            summit.code,     summit.area,
+            summit.latitude, summit.longitude
         );
 
-        text::copy(
-            reference.area,
-            sizeof(reference.area),
-            park.area
-        );
-
-        reference.latitude  = park.latitude;
-        reference.longitude = park.longitude;
+        reference.altitude = summit.altitude;
+        reference.points   = summit.points;
+        reference.bonus    = summit.bonus;
 
         return reference;
+    }
+
+    ota::Reference _toReference(const parksDB::Park& park) {
+        return _toReference(park.code, park.area, park.latitude, park.longitude);
     }
 
     bool _cancellationRequested(void*) {
@@ -155,10 +252,7 @@ namespace {
 
         const bool requested =
             _taskRunning &&
-            (
-                _request.kind == TaskKind::BY_PREFIX ||
-                _request.kind == TaskKind::NEARBY
-            ) &&
+            _isListSearch(_request.kind) &&
             _cancelRequested;
 
         portEXIT_CRITICAL(&_lock);
@@ -295,9 +389,7 @@ namespace {
                 break;
         }
 
-        const bool listSearch =
-            request.kind == TaskKind::BY_PREFIX ||
-            request.kind == TaskKind::NEARBY;
+        const bool listSearch = _isListSearch(request.kind);
 
         if (listSearch) {
             if (searchStatus == otaDB::SearchStatus::ERROR) {
@@ -345,15 +437,17 @@ namespace {
                         ? ota::NearbyStatus::READY
                         : ota::NearbyStatus::EMPTY;
                     break;
-
                 case otaDB::SearchStatus::CANCELLED:
-                    otaDB::clear(state.nearbyResults);
-                    state.nearbyStatus = ota::NearbyStatus::IDLE;
+                    _clearNearbyState(
+                        state,
+                        ota::NearbyStatus::IDLE
+                    );
                     break;
-
                 case otaDB::SearchStatus::ERROR:
-                    otaDB::clear(state.nearbyResults);
-                    state.nearbyStatus = ota::NearbyStatus::ERROR;
+                    _clearNearbyState(
+                        state,
+                        ota::NearbyStatus::ERROR
+                    );
                     break;
             }
         } else if (found) {
@@ -370,16 +464,11 @@ namespace {
                 state.hasSearchedPosition = false;
             }
         } else {
-            state.reference  = ota::Reference {};
-            state.distanceKm = 0.0;
-            state.bearingDeg = 0.0;
-            state.hasSearchedPosition = false;
+            _clearReferenceState(state);
             state.status = ota::Status::ERROR;
         }
 
-        _request        = TaskRequest {};
-        _taskRunning    = false;
-        _cancelRequested = false;
+        _clearTaskStateLocked();
 
         portEXIT_CRITICAL(&_lock);
         vTaskDelete(nullptr);
@@ -387,39 +476,22 @@ namespace {
 }
 
 void ota::begin() {
-    summitsDB::Info summitsInfo {};
-    parksDB::Info parksInfo {};
-
-    const bool summitsAvailable =
-        summitsDB::info(summitsInfo);
-
-    const bool parksAvailable =
-        parksDB::info(parksInfo);
+    const bool summitsAvailable = _databaseAvailable(Type::SUMMITS);
+    const bool parksAvailable   = _databaseAvailable(Type::PARKS);
 
     portENTER_CRITICAL(&_lock);
 
-    _states[0] = RuntimeState {};
-    _states[1] = RuntimeState {};
+    _resetRuntimeState(
+        _states[0],
+        summitsAvailable
+    );
 
-    _states[0].status = summitsAvailable
-        ? Status::IDLE
-        : Status::UNAVAILABLE;
+    _resetRuntimeState(
+        _states[1],
+        parksAvailable
+    );
 
-    _states[0].nearbyStatus = summitsAvailable
-        ? NearbyStatus::IDLE
-        : NearbyStatus::UNAVAILABLE;
-
-    _states[1].status = parksAvailable
-        ? Status::IDLE
-        : Status::UNAVAILABLE;
-
-    _states[1].nearbyStatus = parksAvailable
-        ? NearbyStatus::IDLE
-        : NearbyStatus::UNAVAILABLE;
-
-    _request         = TaskRequest {};
-    _taskRunning     = false;
-    _cancelRequested = false;
+    _clearTaskStateLocked();
 
     portEXIT_CRITICAL(&_lock);
 
@@ -441,39 +513,20 @@ void ota::invalidate(const Type type) {
         return;
     }
 
-    bool available = false;
-
-    if (type == Type::PARKS) {
-        parksDB::Info info {};
-        available = parksDB::info(info);
-    } else {
-        summitsDB::Info info {};
-        available = summitsDB::info(info);
-    }
+    const bool available = _databaseAvailable(type);
 
     portENTER_CRITICAL(&_lock);
 
-    RuntimeState &state = _state(type);
-    state = RuntimeState {};
-    state.status = available
-        ? Status::IDLE
-        : Status::UNAVAILABLE;
-
-    state.nearbyStatus = available
-        ? NearbyStatus::IDLE
-        : NearbyStatus::UNAVAILABLE;
+    RuntimeState& state = _state(type);
+    _resetRuntimeState(state, available);
 
     portEXIT_CRITICAL(&_lock);
 }
 
-bool ota::requestNearest(
-    const Type type,
-    const double latitude,
-    const double longitude
-) {
+bool ota::requestNearest(const Type type, const double latitude, const double longitude) {
     if (
         !_validType(type) ||
-        !_validPosition(latitude, longitude) ||
+        !uOta::isValidSearchArea(latitude, longitude, 0.0) ||
         update::isBusy()
     ) {
         return false;
@@ -526,87 +579,42 @@ bool ota::requestNearest(
 
     RuntimeState &state = _state(type);
 
-    if (
-        _taskRunning ||
-        state.status == Status::UNAVAILABLE ||
-        update::isBusy()
-    ) {
+    if (!_canStartSearchLocked(state, false)) {
         portEXIT_CRITICAL(&_lock);
         return false;
     }
 
     state.requestedCode[0] = '\0';
-    state.reference  = Reference {};
-    state.distanceKm = 0.0;
-    state.bearingDeg = 0.0;
-    state.hasSearchedPosition = false;
+    _clearReferenceState(state);
     state.status = Status::SEARCHING;
 
-    _request = TaskRequest {};
-    _request.type      = type;
-    _request.kind      = TaskKind::NEAREST;
-    _request.latitude  = latitude;
-    _request.longitude = longitude;
-
-    _taskRunning     = true;
-    _cancelRequested = false;
+    _prepareTaskRequestLocked(
+        type,
+        TaskKind::NEAREST,
+        latitude,
+        longitude,
+        0.0
+    );
 
     portEXIT_CRITICAL(&_lock);
 
-    const BaseType_t created = xTaskCreate(
-        _searchTask,
+    return _startSearchTask(
+        type,
         type == Type::PARKS
             ? "POTA nearest"
             : "SOTA nearest",
-        TASK_STACK_SIZE,
-        nullptr,
-        1,
-        nullptr
-    );
-
-    if (created == pdPASS) {
-        return true;
-    }
-
-    portENTER_CRITICAL(&_lock);
-
-    state.reference  = Reference {};
-    state.distanceKm = 0.0;
-    state.bearingDeg = 0.0;
-    state.hasSearchedPosition = false;
-    state.status = Status::ERROR;
-
-    _request         = TaskRequest {};
-    _taskRunning     = false;
-    _cancelRequested = false;
-
-    portEXIT_CRITICAL(&_lock);
-
-    storage::appendErrorRecord(
         type == Type::PARKS
             ? "POTA_TASK_CREATE_FAILED"
             : "SOTA_TASK_CREATE_FAILED"
     );
-
-    return false;
 }
 
-bool ota::requestByCode(
-    const Type type,
-    const char* const code,
-    const double latitude,
-    const double longitude
-) {
-    if (
-        !_validType(type) ||
-        code == nullptr ||
-        code[0] == '\0' ||
-        std::memchr(code, '\0', otaDB::CODE_SIZE) == nullptr ||
-        !_validPosition(latitude, longitude) ||
+bool ota::requestByCode(const Type type, const char* const code, const double latitude, const double longitude) {
+    if (!_validType(type) ||
+        !otaDB::isValidCode(code) ||
+        !uOta::isValidSearchArea(latitude, longitude, 0.0) ||
         update::isBusy()
-    ) {
-        return false;
-    }
+    ) { return false; }
 
     Status status;
     Reference cachedReference {};
@@ -690,11 +698,7 @@ bool ota::requestByCode(
 
     RuntimeState &state = _state(type);
 
-    if (
-        _taskRunning ||
-        state.status == Status::UNAVAILABLE ||
-        update::isBusy()
-    ) {
+    if (!_canStartSearchLocked(state, false)) {
         portEXIT_CRITICAL(&_lock);
         return false;
     }
@@ -705,17 +709,16 @@ bool ota::requestByCode(
         code
     );
 
-    state.reference  = Reference {};
-    state.distanceKm = 0.0;
-    state.bearingDeg = 0.0;
-    state.hasSearchedPosition = false;
+    _clearReferenceState(state);
     state.status = Status::SEARCHING;
 
-    _request = TaskRequest {};
-    _request.type      = type;
-    _request.kind      = TaskKind::BY_CODE;
-    _request.latitude  = latitude;
-    _request.longitude = longitude;
+    _prepareTaskRequestLocked(
+        type,
+        TaskKind::BY_CODE,
+        latitude,
+        longitude,
+        0.0
+    );
 
     text::copy(
         _request.value,
@@ -723,65 +726,26 @@ bool ota::requestByCode(
         code
     );
 
-    _taskRunning     = true;
-    _cancelRequested = false;
-
     portEXIT_CRITICAL(&_lock);
 
-    const BaseType_t created = xTaskCreate(
-        _searchTask,
+    return _startSearchTask(
+        type,
         type == Type::PARKS
             ? "POTA code"
             : "SOTA code",
-        TASK_STACK_SIZE,
-        nullptr,
-        1,
-        nullptr
-    );
-
-    if (created == pdPASS) {
-        return true;
-    }
-
-    portENTER_CRITICAL(&_lock);
-
-    state.reference  = Reference {};
-    state.distanceKm = 0.0;
-    state.bearingDeg = 0.0;
-    state.hasSearchedPosition = false;
-    state.status = Status::ERROR;
-
-    _request         = TaskRequest {};
-    _taskRunning     = false;
-    _cancelRequested = false;
-
-    portEXIT_CRITICAL(&_lock);
-
-    storage::appendErrorRecord(
         type == Type::PARKS
             ? "POTA_CODE_TASK_CREATE_FAILED"
             : "SOTA_CODE_TASK_CREATE_FAILED"
     );
-
-    return false;
 }
 
-bool ota::requestByPrefix(
-    const Type type,
-    const char* const prefix,
-    const double latitude,
-    const double longitude
-) {
+bool ota::requestByPrefix(const Type type, const char* const prefix, const double latitude, const double longitude) {
     char normalizedPrefix[otaDB::CODE_SIZE] {};
 
     if (
         !_validType(type) ||
-        !_validPosition(latitude, longitude) ||
-        !uOta::normalizeCodePrefix(
-            prefix,
-            normalizedPrefix,
-            sizeof(normalizedPrefix)
-        ) ||
+        !uOta::isValidSearchArea(latitude, longitude, 0.0) ||
+        !uOta::normalizeCodePrefix(prefix, normalizedPrefix, sizeof(normalizedPrefix)) ||
         normalizedPrefix[0] == '\0' ||
         update::isBusy()
     ) {
@@ -792,23 +756,23 @@ bool ota::requestByPrefix(
 
     RuntimeState &state = _state(type);
 
-    if (
-        _taskRunning ||
-        state.nearbyStatus == NearbyStatus::UNAVAILABLE ||
-        update::isBusy()
-    ) {
+    if (!_canStartSearchLocked(state, true)) {
         portEXIT_CRITICAL(&_lock);
         return false;
     }
 
-    state.nearbyStatus = NearbyStatus::SEARCHING;
-    otaDB::clear(state.nearbyResults);
+    _clearNearbyState(
+        state,
+        NearbyStatus::SEARCHING
+    );
 
-    _request = TaskRequest {};
-    _request.type      = type;
-    _request.kind      = TaskKind::BY_PREFIX;
-    _request.latitude  = latitude;
-    _request.longitude = longitude;
+    _prepareTaskRequestLocked(
+        type,
+        TaskKind::BY_PREFIX,
+        latitude,
+        longitude,
+        0.0
+    );
 
     text::copy(
         _request.value,
@@ -816,57 +780,23 @@ bool ota::requestByPrefix(
         normalizedPrefix
     );
 
-    _taskRunning     = true;
-    _cancelRequested = false;
-
     portEXIT_CRITICAL(&_lock);
 
-    const BaseType_t created = xTaskCreate(
-        _searchTask,
+    return _startSearchTask(
+        type,
         type == Type::PARKS
             ? "POTA prefix"
             : "SOTA prefix",
-        TASK_STACK_SIZE,
-        nullptr,
-        1,
-        nullptr
-    );
-
-    if (created == pdPASS) {
-        return true;
-    }
-
-    portENTER_CRITICAL(&_lock);
-
-    state.nearbyStatus = NearbyStatus::ERROR;
-    otaDB::clear(state.nearbyResults);
-
-    _request         = TaskRequest {};
-    _taskRunning     = false;
-    _cancelRequested = false;
-
-    portEXIT_CRITICAL(&_lock);
-
-    storage::appendErrorRecord(
         type == Type::PARKS
             ? "POTA_PREFIX_TASK_CREATE_FAILED"
             : "SOTA_PREFIX_TASK_CREATE_FAILED"
     );
-
-    return false;
 }
 
-bool ota::requestNearby(
-    const Type type,
-    const double latitude,
-    const double longitude,
-    const double radiusKm
-) {
+bool ota::requestNearby(const Type type, const double latitude, const double longitude, const double radiusKm) {
     if (
         !_validType(type) ||
-        !_validPosition(latitude, longitude) ||
-        !std::isfinite(radiusKm) ||
-        radiusKm < 0.0 ||
+        !uOta::isValidSearchArea(latitude, longitude, radiusKm) ||
         update::isBusy()
     ) {
         return false;
@@ -876,74 +806,42 @@ bool ota::requestNearby(
 
     RuntimeState &state = _state(type);
 
-    if (
-        _taskRunning ||
-        state.nearbyStatus == NearbyStatus::UNAVAILABLE ||
-        update::isBusy()
-    ) {
+    if (!_canStartSearchLocked(state, true)) {
         portEXIT_CRITICAL(&_lock);
         return false;
     }
 
-    state.nearbyStatus = NearbyStatus::SEARCHING;
-    otaDB::clear(state.nearbyResults);
+    _clearNearbyState(
+        state,
+        NearbyStatus::SEARCHING
+    );
 
-    _request = TaskRequest {};
-    _request.type      = type;
-    _request.kind      = TaskKind::NEARBY;
-    _request.latitude  = latitude;
-    _request.longitude = longitude;
-    _request.radiusKm  = radiusKm;
-
-    _taskRunning     = true;
-    _cancelRequested = false;
+    _prepareTaskRequestLocked(
+        type,
+        TaskKind::NEARBY,
+        latitude,
+        longitude,
+        radiusKm
+    );
 
     portEXIT_CRITICAL(&_lock);
 
-    const BaseType_t created = xTaskCreate(
-        _searchTask,
+    return _startSearchTask(
+        type,
         type == Type::PARKS
             ? "POTA nearby"
             : "SOTA nearby",
-        TASK_STACK_SIZE,
-        nullptr,
-        1,
-        nullptr
-    );
-
-    if (created == pdPASS) {
-        return true;
-    }
-
-    portENTER_CRITICAL(&_lock);
-
-    state.nearbyStatus = NearbyStatus::ERROR;
-    otaDB::clear(state.nearbyResults);
-
-    _request         = TaskRequest {};
-    _taskRunning     = false;
-    _cancelRequested = false;
-
-    portEXIT_CRITICAL(&_lock);
-
-    storage::appendErrorRecord(
         type == Type::PARKS
             ? "POTA_NEARBY_TASK_CREATE_FAILED"
             : "SOTA_NEARBY_TASK_CREATE_FAILED"
     );
-
-    return false;
 }
 
 bool ota::cancel() {
     portENTER_CRITICAL(&_lock);
 
-    if (
-        !_taskRunning ||
-        (
-            _request.kind != TaskKind::NEARBY &&
-            _request.kind != TaskKind::BY_PREFIX
-        ) ||
+    if (!_taskRunning ||
+        !_isListSearch(_request.kind) ||
         !_validType(_request.type) ||
         _state(_request.type).nearbyStatus != NearbyStatus::SEARCHING ||
         _cancelRequested
@@ -999,11 +897,7 @@ ota::NearbySnapshot ota::nearbySnapshot(const Type type) {
     return value;
 }
 
-bool ota::nearbyResult(
-    const Type type,
-    const size_t index,
-    otaDB::SearchResult &result
-) {
+bool ota::nearbyResult(const Type type, const size_t index, otaDB::SearchResult &result) {
     result = otaDB::SearchResult {};
 
     if (!_validType(type)) {

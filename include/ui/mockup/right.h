@@ -25,16 +25,26 @@
 #include <MSP4021.h>
 
 namespace ui::mockup::right {
+    /** @brief Clears the right-side panel. */
     void clear(ST7796S::MSP4021 &tft);
-    void draw (ST7796S::MSP4021 &tft);
+    /** @brief Draws the right-side panel frame. */
+    void draw(ST7796S::MSP4021 &tft);
 
+    /** @brief Returns the outer left coordinate. */
     int outerX();
+    /** @brief Returns the outer top coordinate. */
     int outerY();
+    /** @brief Returns the outer width. */
     int outerWidth();
+    /** @brief Returns the outer height. */
     int outerHeight();
 
+    /** @brief Returns the inner left coordinate. */
     int innerX();
+    /** @brief Returns the inner top coordinate. */
     int innerY();
+    /** @brief Returns the inner width. */
     int innerWidth();
+    /** @brief Returns the inner height. */
     int innerHeight();
 }

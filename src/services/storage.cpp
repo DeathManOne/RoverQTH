@@ -29,10 +29,12 @@
 
 #include "services/dtc.h"
 #include "services/storage.h"
+#include "utilities/dtc.h"
 #include "utilities/text.h"
 
 namespace dtc     = services::dtc;
 namespace storage = services::storage;
+namespace uDtc    = utilities::dtc;
 namespace text    = utilities::text;
 
 namespace {
@@ -97,7 +99,7 @@ namespace {
         int written = 0;
         if (dtc::isSynced()) {
             char timestamp[21];
-            if (!dtc::formatISO8601(dtc::now(), timestamp, sizeof(timestamp)))
+            if (!uDtc::formatISO8601(dtc::now(), timestamp, sizeof(timestamp)))
                 { return false; }
             written = std::snprintf(buffer, size, "%s | %s\n", timestamp, data);
         } else {
@@ -141,11 +143,15 @@ namespace {
 
         if (writtenCount > 0U) {
             const size_t remaining = _waitingLogsCount - writtenCount;
-            for (size_t index = 0U; index < remaining; ++index)
-                { _waitingLogs[index] = _waitingLogs[writtenCount + index]; }
-            for (size_t index = remaining; index < _waitingLogsCount; ++index) {
-                _waitingLogs[index].path    = nullptr;
-                _waitingLogs[index].data[0] = '\0';
+            for (size_t shiftIndex = 0U; shiftIndex < remaining; ++shiftIndex)
+                { _waitingLogs[shiftIndex] = _waitingLogs[writtenCount + shiftIndex]; }
+            for (
+                size_t clearIndex = remaining;
+                clearIndex < _waitingLogsCount;
+                ++clearIndex
+            ) {
+                _waitingLogs[clearIndex].path    = nullptr;
+                _waitingLogs[clearIndex].data[0] = '\0';
             }
             _waitingLogsCount = remaining;
         }
@@ -167,15 +173,17 @@ namespace {
     bool _readFileChunk(const uint8_t* const data, const size_t length, void* const userData) {
         if (data == nullptr || userData == nullptr) { return false; }
 
-        FileReadContext* const context =static_cast<FileReadContext*>(userData);
+        FileReadContext* const context = static_cast<FileReadContext*>(userData);
         if (!context->valid || context->buffer == nullptr || context->size == 0U) { return false; }
         if (context->length + length >= context->size) {
             context->valid = false;
             return false;
         }
 
-        for (size_t index = 0U; index < length; ++index)
-            { context->buffer[context->length + index] = static_cast<char>(data[index]); }
+        for (size_t byteIndex = 0U; byteIndex < length; ++byteIndex) {
+            context->buffer[context->length + byteIndex] =
+                static_cast<char>(data[byteIndex]);
+        }
         context->length += length;
         context->buffer[context->length] = '\0';
         return true;

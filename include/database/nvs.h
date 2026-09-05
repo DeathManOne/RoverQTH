@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -294,7 +294,10 @@ namespace database::nvs {
      */
     bool setWifiLastEnabled(bool enabled);
 
+    /** @brief Loads the persisted OTA type and reference code. */
     bool getOtaSelection(char* type, size_t typeSize, char* code, size_t codeSize);
+    /** @brief Persists the selected OTA type and reference code. */
     bool setOtaSelection(const char* type, const char* code);
+    /** @brief Removes the persisted OTA selection. */
     bool resetOtaSelection();
 }

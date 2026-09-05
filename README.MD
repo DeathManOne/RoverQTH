@@ -234,6 +234,21 @@ SOTA and POTA searches run in background FreeRTOS tasks. Users can search within
 
 Firmware updates, database updates and database searches are coordinated so that only one heavy operation runs at a time. A selected SOTA or POTA reference is stored in NVS and restored after restart. No automatic full-database search is performed during startup.
 
+## Architecture
+
+RoverQTH separates persistent data, stateless processing, stateful services and user-interface components into dedicated layers.
+
+```text
+RoverQTH
+|-- database    Persistent settings and binary SOTA/POTA databases
+|-- utilities   Stateless parsing, validation, formatting and calculations
+|-- services    Stateful hardware adapters and application services
+|-- screens     Stateful user-interface screens
+`-- ui          Reusable visual components, settings and resources
+```
+
+`services::display` owns the active screens and coordinates their lifecycle, navigation, refresh and touch-event routing. Hardware access and long-running operations remain encapsulated in their corresponding services, while shared transformations remain independent in `utilities`.
+
 ## Hardware Requirements
 
 ### Supported Controller
@@ -304,7 +319,7 @@ SparkFun u-blox GNSS Arduino Library
 
 Version:
 
-* v2.2.28
+* v2.2.29
 
 Repository:
 

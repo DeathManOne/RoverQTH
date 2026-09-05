@@ -21,8 +21,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
 #include "screens/menu/wifi.h"
+
+#include <cstring>
+
 #include "services/wifi.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
@@ -183,20 +185,28 @@ void Wifi::update(ST7796S::MSP4021 &tft) {
 bool Wifi::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     if (_mode == Mode::KEYBOARD) {
         if (tft.KUpdate(x, y)) {
-            const char* value = tft.KRead();
+            const char* const value = tft.KRead();
+            bool saved = false;
+
             switch (_editingAction) {
                 case _Action::SSID:
-                    settings::setWifiSSID(value);
+                    saved = settings::setWifiSSID(value);
                     break;
                 case _Action::PASS:
-                    settings::setWifiPassword(value);
+                    saved = settings::setWifiPassword(value);
                     break;
                 case _Action::NONE:
                 case _Action::BOOT_MODE:
                 case _Action::LOGIN:
                 default:
-                    break;
+                    return true;
             }
+
+            if (!saved) { return true; }
+            if (_editingAction == _Action::PASS) {
+                tft.KClear();
+            }
+
             _editingAction = _Action::NONE;
             _mode          = Mode::GRID;
             tft.setTextScale(1);

@@ -57,10 +57,9 @@ void grid::clear(ST7796S::MSP4021 &tft) {
 void grid::draw(ST7796S::MSP4021 &tft) {
     const int gap       = uiMockup::GAP;
     const int btnH      = uiMockup::BUTTON_HEIGHT;
-    const int headerH   = uiMockup::HEADER_HEIGHT;
 
     _area.outerX = 0;
-    _area.outerY = ui::mockup::header::outerHeight() + gap;
+    _area.outerY = header::outerHeight() + gap;
     _area.outerW = uiMockup::GRID_WIDTH;
     _area.outerH = tft.height() - _area.outerY - btnH - gap;
 

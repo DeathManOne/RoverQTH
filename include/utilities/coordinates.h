@@ -27,6 +27,7 @@
 #include <cstdint>
 
 namespace utilities::coordinates {
+    /** @brief Identifies whether a coordinate is a latitude or longitude. */
     enum class Axis : uint8_t {LATITUDE, LONGITUDE};
 
     /**

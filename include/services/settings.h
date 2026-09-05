@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,20 +27,33 @@
 #include <cstdint>
 
 namespace services::settings {
+    /** @brief Maximum stored callsign size, including its terminator. */
     constexpr size_t CALLSIGN_SIZE           = 32;
+    /** @brief Maximum number of characters appended by a callsign suffix. */
     constexpr size_t CALLSIGN_SUFFIX_LENGTH  = 3;
+    /** @brief Capacity of a formatted callsign with its optional suffix. */
     constexpr size_t FULL_CALLSIGN_SIZE      = CALLSIGN_SIZE + CALLSIGN_SUFFIX_LENGTH;
+    /** @brief Maximum stored Wi-Fi SSID size, including its terminator. */
     constexpr size_t WIFI_SSID_SIZE          = 33;
+    /** @brief Maximum stored Wi-Fi password size, including its terminator. */
     constexpr size_t WIFI_PASSWORD_SIZE      = 64;
+    /** @brief Maximum stored OTA reference size, including its terminator. */
     constexpr size_t OTA_CODE_SIZE           = 16;
 
+    /** @brief Selects metric or imperial presentation units. */
     enum class Units            : uint8_t {METRIC, IMPERIAL};
+    /** @brief Selects a supported physical display rotation. */
     enum class TFTRotation      : uint8_t {NORMAL = 1, REVERSED = 3};
+    /** @brief Selects the portable or mobile suffix appended to a callsign. */
     enum class CallsignSuffix   : uint8_t {NONE, P, M, MM, AM};
+    /** @brief Selects the displayed geographic-coordinate notation. */
     enum class CoordinateFormat : uint8_t {DD, DDM, DMS};
+    /** @brief Selects when Wi-Fi is enabled during application startup. */
     enum class WifiBootMode     : uint8_t {NEVER, ALWAYS, LAST_STATE};
+    /** @brief Identifies a persisted SOTA or POTA selection. */
     enum class OtaType          : uint8_t {NONE, SOTA, POTA};
 
+    /** @brief Persistent affine calibration parameters for touch input. */
     struct Calibration {
         bool swapXY     = false;
         bool invertX    = false;
@@ -53,12 +66,14 @@ namespace services::settings {
         float coeffYC   = 0.0;
     };
 
+    /** @brief Persistent battery voltage limits and critical ratio. */
     struct Battery {
         float minimal     = 0.0f;
         float maximal     = 0.0f;
         uint8_t ratioHigh = 0;
     };
 
+    /** @brief Persistent general display and operator settings. */
     struct General {
         char callsign[CALLSIGN_SIZE] {};
         CallsignSuffix suffix             = CallsignSuffix::NONE;
@@ -66,6 +81,7 @@ namespace services::settings {
         CoordinateFormat coordinateFormat = CoordinateFormat::DDM;
     };
 
+    /** @brief Persistent Wi-Fi credentials and startup policy. */
     struct Wifi {
         char ssid[WIFI_SSID_SIZE]         {};
         char password[WIFI_PASSWORD_SIZE] {};
@@ -73,6 +89,7 @@ namespace services::settings {
         bool lastEnabled      = false;
     };
 
+    /** @brief Persistent OTA reference selected for the main screen. */
     struct OtaSelection {
         OtaType type = OtaType::NONE;
         char code[OTA_CODE_SIZE] {};
@@ -80,7 +97,6 @@ namespace services::settings {
 
     /**
      * Initializes the settings service.
-     * @return true if the persistent NVS backend was initialized successfully, false otherwise.
      */
     void begin();
 
@@ -237,7 +253,10 @@ namespace services::settings {
      */
     bool shouldConnectWifiAtBoot();
 
+    /** @brief Loads the OTA type and code selected for the main screen. */
     bool getOtaSelection(OtaSelection &selection);
+    /** @brief Persists the OTA type and reference selected by the user. */
     bool setOtaSelection(OtaType type, const char* code);
+    /** @brief Removes the persisted OTA selection. */
     bool resetOtaSelection();
 }

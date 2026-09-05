@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -25,31 +25,52 @@
 #include <MSP4021.h>
 
 namespace screens::main::locator {
-    void setLocator     (const char* value);
-    void setStatusTop   (const char* value);
+    /** @brief Stores the current locator for the next complete draw. */
+    void setLocator(const char* value);
+    /** @brief Stores the lower status text for the next complete draw. */
     void setStatusBottom(const char* value);
-    void setOTACode    (const char* value);
-    void setOTABearing (const char* value);
+    /** @brief Stores the selected OTA code. */
+    void setOTACode(const char* value);
+    /** @brief Stores the selected OTA bearing. */
+    void setOTABearing(const char* value);
+    /** @brief Stores the selected OTA distance. */
     void setOTADistance(const char* value);
-    void setOTAPoints  (const char* value);
+    /** @brief Stores the selected OTA points. */
+    void setOTAPoints(const char* value);
+    /** @brief Stores the selected OTA altitude. */
     void setOTAAltitude(const char* value);
-    void setMarkLocator (const char* value);
-    void setMarkBearing (const char* value);
+    /** @brief Stores the marked-QTH locator. */
+    void setMarkLocator(const char* value);
+    /** @brief Stores the marked-QTH bearing. */
+    void setMarkBearing(const char* value);
+    /** @brief Stores the marked-QTH distance. */
     void setMarkDistance(const char* value);
-    void setMarkTimer   (const char* value);
+    /** @brief Stores the marked-QTH elapsed-time text. */
+    void setMarkTimer(const char* value);
 
-    void updateLocator      (ST7796S::MSP4021 &tft, const char* value);
-    void updateStatusTop    (ST7796S::MSP4021 &tft, const char* value);
-    void updateStatusBottom (ST7796S::MSP4021 &tft, const char* value);
-    void updateOTACode     (ST7796S::MSP4021 &tft, const char* value);
-    void updateOTABearing  (ST7796S::MSP4021 &tft, const char* value);
-    void updateOTADistance (ST7796S::MSP4021 &tft, const char* value);
-    void updateOTAPoints   (ST7796S::MSP4021 &tft, const char* value);
-    void updateOTAAltitude (ST7796S::MSP4021 &tft, const char* value);
-    void updateMarkLocator  (ST7796S::MSP4021 &tft, const char* value);
-    void updateMarkBearing  (ST7796S::MSP4021 &tft, const char* value);
-    void updateMarkDistance (ST7796S::MSP4021 &tft, const char* value);
-    void updateMarkTimer    (ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the current locator. */
+    void updateLocator(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the lower status text. */
+    void updateStatusBottom(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the selected OTA code. */
+    void updateOTACode(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the selected OTA bearing. */
+    void updateOTABearing(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the selected OTA distance. */
+    void updateOTADistance(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the selected OTA points. */
+    void updateOTAPoints(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the selected OTA altitude. */
+    void updateOTAAltitude(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the marked-QTH locator. */
+    void updateMarkLocator(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the marked-QTH bearing. */
+    void updateMarkBearing(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the marked-QTH distance. */
+    void updateMarkDistance(ST7796S::MSP4021 &tft, const char* value);
+    /** @brief Replaces and redraws the marked-QTH elapsed time. */
+    void updateMarkTimer(ST7796S::MSP4021 &tft, const char* value);
 
+    /** @brief Draws the complete locator, OTA and marked-QTH panel. */
     void draw(ST7796S::MSP4021 &tft);
 }

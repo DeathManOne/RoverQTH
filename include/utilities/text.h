@@ -38,6 +38,10 @@ namespace utilities::text {
      */
     bool copy(char* destination, size_t destinationSize, const char* source);
 
+    /** @brief Checks that a string contains a null terminator within its capacity. */
+    bool isTerminated(const char* text, size_t capacity);
+
+    /** @brief Checks whether a string begins with the supplied prefix. */
     bool startsWith(const char* text, const char* prefix);
 
     /**

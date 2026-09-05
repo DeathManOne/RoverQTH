@@ -25,11 +25,11 @@
 #include <cstdint>
 
 namespace services::power {
+    /** @brief Identifies the event that requested device shutdown. */
     enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
 
     /**
      * Initializes the power management service.
-     * @return true if the service was successfully initialized, false otherwise.
      */
     void begin();
 

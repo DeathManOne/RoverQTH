@@ -28,15 +28,20 @@
 #include <cstdint>
 #include <MSP4021.h>
 
-#include "ui/fonts/RobotoMono_Bold_16.h"
-#include "ui/fonts/RobotoMono_Regular_14.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
+#include "ui/widgets/buttons.h"
+
+#include "ui/fonts/RobotoMono_Bold_16.h"
+#include "ui/fonts/RobotoMono_Regular_14.h"
 
 namespace screens::menu {
+    /** @brief Base contract and shared drawing helpers for menu pages. */
     class Page {
         public:
+            /** @brief Selects the normal grid or keyboard presentation mode. */
             enum class Mode {GRID, KEYBOARD};
+            /** @brief Rectangular layout area assigned to a menu field. */
             struct Area {
                 int x = 0;
                 int y = 0;
@@ -44,6 +49,7 @@ namespace screens::menu {
                 int h = 0;
             };
 
+            /** @brief Describes one labeled menu field and its associated action. */
             template<typename _Action>
             struct Field {
                 Area area;
@@ -53,19 +59,25 @@ namespace screens::menu {
                 uint16_t color = ui::settings::themes::defaults::WHITE;
             };
 
+            /** @brief Enables safe polymorphic destruction. */
             virtual ~Page() = default;
+            /** @brief Draws the complete menu page. */
             virtual void draw       (ST7796S::MSP4021 &tft) = 0;
+            /** @brief Refreshes dynamic values displayed by the page. */
             virtual void update     (ST7796S::MSP4021 &tft) {}
+            /** @brief Handles a mapped touch event for the page. */
             virtual bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) { return false; }
 
+            /** @brief Reports whether the page currently displays its keyboard. */
             virtual bool isEditing() const { return _mode == Mode::KEYBOARD; }
+            /** @brief Returns the page to its normal grid mode. */
             virtual void reset()           { _mode = Mode::GRID; }
         protected:
             Mode _mode = Mode::GRID;
             static void _drawTitle(ST7796S::MSP4021 &tft, int x, int y, int w, int h, int gap, const char* title) {
                 char upper[32];
                 size_t i = 0;
-                while (title[i] != '\0' && i < sizeof(upper) - 1) {
+                while (i < sizeof(upper) - 1U && title[i] != '\0') {
                     upper[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(title[i])));
                     ++i;
                 }
@@ -132,9 +144,12 @@ namespace screens::menu {
 
             template<typename _Action>
             static bool _isPressed(const Field<_Action> &field, int tx, int ty) {
-                return
-                    tx >= field.area.x && tx < field.area.x + field.area.w &&
-                    ty >= field.area.y && ty < field.area.y + field.area.h;
+                const ui::widgets::buttons::ButtonArea area =
+                    ui::widgets::buttons::makeArea(
+                        field.area.x, field.area.y,
+                        field.area.w, field.area.h
+                    );
+                return ui::widgets::buttons::isPressed(area, tx, ty);
             }
     };
 }

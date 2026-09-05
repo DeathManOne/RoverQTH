@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -39,8 +39,12 @@ namespace {
     bool _fits(const char* const value, const size_t capacity) {
         if (value == nullptr || capacity == 0U) { return false; }
 
-        for (size_t index = 0U; index < capacity; ++index) {
-            if (value[index] == '\0')
+        for (
+            size_t characterIndex = 0U;
+            characterIndex < capacity;
+            ++characterIndex
+        ) {
+            if (value[characterIndex] == '\0')
                 { return true; }
         }
         return false;

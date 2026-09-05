@@ -23,13 +23,20 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays and edits battery voltage and threshold settings. */
     class Battery final : public Page {
         public:
+            /** @copydoc Page::draw() */
             void draw       (ST7796S::MSP4021 &tft) override;
+            /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
             enum class _Action {NONE, MINIMAL, MAXIMAL, RATIO_HIGH, RATIO_LOW};
@@ -59,6 +66,6 @@ namespace screens::menu {
 
             static uint8_t _nextRatioHigh(uint8_t value);
             static uint8_t _previousRatioHigh(uint8_t value);
-            void _actionRatio(ST7796S::MSP4021 &tft, Field<_Action> &field);
+            void _actionRatio(ST7796S::MSP4021 &tft, const Field<_Action> &field);
     };
 }

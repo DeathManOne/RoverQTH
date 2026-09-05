@@ -23,12 +23,18 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays SD-card presence, type and capacity information. */
     class Storage final : public Page {
         public:
+            /** @copydoc Page::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
         private:
             enum class _Action {NONE};

@@ -59,10 +59,10 @@ void right::clear(ST7796S::MSP4021 &tft) {
 void right::draw(ST7796S::MSP4021 &tft) {
     const int gap = uiMockup::GAP;
 
-    _area.outerX = grid::outerWidth() + gap;
-    _area.outerY = header::outerHeight() + gap;
-    _area.outerW = tft.width() - _area.outerX;
-    _area.outerH = tft.height() - _area.outerY;
+    _area.outerX = grid::outerX()   + grid::outerWidth()    + gap;
+    _area.outerY = header::outerY() + header::outerHeight() + gap;
+    _area.outerW = tft.width()      - _area.outerX;
+    _area.outerH = tft.height()     - _area.outerY;
 
     _area.innerX = _area.outerX + gap;
     _area.innerY = _area.outerY + gap;
@@ -79,7 +79,6 @@ void right::draw(ST7796S::MSP4021 &tft) {
         _area.outerW,     _area.outerH,
         uiMockup::RADIUS, theme::BORDER
     );
-
 }
 
 int right::outerX()        { return _area.outerX; }

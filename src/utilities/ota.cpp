@@ -22,20 +22,12 @@
  */
 
 #include <cmath>
+
+#include "utilities/distance.h"
 #include "utilities/ota.h"
 
-namespace ota = utilities::ota;
-
-namespace {
-    bool _validCode(const char* const code) {
-        if (code == nullptr || code[0] == '\0') { return false; }
-        for (size_t index = 0U; index < ota::CODE_SIZE; ++index) {
-            if (code[index] == '\0')
-                { return true; }
-        }
-        return false;
-    }
-}
+namespace distance = utilities::distance;
+namespace ota      = utilities::ota;
 
 bool ota::normalizeCodePrefix(const char* const input, char* const output, const size_t outputSize) {
     if (output == nullptr || outputSize == 0U) { return false; }
@@ -73,36 +65,65 @@ bool ota::normalizeCodePrefix(const char* const input, char* const output, const
     return true;
 }
 
-void ota::clear(SearchResults &results) {
-    results = {};
+bool ota::isNormalizedCodePrefix(const char* const prefix, const size_t prefixSize) {
+    if (
+        prefix == nullptr ||
+        prefixSize == 0U ||
+        prefix[0] == '\0'
+    ) {
+        return false;
+    }
+
+    for (size_t index = 0U; index < prefixSize; ++index) {
+        const char character = prefix[index];
+
+        if (character == '\0') {
+            return true;
+        }
+
+        if (
+            !(
+                (character >= 'A' && character <= 'Z') ||
+                (character >= '0' && character <= '9')
+            )
+        ) {
+            return false;
+        }
+    }
+
+    return false;
 }
 
-bool ota::retainNearest(SearchResults &results, const SearchResult &candidate) {
-    if (results.count > RESULT_CAPACITY) { return false; }
+bool ota::isValidSearchArea(const double latitude, const double longitude, const double radiusKm) {
+    return
+        std::isfinite(latitude) && std::isfinite(longitude) && std::isfinite(radiusKm) &&
+        latitude  >= -90.0  && latitude  <= 90.0  &&
+        longitude >= -180.0 && longitude <= 180.0 &&
+        radiusKm  >= 0.0;
+}
 
-    if (!_validCode(candidate.code) ||
-        !std::isfinite(candidate.distanceKm) ||
-        candidate.distanceKm < 0.0
+bool ota::selectNearestDistance(
+    const double latitude,          const double longitude,
+    const double candidateLatitude, const double candidateLongitude,
+    const bool found, double &distanceKm, bool &selected
+) {
+    selected = false;
+
+    if (
+        !isValidSearchArea(latitude, longitude, 0.0)                   ||
+        !isValidSearchArea(candidateLatitude, candidateLongitude, 0.0) ||
+        (found && (!std::isfinite(distanceKm) || distanceKm < 0.0))
     ) { return false; }
 
-    size_t insertionIndex = 0U;
-    while (insertionIndex < results.count &&
-           results.items[insertionIndex].distanceKm <= candidate.distanceKm
-    ) { ++insertionIndex; }
+    const double candidateDistance = distance::betweenKilometers(
+        latitude,          longitude,
+        candidateLatitude, candidateLongitude
+    );
 
-    if (results.count == RESULT_CAPACITY &&
-        insertionIndex == RESULT_CAPACITY
-    ) { return false; }
-
-    const size_t lastIndex =
-        results.count < RESULT_CAPACITY
-            ? results.count
-            : RESULT_CAPACITY - 1U;
-
-    for (size_t index = lastIndex; index > insertionIndex; --index)
-        { results.items[index] = results.items[index - 1U]; }
-    results.items[insertionIndex] = candidate;
-
-    if (results.count < RESULT_CAPACITY) { ++results.count; }
+    if (!std::isfinite(candidateDistance)) { return false; }
+    if (!found || candidateDistance < distanceKm) {
+        distanceKm = candidateDistance;
+        selected   = true;
+    }
     return true;
 }

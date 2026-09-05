@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,6 +27,18 @@
 #include <cstdint>
 
 namespace services::gps {
+    /** @brief Requested GNSS navigation solution rate in hertz. */
+    constexpr uint8_t NAVIGATION_RATE_HZ   = 5U;
+    /** @brief Upper HDOP threshold for a good-quality position. */
+    constexpr double HDOP_GOOD             = 2.0;
+    /** @brief Upper HDOP threshold for a fair-quality position. */
+    constexpr double HDOP_FAIR             = 5.0;
+    /** @brief Minimum satellite count expected for a position fix. */
+    constexpr uint8_t SAT_MIN_FIX          = 4U;
+    /** @brief Minimum speed used before accepting course as heading. */
+    constexpr double MIN_HEADING_SPEED_KMH = 2.0;
+
+    /** @brief Thread-safe copy of the latest GNSS navigation solution. */
     struct Snapshot {
         double latitude;
         double longitude;
@@ -57,7 +69,6 @@ namespace services::gps {
      * @param tx        UART TX pin.
      * @param finalBaud Target baud rate.
      * @param timeout Initialization timeout in seconds.
-     * @return true if the GPS was successfully initialized, false otherwise.
      */
     void begin(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
 
@@ -72,6 +83,7 @@ namespace services::gps {
      */
     bool restart(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
 
+    /** @brief Reports whether the GNSS receiver was initialized successfully. */
     bool isInitialized();
 
     /**

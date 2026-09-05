@@ -50,7 +50,6 @@ namespace services::storage {
      * Initializes the storage service.
      * @param spi        SPI bus used to access the SD card.
      * @param timeoutSec Maximum initialization time in seconds.
-     * @return true if the storage service was successfully initialized, false otherwise.
      */
     void begin(SPIClass &spi, uint32_t timeoutSec = 10);
 
@@ -145,8 +144,18 @@ namespace services::storage {
      */
     bool appendFile(const char* path, const uint8_t* data, size_t length);
 
+    /**
+     * @brief Opens one file for a sequential write transaction.
+     * @param path Destination file path.
+     * @return true when the transaction was opened successfully.
+     */
     bool beginFileWrite(const char* path);
+    /**
+     * @brief Writes one binary block to the active sequential transaction.
+     * @return true when the complete block was written.
+     */
     bool writeFileChunk(const uint8_t* data, size_t length);
+    /** @brief Flushes and closes the active sequential write transaction. */
     void endFileWrite();
 
     /**

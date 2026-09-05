@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -20,6 +20,8 @@
  * along with RoverQTH.
  * If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include "RoverQTH.h"
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -40,23 +42,20 @@
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
-#include "ui/settings/gps.h"
-#include "RoverQTH.h"
 
-namespace boot        = core::boot;
-namespace battery     = services::battery;
-namespace sDisplay    = services::display;
-namespace gps         = services::gps;
-namespace navigation  = services::navigation;
-namespace ota         = services::ota;
-namespace power       = services::power;
-namespace qth         = services::qth;
-namespace settings    = services::settings;
-namespace storage     = services::storage;
-namespace update      = services::update;
-namespace wifi        = services::wifi;
-namespace gpsSettings = ui::settings::gps;
-namespace app         = RoverQTH;
+namespace boot       = core::boot;
+namespace battery    = services::battery;
+namespace sDisplay   = services::display;
+namespace gps        = services::gps;
+namespace navigation = services::navigation;
+namespace ota        = services::ota;
+namespace power      = services::power;
+namespace qth        = services::qth;
+namespace settings   = services::settings;
+namespace storage    = services::storage;
+namespace update     = services::update;
+namespace wifi       = services::wifi;
+namespace app        = RoverQTH;
 
 namespace {
     SPIClass _sdSPI(HSPI);
@@ -64,9 +63,8 @@ namespace {
 
     uint32_t _nextScreenRefresh  = 0;
     uint32_t _nextBatteryRefresh = 0;
-    TaskHandle_t _gpsTaskHandle  = nullptr;
 
-    constexpr uint32_t GPS_SAMPLE_PERIOD_MS  = 1000 / gpsSettings::NAVIGATION_RATE_HZ;
+    constexpr uint32_t GPS_SAMPLE_PERIOD_MS = 1000U / gps::NAVIGATION_RATE_HZ;
     constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = GPS_SAMPLE_PERIOD_MS + 100;
     constexpr uint32_t SCREEN_REFRESH_MS     = 1000;
     constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
@@ -74,12 +72,20 @@ namespace {
     void _gpsTask(void*) {
         while (true) {
             const uint32_t startMs = millis();
-            gps::update(GPS_UPDATE_TIMEOUT_MS);
+            const bool updated = gps::update(GPS_UPDATE_TIMEOUT_MS);
 
             gps::Snapshot snapshot {};
-            if (gps::getSnapshot(snapshot)) {
-                const navigation::Coordinate coordinate { snapshot.latitude, snapshot.longitude, snapshot.altitude};
-                navigation::updateGPSFix(coordinate, snapshot.fixValid && snapshot.positionValid);
+            if (updated && gps::getSnapshot(snapshot)) {
+                const navigation::Coordinate coordinate {
+                    snapshot.latitude,
+                    snapshot.longitude,
+                    snapshot.altitude
+                };
+
+                navigation::updateGPSFix(
+                    coordinate,
+                    snapshot.fixValid && snapshot.positionValid
+                );
             } else { navigation::updateGPSFix({}, false); }
 
             const uint32_t elapsedMs = millis() - startMs;
@@ -141,7 +147,7 @@ void app::setup() {
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
 
     const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(
-        _gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0
+        _gpsTask, "GNSS", 8192, nullptr, 1, nullptr, 0
     );
 
     if (gpsTaskResult != pdPASS) { storage::appendErrorRecord("GPS_TASK_CREATE_FAILED"); }

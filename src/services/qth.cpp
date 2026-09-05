@@ -181,15 +181,23 @@ namespace {
         if (id == nullptr) { return false; }
 
         constexpr size_t ID_LENGTH = 26U;
-        for (size_t index = 0U; index < ID_LENGTH; ++index) {
-            if (index == 8U || index == 15U) {
-                if (id[index] != '-')
+        for (
+            size_t characterIndex = 0U;
+            characterIndex < ID_LENGTH;
+            ++characterIndex
+        ) {
+            if (characterIndex == 8U || characterIndex == 15U) {
+                if (id[characterIndex] != '-')
                     { return false; }
                 continue;
             }
 
-            if (id[index] < '0' || id[index] > '9')
-                { return false; }
+            if (
+                id[characterIndex] < '0' ||
+                id[characterIndex] > '9'
+            ) {
+                return false;
+            }
         }
 
         return id[ID_LENGTH] == '\0';
@@ -297,12 +305,16 @@ namespace {
         const bool read = storage::readFileLines(FILE_QTH_TRACE, _mergeTraceLine, &context);
 
         if (!read || !context.valid) {
-            storage::deleteFile(FILE_QTH_FINAL_TEMPORARY);
+            if (!storage::deleteFile(FILE_QTH_FINAL_TEMPORARY)) {
+                storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED");
+            }
             return false;
         }
 
         if (!storage::appendFile(FILE_QTH_FINAL_TEMPORARY, "]}")) {
-            storage::deleteFile(FILE_QTH_FINAL_TEMPORARY);
+            if (!storage::deleteFile(FILE_QTH_FINAL_TEMPORARY)) {
+                storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED");
+            }
             return false;
         }
         return true;

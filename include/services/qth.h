@@ -25,8 +25,10 @@
 #include <cstdint>
 
 namespace services::qth {
+    /** @brief Outcome of recovering an interrupted QTH record. */
     enum class RecoveryStatus : uint8_t {NONE, RECORDING_RESTORED, RECORD_FINALIZED, ERROR};
 
+    /** @brief Timestamped geographic point persisted in a QTH trace. */
     struct TracePoint {
         uint32_t utc     = 0U;
         double latitude  = 0.0;

@@ -1,0 +1,15 @@
+* text=auto
+.gitattributes text eol=lf
+
+*.h    text eol=lf
+*.cpp  text eol=lf
+*.ino  text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.json text eol=lf
+*.ini  text eol=lf
+
+*.bin  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary

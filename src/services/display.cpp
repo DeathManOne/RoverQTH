@@ -1,3 +1,28 @@
+/*
+ * src/services/display.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "services/display.h"
+
 #include <Arduino.h>
 #include <array>
 #include <cstddef>
@@ -8,7 +33,6 @@
 #include "screens/main.h"
 #include "screens/menu.h"
 #include "screens/ota.h"
-#include "services/display.h"
 #include "services/navigation.h"
 #include "services/ota.h"
 #include "services/qth.h"
@@ -23,7 +47,8 @@ namespace services::display {
 
     static bool loadTouchCalibration();
     static bool calibrateTouch();
-    static void applyTouchCalibration(settings::Calibration &calibration);
+    static void runTouchCalibration();
+    static void applyTouchCalibration(const settings::Calibration &calibration);
     static void readTouchCalibration(settings::Calibration &calibration);
     static void clear();
 
@@ -38,15 +63,15 @@ namespace services::display {
     static bool isOtaEditing();
 }
 
-namespace service  = services::display;
-namespace state    = services::display;
-namespace navigation = services::navigation;
-namespace ota      = services::ota;
-namespace qth      = services::qth;
-namespace settings = services::settings;
-namespace storage  = services::storage;
-namespace theme    = ui::settings::themes::defaults;
-namespace buttons  = ui::widgets::buttons;
+namespace service       = services::display;
+namespace state         = services::display;
+namespace navigation    = services::navigation;
+namespace ota           = services::ota;
+namespace qth           = services::qth;
+namespace settings      = services::settings;
+namespace storage       = services::storage;
+namespace theme         = ui::settings::themes::defaults;
+namespace buttons       = ui::widgets::buttons;
 namespace mockupButtons = ui::mockup::buttons;
 
 namespace {
@@ -67,6 +92,8 @@ namespace {
     screens::Screen* _currentScreen = &_mainScreen;
 
     uint32_t _lastTouchMs = 0U;
+    bool _touchPressed    = false;
+
     constexpr uint32_t TOUCH_DEBOUNCE_MS = 180U;
 
     ST7796S::MSP4021& _tft() { return *_tftInstance; }
@@ -92,7 +119,7 @@ namespace {
 
     void _resetState() {
         _currentScreenId = ScreenId::MAIN;
-        _currentScreen = &_mainScreen;
+        _currentScreen   = &_mainScreen;
         _buttonStates.fill(state::ButtonState::UNAVAILABLE);
 
         mockupButtons::setState(
@@ -107,6 +134,9 @@ namespace {
             mockupButtons::Id::MENU,
             mockupButtons::State::UNAVAILABLE
         );
+
+        _lastTouchMs  = 0U;
+        _touchPressed = false;
     }
 
     void _setScreen(const ScreenId screen) {
@@ -129,17 +159,36 @@ namespace {
     }
 
     void _syncOtaAvailability() {
-        if (state::buttonState(state::Button::OTA) != state::ButtonState::UNAVAILABLE)
-            { return; }
-
         const bool summitsAvailable =
             ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE;
+
         const bool parksAvailable =
             ota::snapshot(ota::Type::PARKS).status != ota::Status::UNAVAILABLE;
 
-        if (!summitsAvailable && !parksAvailable) { return; }
+        const bool available = summitsAvailable || parksAvailable;
+        const state::ButtonState current =
+            state::buttonState(state::Button::OTA);
 
-        state::setButtonState(state::Button::OTA, state::ButtonState::READY);
+        if (available) {
+            if (current != state::ButtonState::UNAVAILABLE) {
+                return;
+            }
+
+            state::setButtonState(
+                state::Button::OTA,
+                state::ButtonState::READY
+            );
+        } else {
+            if (current == state::ButtonState::UNAVAILABLE) {
+                return;
+            }
+
+            state::setButtonState(
+                state::Button::OTA,
+                state::ButtonState::UNAVAILABLE
+            );
+        }
+
         mockupButtons::updateOTA(_tft());
     }
 
@@ -155,7 +204,10 @@ namespace {
             }
 
             if (!qth::resetTrace()) {
-                qth::discardTemporaryRecord();
+                if (!qth::discardTemporaryRecord()) {
+                    storage::appendErrorRecord("QTH_TEMP_DELETE_FAILED");
+                }
+
                 navigation::clearMark();
                 storage::appendErrorRecord("QTH_TRACE_CREATE_FAILED");
                 return;
@@ -211,6 +263,7 @@ namespace {
         }
 
         if (!qth::saveCurrentRecord()) {
+            storage::appendErrorRecord("QTH_RECORD_SAVE_FAILED");
             state::setButtonState(state::Button::MARK_QTH, state::ButtonState::RUNNING);
             mockupButtons::updateMARK(_tft());
             service::updateMainMARK();
@@ -290,7 +343,15 @@ namespace {
         }
 
         if (buttons::isPressed(buttons::ota, x, y)) {
-            state::setButtonState(state::Button::OTA, state::ButtonState::READY);
+            if (
+                state::buttonState(state::Button::OTA) !=
+                state::ButtonState::UNAVAILABLE
+            ) {
+                state::setButtonState(
+                    state::Button::OTA,
+                    state::ButtonState::READY
+                );
+            }
             _setScreen(ScreenId::MAIN);
             service::draw();
             return true;
@@ -299,7 +360,15 @@ namespace {
         if (state::buttonState(state::Button::MENU) != state::ButtonState::UNAVAILABLE &&
             buttons::isPressed(buttons::menu, x, y)
         ) {
-            state::setButtonState(state::Button::OTA, state::ButtonState::READY);
+            if (
+                state::buttonState(state::Button::OTA) !=
+                state::ButtonState::UNAVAILABLE
+            ) {
+                state::setButtonState(
+                    state::Button::OTA,
+                    state::ButtonState::READY
+                );
+            }
             state::setButtonState(state::Button::MENU, state::ButtonState::RUNNING);
             _setScreen(ScreenId::MENU);
             service::draw();
@@ -318,10 +387,8 @@ void service::begin() {
         _tftInstance = new ST7796S::MSP4021(
             _tftSPI,
             TFT_TOUCH_CS,
-            TFT_SCREEN_CS,
-            TFT_SCREEN_DC,
-            TFT_WIDTH,
-            TFT_HEIGHT,
+            TFT_SCREEN_CS, TFT_SCREEN_DC,
+            TFT_WIDTH,     TFT_HEIGHT,
             TFT_SCREEN_RST
         );
     }
@@ -329,18 +396,20 @@ void service::begin() {
     _tft().setRotation(static_cast<uint8_t>(settings::getTFTRotation()));
 
     if (loadTouchCalibration()) { return; }
-    while (!calibrateTouch()) { delay(10); }
+    runTouchCalibration();
 }
 
 service::ButtonState service::buttonState(const Button button) {
-    const size_t index = static_cast<size_t>(button);
-    if (index >= _buttonStates.size()) { return ButtonState::UNAVAILABLE; }
-    return _buttonStates[index];
+    const size_t buttonIndex = static_cast<size_t>(button);
+    if (buttonIndex >= _buttonStates.size()) {
+        return ButtonState::UNAVAILABLE;
+    }
+    return _buttonStates[buttonIndex];
 }
 
 void service::setButtonState(const Button button, const ButtonState state) {
-    const size_t index = static_cast<size_t>(button);
-    if (index >= _buttonStates.size()) { return; }
+    const size_t buttonIndex = static_cast<size_t>(button);
+    if (buttonIndex >= _buttonStates.size()) { return; }
 
     switch (state) {
         case ButtonState::UNAVAILABLE:
@@ -351,7 +420,7 @@ void service::setButtonState(const Button button, const ButtonState state) {
             return;
     }
 
-    _buttonStates[index] = state;
+    _buttonStates[buttonIndex] = state;
     mockupButtons::setState(
         _visualButtonId(button),
         _visualButtonState(state)
@@ -390,7 +459,13 @@ bool service::calibrateTouch() {
     return loadTouchCalibration();
 }
 
-void service::applyTouchCalibration(settings::Calibration &calibration) {
+void service::runTouchCalibration() {
+    while (!service::calibrateTouch()) {
+        delay(10);
+    }
+}
+
+void service::applyTouchCalibration(const settings::Calibration &calibration) {
     _tft().TCalibrate(
         calibration.swapXY,
         calibration.invertX,
@@ -427,19 +502,23 @@ void service::clear() {
     _tft().fillScreen(theme::BLACK);
 }
 
-void service::updateMainMARK() { _mainScreen.updateMARK(_tft()); }
+void service::updateMainMARK() {
+    _mainScreen.updateMARK(_tft());
+}
 
 bool service::handleMenuTouch(int x, int y) {
     const bool handled = _menuScreen.handleTouch(_tft(), x, y);
 
     switch (_menuScreen.takeDisplayRequest()) {
         case screens::menu::Displayer::Request::RELOAD_TOUCH_CALIBRATION:
-            service::loadTouchCalibration();
+            if (!service::loadTouchCalibration()) {
+                service::runTouchCalibration();
+            }
             service::clear();
             _menuScreen.draw(_tft());
             break;
         case screens::menu::Displayer::Request::RECALIBRATE_TOUCH:
-            while (!service::calibrateTouch()) { delay(10); }
+            service::runTouchCalibration();
             service::clear();
             _menuScreen.draw(_tft());
             break;
@@ -450,29 +529,62 @@ bool service::handleMenuTouch(int x, int y) {
 
     return handled;
 }
-bool service::isMenuEditing() { return _menuScreen.isEditing(); }
-void service::resetMenu() { _menuScreen.reset(); }
 
-void service::drawOta() { _otaScreen.draw(_tft()); }
+bool service::isMenuEditing() {
+    return _menuScreen.isEditing();
+}
+
+void service::resetMenu() {
+    _menuScreen.reset();
+}
+
+void service::drawOta() {
+    _otaScreen.draw(_tft());
+}
+
 bool service::handleOtaTouch(int x, int y) {
     return _otaScreen.handleTouch(_tft(), x, y);
 }
-bool service::isOtaEditing() { return _otaScreen.isEditing(); }
 
-void service::clearBoot() { _bootScreen.clear(_tft()); }
-void service::drawBoot() { _bootScreen.draw(_tft()); }
-void service::drawBootLogo() { _bootScreen.drawLogo(_tft()); }
-void service::updateBootWifi(bool* value) { _bootScreen.updateWifi(_tft(), value); }
-void service::updateBootSD(bool* value) { _bootScreen.updateSD(_tft(), value); }
-void service::updateBootGPS(bool* value) { _bootScreen.updateGPS(_tft(), value); }
+bool service::isOtaEditing() {
+    return _otaScreen.isEditing();
+}
+
+void service::clearBoot() {
+    _bootScreen.clear(_tft());
+}
+
+void service::drawBoot() {
+    _bootScreen.draw(_tft());
+}
+
+void service::drawBootLogo() {
+    _bootScreen.drawLogo(_tft());
+}
+
+void service::updateBootWifi(const bool* value) {
+    _bootScreen.updateWifi(_tft(), value);
+}
+
+void service::updateBootSD(const bool* value) {
+    _bootScreen.updateSD(_tft(), value);
+}
+
+void service::updateBootGPS(const bool* value) {
+    _bootScreen.updateGPS(_tft(), value);
+}
+
 void service::updateBootGPSProgress(uint8_t progress) {
     _bootScreen.updateGPSProgress(_tft(), progress);
 }
+
 bool service::handleBootTouch(int x, int y) {
     return _bootScreen.handleTouch(x, y);
 }
 
-void service::start() { service::draw(); }
+void service::start() {
+    service::draw();
+}
 
 void service::draw() {
     _currentScreen->preload();
@@ -486,12 +598,28 @@ void service::update(uint32_t &nextRefreshIn) {
 
 void service::handleTouch() {
     int x, y;
-    if (!service::readTouch(x, y) || _touchDebounced()) { return; }
+
+    if (!service::readTouch(x, y)) {
+        _touchPressed = false;
+        return;
+    }
+
+    if (_touchPressed || _touchDebounced()) {
+        return;
+    }
+
+    _touchPressed = true;
 
     switch (_currentScreenId) {
-        case ScreenId::MAIN: _handleMainTouch(x, y); break;
-        case ScreenId::MENU: _handleMenuTouch(x, y); break;
-        case ScreenId::OTA: _handleOtaTouch(x, y); break;
+        case ScreenId::MAIN:
+            _handleMainTouch(x, y);
+            break;
+        case ScreenId::MENU:
+            _handleMenuTouch(x, y);
+            break;
+        case ScreenId::OTA:
+            _handleOtaTouch(x, y);
+            break;
         default: break;
     }
 }

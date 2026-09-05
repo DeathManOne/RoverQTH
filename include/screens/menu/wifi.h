@@ -24,23 +24,29 @@
 #pragma once
 
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
 #include "services/settings.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays and edits Wi-Fi credentials, boot mode and connection state. */
     class Wifi final : public Page {
         public:
+            /** @copydoc Page::draw() */
             void draw       (ST7796S::MSP4021 &tft) override;
+            /** @copydoc Page::update() */
             void update     (ST7796S::MSP4021 &tft) override;
+            /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
             enum class _Action {NONE, BOOT_MODE, SSID, PASS, LOGIN};
             _Action _editingAction = _Action::NONE;
 
-            char _wifiStatusValue[32] = "";
-            char _wifiSsidValue[64]   = "";
-            char _wifiPassValue[64]   = "";
-            char _wifiLoginValue[32]  = "";
+            char _wifiStatusValue[sizeof("Not connected")]          = "";
+            char _wifiSsidValue[services::settings::WIFI_SSID_SIZE] = "";
+            char _wifiPassValue[sizeof("*****")]                    = "";
+            char _wifiLoginValue[sizeof("Logout")]                  = "";
 
             Field<_Action> _wifiStatusField   = _makeField("Status",          _Action::NONE,      ui::settings::themes::defaults::WHITE);
             Field<_Action> _wifiSsidField     = _makeField("SSID",            _Action::SSID,      ui::settings::themes::defaults::GREEN);

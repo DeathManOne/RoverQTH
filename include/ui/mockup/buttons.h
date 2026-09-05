@@ -25,15 +25,23 @@
 #include <MSP4021.h>
 
 namespace ui::mockup::buttons {
+    /** @brief Identifies each persistent navigation button. */
     enum class Id {MARK_QTH, OTA, MENU, COUNT};
+    /** @brief Visual and interaction state of a persistent button. */
     enum class State {UNAVAILABLE, READY, RUNNING};
 
+    /** @brief Changes the state retained for one persistent button. */
     void setState(Id id, State state);
 
-    void clear     (ST7796S::MSP4021 &tft);
-    void draw      (ST7796S::MSP4021 &tft);
+    /** @brief Clears the persistent-button area. */
+    void clear(ST7796S::MSP4021 &tft);
+    /** @brief Draws all persistent navigation buttons. */
+    void draw(ST7796S::MSP4021 &tft);
 
+    /** @brief Redraws the marked-QTH button. */
     void updateMARK(ST7796S::MSP4021 &tft);
+    /** @brief Redraws the OTA button. */
     void updateOTA(ST7796S::MSP4021 &tft);
+    /** @brief Redraws the menu button. */
     void updateMENU(ST7796S::MSP4021 &tft);
 }

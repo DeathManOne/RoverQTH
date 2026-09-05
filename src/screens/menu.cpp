@@ -21,17 +21,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "screens/main/title.h"
 #include "screens/menu.h"
-#include "screens/menu/about.h"
-#include "screens/menu/battery.h"
-#include "screens/menu/displayer.h"
-#include "screens/menu/general.h"
+
+#include "screens/header.h"
 #include "screens/menu/navigation.h"
-#include "screens/menu/wifi.h"
-#include "screens/menu/page.h"
-#include "screens/menu/storage.h"
-#include "screens/menu/updates.h"
 #include "services/dtc.h"
 #include "ui/mockup/buttons.h"
 #include "ui/settings/themes/defaults.h"
@@ -39,7 +32,7 @@
 using screens::Menu;
 using screens::menu::Page;
 
-namespace title      = screens::main::title;
+namespace title      = screens::header;
 namespace menu       = screens::menu;
 namespace navigation = screens::menu::navigation;
 namespace dtc        = services::dtc;
@@ -115,17 +108,14 @@ void Menu::draw(ST7796S::MSP4021 &tft) {
     _currentPage().draw(tft);
 }
 
-void Menu::update(
-    ST7796S::MSP4021 &tft,
-    uint32_t &nextRefreshIn
-) {
+void Menu::update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) {
     nextRefreshIn = 1000U;
 
     if (isEditing()) { return; }
 
-    char date[16];
-    char time[16];
-    char battery[8];
+    char date[16]   = "";
+    char time[16]   = "";
+    char battery[8] = "";
 
     dtc::getDate(date, sizeof(date));
     dtc::getTime(time, sizeof(time));
@@ -137,11 +127,7 @@ void Menu::update(
     _currentPage().update(tft);
 }
 
-bool Menu::handleTouch(
-    ST7796S::MSP4021 &tft,
-    const int x,
-    const int y
-) {
+bool Menu::handleTouch(ST7796S::MSP4021 &tft, const int x, const int y) {
     if (isEditing()) {
         const bool handled = _currentPage().handleTouch(tft, x, y);
 
@@ -161,7 +147,5 @@ bool Menu::handleTouch(
         return true;
     }
 
-    const bool handled = _currentPage().handleTouch(tft, x, y);
-    if (handled && _currentItem == menu::Item::DISPLAYER) { draw(tft); }
-    return handled;
+    return _currentPage().handleTouch(tft, x, y);
 }

@@ -7,6 +7,41 @@ Versioning follows Semantic Versioning.
 
 ---
 
+## [x.xx.xx] - xxxx-xx-xx
+
+### Added
+
+- Shared stateless CSV parsing utilities
+- Shared stateless diagnostic-code processing utilities
+- Complete Doxygen documentation for public project headers
+- Git attributes enforcing consistent LF line endings
+- Concise project architecture documentation
+
+### Changed
+
+- Updated SparkFun u-blox GNSS Arduino Library from `2.2.28` to `2.2.29`
+- Consolidated shared parsing, validation and diagnostic processing in the utilities layer
+- Improved separation between databases, stateless utilities, stateful services and screens
+- Strengthened OTA database processing and service coordination
+- Harmonized naming, const-correctness and internal data handling
+
+### Fixed
+
+- Corrected unsafe bounds-check ordering in menu text processing
+- Removed local-variable shadowing reported by static analysis
+- Improved constructor safety for internal screen data structures
+- Preserved defensive validation for JSON, QTH and OTA processing
+- Removed formatting and line-ending inconsistencies
+
+### Internal
+
+- Completed file-by-file implementation, safety, lifecycle and dependency audits
+- Completed cross-component call-flow and architecture audits
+- Reviewed detailed logging placement and error handling
+- Reduced actionable static-analysis findings to zero
+
+---
+
 ## [1.10.0] - 2026-08-22
 
 ### Added

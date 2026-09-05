@@ -27,7 +27,9 @@
 #include <cstdint>
 
 namespace utilities::version {
+    /** @brief Capacity of a normalized version string, including its terminator. */
     constexpr size_t TEXT_SIZE = 16;
+    /** @brief Relative ordering returned when comparing two valid versions. */
     enum class Comparison : uint8_t {OLDER, EQUAL, NEWER};
 
     /**

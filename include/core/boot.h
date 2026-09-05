@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,5 +27,10 @@
 #include <SPI.h>
 
 namespace core::boot {
-    bool run(HardwareSerial &gpsUART, SPIClass &sdSPI);
+    /**
+     * @brief Runs the ordered hardware and service initialization sequence.
+     * @param gpsUART Serial interface connected to the GNSS receiver.
+     * @param sdSPI SPI interface connected to the SD card.
+     */
+    void run(HardwareSerial &gpsUART, SPIClass &sdSPI);
 }

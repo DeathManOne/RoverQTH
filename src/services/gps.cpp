@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,12 +27,12 @@
 #include "services/dtc.h"
 #include "services/gps.h"
 #include "services/storage.h"
-#include "ui/settings/gps.h"
+#include "utilities/dtc.h"
 
-namespace dtc      = services::dtc;
-namespace gps      = services::gps;
-namespace storage  = services::storage;
-namespace settings = ui::settings::gps;
+namespace dtc     = services::dtc;
+namespace gps     = services::gps;
+namespace storage = services::storage;
+namespace uDtc    = utilities::dtc;
 
 namespace {
     portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
@@ -77,11 +77,11 @@ namespace {
         }
 
         if (_gps->getDateValid() && _gps->getTimeValid()) {
-            const uint32_t utcEpoch = dtc::toEpochUTC(
-                    _dateYear, _dateMonth,  _dateDay,
-                    next.hour, next.minute, next.second
-                );
-            if (utcEpoch != 0) { dtc::sync(utcEpoch); }
+            const uint32_t utcEpoch = uDtc::toEpochUTC(
+                _dateYear, _dateMonth,  _dateDay,
+                next.hour, next.minute, next.second
+            );
+            if (utcEpoch != 0U) { dtc::sync(utcEpoch); }
         }
 
         portENTER_CRITICAL(&_lock);
@@ -124,7 +124,7 @@ namespace {
                 if (_gps->begin(uart)) {
                     _gps->setAutoPVT(true);
                     _gps->setAutoDOPrate(1);
-                    _gps->setNavigationFrequency(settings::NAVIGATION_RATE_HZ);
+                    _gps->setNavigationFrequency(gps::NAVIGATION_RATE_HZ);
                     _gps->setSerialRate(finalBaud);
 
                     delay(100);
@@ -223,15 +223,15 @@ uint8_t gps::getAcquisitionProgress() {
     if (snapshot.fixType >= 2U) { progress += 20U; }
     if (snapshot.fixType >= 3U) { progress += 20U; }
 
-    const bool goodHDOP      = snapshot.hdop > 0.0 && snapshot.hdop < settings::HDOP_FAIR;
-    const bool excellentHDOP = snapshot.hdop > 0.0 && snapshot.hdop < settings::HDOP_GOOD;
+    const bool goodHDOP      = snapshot.hdop > 0.0 && snapshot.hdop < gps::HDOP_FAIR;
+    const bool excellentHDOP = snapshot.hdop > 0.0 && snapshot.hdop < gps::HDOP_GOOD;
     const bool goodPDOP      = snapshot.pdop > 0.0 && snapshot.pdop < 3.0;
 
     if (goodHDOP)      { progress += 10U; }
     if (excellentHDOP) { progress += 10U; }
     if (goodPDOP)      { progress += 5U; }
 
-    if (snapshot.fixValid && snapshot.fixType >= 3U && snapshot.satellites >= settings::SAT_MIN_FIX && goodHDOP)
+    if (snapshot.fixValid && snapshot.fixType >= 3U && snapshot.satellites >= gps::SAT_MIN_FIX && goodHDOP)
         { return 100U; }
     return progress > 100U ? 100U : progress;
 }

@@ -66,10 +66,31 @@ void Storage::draw(ST7796S::MSP4021 &tft) {
 
     if (storage::readCardInfos(type, size, total, used)) {
         text::copy(_typeValue, sizeof(_typeValue), _typeToText(type));
-        format::storageCapacity(size, _capacityValue, sizeof(_capacityValue));
 
-        const uint64_t percentage = total > 0U ? (used * 100ULL) / total : 0U;
-        format::percentage(percentage, _usageValue, sizeof(_usageValue));
+        if (!format::storageCapacity(
+                size,
+                _capacityValue,
+                sizeof(_capacityValue)
+            )) {
+            text::copy(_capacityValue, sizeof(_capacityValue), "--");
+        }
+
+        if (total == 0U) {
+            text::copy(_usageValue, sizeof(_usageValue), "--");
+        } else {
+            const uint64_t percentage =
+                used >= total
+                    ? 100U
+                    : (used * 100ULL) / total;
+
+            if (!format::percentage(
+                    percentage,
+                    _usageValue,
+                    sizeof(_usageValue)
+                )) {
+                text::copy(_usageValue, sizeof(_usageValue), "--");
+            }
+        }
     } else {
         text::copy(_typeValue,     sizeof(_typeValue),      "Missing");
         text::copy(_capacityValue, sizeof(_capacityValue),  "--");

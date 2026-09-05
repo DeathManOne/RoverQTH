@@ -73,8 +73,6 @@ namespace services::update {
 
     /**
      * @brief Initializes the update service and resets its runtime state.
-     * @return true when the service state has been initialized, false if an
-     *         update or SOTA/POTA search task is active.
      */
     void begin();
 

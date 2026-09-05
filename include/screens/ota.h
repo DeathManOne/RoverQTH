@@ -1,3 +1,26 @@
+/*
+ * include/screens/ota.h
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #pragma once
 
 #include <cstddef>
@@ -10,6 +33,7 @@
 #include "ui/widgets/buttons.h"
 
 namespace screens {
+    /** @brief Provides interactive SOTA and POTA search, sorting and selection. */
     class Ota final : public Screen {
         private:
             static constexpr size_t RESULTS_PER_PAGE = 6U;
@@ -37,12 +61,9 @@ namespace screens {
 
             struct ResultsView {
                 ResultsView(
-                    ResultsViewStatus initialStatus =
-                        ResultsViewStatus::UNKNOWN,
-                    size_t initialCount = 0U
-                ) :
-                    status(initialStatus),
-                    count(initialCount) {}
+                    ResultsViewStatus initialStatus,
+                    size_t initialCount
+                ) : status(initialStatus), count(initialCount) {}
 
                 ResultsViewStatus status;
                 size_t count;
@@ -96,7 +117,8 @@ namespace screens {
                 ST7796S::MSP4021 &tft,
                 size_t visibleIndex,
                 const database::ota::SearchResult &result,
-                SelectionStatus selectionStatus
+                SelectionStatus selectionStatus,
+                bool imperial
             );
             void _drawTypeSelector(ST7796S::MSP4021 &tft);
             void _drawModeSelector(ST7796S::MSP4021 &tft);
@@ -136,20 +158,25 @@ namespace screens {
             void _drawResultsStatus(ST7796S::MSP4021 &tft);
 
         public:
+            /** @copydoc Screen::preload() */
             void preload() override;
+            /** @copydoc Screen::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
 
+            /** @copydoc Screen::update() */
             void update(
                 ST7796S::MSP4021 &tft,
                 uint32_t &nextRefreshIn
             ) override;
 
+            /** @copydoc Screen::handleTouch() */
             bool handleTouch(
                 ST7796S::MSP4021 &tft,
                 int x,
                 int y
             ) override;
 
+            /** @copydoc Screen::isEditing() */
             bool isEditing() const override;
     };
 }

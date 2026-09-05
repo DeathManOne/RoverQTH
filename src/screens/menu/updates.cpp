@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -21,9 +21,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "screens/menu/updates.h"
+
 #include <cstdio>
 
-#include "screens/menu/updates.h"
 #include "services/update.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
@@ -37,6 +38,25 @@ namespace uiMockup = ui::settings::mockup;
 namespace theme    = ui::settings::themes::defaults;
 namespace text     = utilities::text;
 
+void Updates::_setProgressStatus(Field<_Action> &field, char* const buffer, const size_t size, const char* const label, const uint8_t progress, const uint16_t color) {
+    const uint8_t boundedProgress = progress > 100U ? 100U : progress;
+    const int written = std::snprintf(
+        buffer,
+        size,
+        "%s %u%%",
+        label,
+        static_cast<unsigned int>(boundedProgress)
+    );
+
+    if (written < 0 || static_cast<size_t>(written) >= size) {
+        text::copy(buffer, size, "--");
+    }
+
+    field.value  = buffer;
+    field.action = _Action::NONE;
+    field.color  = color;
+}
+
 void Updates::_prepareFirmwareFields() {
     const update::FirmwareSnapshot snapshot  = update::firmwareSnapshot();
     const char* const currentVersion = update::firmwareVersion();
@@ -49,13 +69,14 @@ void Updates::_prepareFirmwareFields() {
             break;
         case update::Status::CHECKING:
             _setFirmwareVersion(currentVersion);
-            std::snprintf(
-                _firmwareStatusValue, sizeof(_firmwareStatusValue),
-                "Checking %u%%",      static_cast<unsigned int>(snapshot.progress)
+            _setProgressStatus(
+                _firmwareStatusField,
+                _firmwareStatusValue,
+                sizeof(_firmwareStatusValue),
+                "Checking",
+                snapshot.progress,
+                theme::GREY
             );
-            _firmwareStatusField.value  = _firmwareStatusValue;
-            _firmwareStatusField.action = _Action::NONE;
-            _firmwareStatusField.color  = theme::GREY;
             break;
         case update::Status::UP_TO_DATE:
             _setFirmwareVersion(currentVersion);
@@ -67,13 +88,14 @@ void Updates::_prepareFirmwareFields() {
             break;
         case update::Status::DOWNLOADING:
             _setFirmwareVersion(currentVersion, latestVersion);
-            std::snprintf(
-                _firmwareStatusValue, sizeof(_firmwareStatusValue),
-                "Downloading %u%%",   static_cast<unsigned int>(snapshot.progress)
+            _setProgressStatus(
+                _firmwareStatusField,
+                _firmwareStatusValue,
+                sizeof(_firmwareStatusValue),
+                "Downloading",
+                snapshot.progress,
+                theme::YELLOW
             );
-            _firmwareStatusField.value  = _firmwareStatusValue;
-            _firmwareStatusField.action = _Action::NONE;
-            _firmwareStatusField.color  = theme::YELLOW;
             break;
         case update::Status::VERIFYING:
             _setFirmwareVersion(currentVersion, latestVersion);
@@ -114,9 +136,35 @@ void Updates::_setFirmwareStatus(const char* value, _Action action, uint16_t col
 
 void Updates::_setFirmwareVersion(const char* currentVersion, const char* latestVersion) {
     if (currentVersion == nullptr) { currentVersion = ""; }
-    if (latestVersion != nullptr && latestVersion[0] != '\0' && !text::equals(currentVersion, latestVersion))
-        { std::snprintf( _firmwareVersionValue, sizeof(_firmwareVersionValue), "%s -> %s", currentVersion, latestVersion); }
-    else { text::copy(_firmwareVersionValue, sizeof(_firmwareVersionValue), currentVersion); }
+    if (latestVersion != nullptr &&
+        latestVersion[0] != '\0' &&
+        !text::equals(currentVersion, latestVersion)
+    ) {
+        const int written = std::snprintf(
+            _firmwareVersionValue,
+            sizeof(_firmwareVersionValue),
+            "%s -> %s",
+            currentVersion,
+            latestVersion
+        );
+
+        if (
+            written < 0 ||
+            written >= static_cast<int>(sizeof(_firmwareVersionValue))
+        ) {
+            text::copy(
+                _firmwareVersionValue,
+                sizeof(_firmwareVersionValue),
+                "--"
+            );
+        }
+    } else {
+        text::copy(
+            _firmwareVersionValue,
+            sizeof(_firmwareVersionValue),
+            currentVersion
+        );
+    }
     _firmwareVersionField.value = _firmwareVersionValue;
 }
 
@@ -154,13 +202,14 @@ void Updates::_prepareSotaFields() {
             break;
         case update::Status::CHECKING:
             _setSotaVersion(installedVersion);
-            std::snprintf(
-                _sotaStatusValue, sizeof(_sotaStatusValue),
-                "Checking %u%%",  static_cast<unsigned int>(snapshot.progress)
+            _setProgressStatus(
+                _sotaStatusField,
+                _sotaStatusValue,
+                sizeof(_sotaStatusValue),
+                "Checking",
+                snapshot.progress,
+                theme::GREY
             );
-            _sotaStatusField.value  = _sotaStatusValue;
-            _sotaStatusField.action = _Action::NONE;
-            _sotaStatusField.color  = theme::GREY;
             break;
         case update::Status::UP_TO_DATE:
             _setSotaVersion(installedVersion);
@@ -172,13 +221,14 @@ void Updates::_prepareSotaFields() {
             break;
         case update::Status::DOWNLOADING:
             _setSotaVersion(installedVersion, latestVersion);
-            std::snprintf(
-                _sotaStatusValue,   sizeof(_sotaStatusValue),
-                "Downloading %u%%", static_cast<unsigned int>(snapshot.progress)
+            _setProgressStatus(
+                _sotaStatusField,
+                _sotaStatusValue,
+                sizeof(_sotaStatusValue),
+                "Downloading",
+                snapshot.progress,
+                theme::YELLOW
             );
-            _sotaStatusField.value  = _sotaStatusValue;
-            _sotaStatusField.action = _Action::NONE;
-            _sotaStatusField.color  = theme::YELLOW;
             break;
         case update::Status::VERIFYING:
             _setSotaVersion(installedVersion, latestVersion);
@@ -186,13 +236,14 @@ void Updates::_prepareSotaFields() {
             break;
         case update::Status::INSTALLING:
             _setSotaVersion(installedVersion, latestVersion);
-            std::snprintf(
-                _sotaStatusValue,  sizeof(_sotaStatusValue),
-                "Installing %u%%", static_cast<unsigned int>(snapshot.progress)
+            _setProgressStatus(
+                _sotaStatusField,
+                _sotaStatusValue,
+                sizeof(_sotaStatusValue),
+                "Installing",
+                snapshot.progress,
+                theme::ORANGE
             );
-            _sotaStatusField.value  = _sotaStatusValue;
-            _sotaStatusField.action = _Action::NONE;
-            _sotaStatusField.color  = theme::ORANGE;
             break;
         case update::Status::SUCCESS:
             _setSotaVersion(installedVersion);
@@ -229,10 +280,35 @@ void Updates::_setSotaStatus(const char* const value, const _Action action, cons
 void Updates::_setSotaVersion(const char* installedVersion, const char* latestVersion) {
     if (installedVersion == nullptr || installedVersion[0] == '\0') { installedVersion = "Not installed"; }
 
-    if (latestVersion != nullptr && latestVersion[0] != '\0' && !text::equals(installedVersion, latestVersion))
-        { std::snprintf(_sotaVersionValue, sizeof(_sotaVersionValue), "%s -> %s", installedVersion, latestVersion); }
-    else { text::copy  (_sotaVersionValue, sizeof(_sotaVersionValue), installedVersion); }
+    if (latestVersion != nullptr &&
+        latestVersion[0] != '\0' &&
+        !text::equals(installedVersion, latestVersion)
+    ) {
+        const int written = std::snprintf(
+            _sotaVersionValue,
+            sizeof(_sotaVersionValue),
+            "%s -> %s",
+            installedVersion,
+            latestVersion
+        );
 
+        if (
+            written < 0 ||
+            written >= static_cast<int>(sizeof(_sotaVersionValue))
+        ) {
+            text::copy(
+                _sotaVersionValue,
+                sizeof(_sotaVersionValue),
+                "--"
+            );
+        }
+    } else {
+        text::copy(
+            _sotaVersionValue,
+            sizeof(_sotaVersionValue),
+            installedVersion
+        );
+    }
     _sotaVersionField.value = _sotaVersionValue;
 }
 
@@ -262,15 +338,14 @@ void Updates::_preparePotaFields() {
             break;
 
         case update::Status::CHECKING:
-            std::snprintf(
+            _setProgressStatus(
+                _potaStatusField,
                 _potaStatusValue,
                 sizeof(_potaStatusValue),
-                "Checking %u%%",
-                static_cast<unsigned int>(snapshot.progress)
+                "Checking",
+                snapshot.progress,
+                theme::GREY
             );
-            _potaStatusField.value  = _potaStatusValue;
-            _potaStatusField.action = _Action::NONE;
-            _potaStatusField.color  = theme::GREY;
             break;
 
         case update::Status::UP_TO_DATE:
@@ -290,27 +365,25 @@ void Updates::_preparePotaFields() {
             break;
 
         case update::Status::DOWNLOADING:
-            std::snprintf(
+            _setProgressStatus(
+                _potaStatusField,
                 _potaStatusValue,
                 sizeof(_potaStatusValue),
-                "Downloading %u%%",
-                static_cast<unsigned int>(snapshot.progress)
+                "Downloading",
+                snapshot.progress,
+                theme::YELLOW
             );
-            _potaStatusField.value  = _potaStatusValue;
-            _potaStatusField.action = _Action::NONE;
-            _potaStatusField.color  = theme::YELLOW;
             break;
 
         case update::Status::INSTALLING:
-            std::snprintf(
+            _setProgressStatus(
+                _potaStatusField,
                 _potaStatusValue,
                 sizeof(_potaStatusValue),
-                "Installing %u%%",
-                static_cast<unsigned int>(snapshot.progress)
+                "Installing",
+                snapshot.progress,
+                theme::ORANGE
             );
-            _potaStatusField.value  = _potaStatusValue;
-            _potaStatusField.action = _Action::NONE;
-            _potaStatusField.color  = theme::ORANGE;
             break;
 
         case update::Status::VERIFYING:
@@ -375,12 +448,23 @@ void Updates::_setPotaRecords(const uint32_t records) {
             "Not installed"
         );
     } else {
-        std::snprintf(
+        const int written = std::snprintf(
             _potaVersionValue,
             sizeof(_potaVersionValue),
             "%lu parks",
             static_cast<unsigned long>(records)
         );
+
+        if (
+            written < 0 ||
+            written >= static_cast<int>(sizeof(_potaVersionValue))
+        ) {
+            text::copy(
+                _potaVersionValue,
+                sizeof(_potaVersionValue),
+                "--"
+            );
+        }
     }
 
     _potaVersionField.value = _potaVersionValue;
@@ -431,12 +515,12 @@ void Updates::draw(ST7796S::MSP4021 &tft) {
     _preparePotaFields();
 
     _drawTitle(tft, x, y, w, rowH, gap, "updates");
-    for (Field<_Action>* field : _fields)
+    for (const Field<_Action>* field : _fields)
         { _drawLine(tft, *field); }
 }
 
 bool Updates::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
-    for (Field<_Action>* field : _fields) {
+    for (const Field<_Action>* field : _fields) {
         if (!_isPressed(*field, x, y)) { continue; }
         switch (field->action) {
             case _Action::CHECK_FIRMWARE:

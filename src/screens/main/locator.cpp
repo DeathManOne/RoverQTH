@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -75,7 +75,7 @@ namespace {
     struct Grid {
         Area area;
         char value[VALUE_SIZE] = {};
-        Grid(const char* initial) {
+        explicit Grid(const char* initial) {
             text::copy(value, sizeof(value), initial);
         }
     };
@@ -84,15 +84,14 @@ namespace {
     Mark _mark;
 
     Grid _locator("---- -- -- --");
-    Grid _statusTop("---");
     Grid _statusBottom("--- --  -  -- ---  -  ---- ---");
 
     void _clearArea(ST7796S::MSP4021 &tft, const Area &area);
     void _setValue(char* field, const char* value);
     void _setArea(Area &area, int outerX, int outerY, int outerW, int outerH);
 
-    void _drawGrid  (ST7796S::MSP4021 &tft, const Grid &grid, uint16_t color);
-    void _updateGrid(ST7796S::MSP4021 &tft, Grid &grid, const char* value, void (*drawFn)(ST7796S::MSP4021 &));
+    void _drawGrid(ST7796S::MSP4021 &tft, const Grid &grid, uint16_t color);
+    void _updateLocator(ST7796S::MSP4021 &tft, const char* value);
 
     void _drawOta(ST7796S::MSP4021 &tft);
     void _updateOta(ST7796S::MSP4021 &tft, char* field, const char* value);
@@ -102,14 +101,12 @@ namespace {
 
     void _drawTargetSeparator(ST7796S::MSP4021 &tft, const TargetInfo &info, uint16_t color);
     void _drawLocator(ST7796S::MSP4021 &tft);
-    void _drawStatusTop(ST7796S::MSP4021 &tft);
     void _drawStatusBottom(ST7796S::MSP4021 &tft);
     void _computeTargetTitleArea(ST7796S::MSP4021 &tft, TargetInfo &info);
 
     void _clearMarkColumn(ST7796S::MSP4021 &tft, int col);
     void _drawMarkColumn(ST7796S::MSP4021 &tft, int col);
     void _updateMarkColumn(ST7796S::MSP4021 &tft, char* field, const char* value, int col);
-    
 
     void _clearArea(ST7796S::MSP4021 &tft, const Area &area) {
         tft.rectFill(
@@ -137,17 +134,15 @@ namespace {
         area.innerH = area.outerH - (gap * 2);
     }
 
-    void _updateGrid(ST7796S::MSP4021 &tft, Grid &grid, const char* value, void (*drawFn)(ST7796S::MSP4021 &)) {
-        if (text::equals(grid.value, value)) { return; }
+    void _updateLocator(ST7796S::MSP4021 &tft, const char* value) {
+        if (text::equals(_locator.value, value)) { return; }
 
-        _setValue(grid.value, value);
-        _clearArea(tft, grid.area);
-        drawFn(tft);
+        _setValue(_locator.value, value);
+        _clearArea(tft, _locator.area);
+        _drawLocator(tft);
 
-        if (&grid == &_locator) {
-            _clearArea(tft, _statusBottom.area);
-            _drawStatusBottom(tft);
-        }
+        _clearArea(tft, _statusBottom.area);
+        _drawStatusBottom(tft);
     }
 
     void _updateOta(ST7796S::MSP4021 &tft, char* field, const char* value) {
@@ -307,16 +302,6 @@ namespace {
         _drawGrid(tft, _locator, theme::YELLOW);
     }
 
-    void _drawStatusTop(ST7796S::MSP4021 &tft) {
-        tft.setFont(ST7796S::RobotoMono_Regular_12);
-        tft.setTextColor(theme::GREY);
-        tft.textTopRight(
-            _statusTop.area.innerX, _statusTop.area.innerY,
-            _statusTop.area.innerW, _statusTop.area.innerH,
-            _statusTop.value
-        );
-    }
-
     void _drawStatusBottom(ST7796S::MSP4021 &tft) {
         tft.setFont(ST7796S::RobotoMono_Regular_12);
         tft.setTextColor(theme::GREY);
@@ -403,7 +388,6 @@ namespace {
 }
 
 void locator::setLocator     (const char* value) { _setValue(_locator.value,       value); }
-void locator::setStatusTop   (const char* value) { _setValue(_statusTop.value,     value); }
 void locator::setStatusBottom(const char* value) { _setValue(_statusBottom.value,  value); }
 
 void locator::setOTACode    (const char* value) { _setValue(_ota.info.title,     value); }
@@ -417,9 +401,7 @@ void locator::setMarkBearing (const char* value) { _setValue(_mark.info.bearing,
 void locator::setMarkDistance(const char* value) { _setValue(_mark.info.distance,  value); }
 void locator::setMarkTimer   (const char* value) { _setValue(_mark.timer,          value); }
 
-void locator::updateLocator     (ST7796S::MSP4021 &tft, const char* value) { _updateGrid(tft, _locator,   value, _drawLocator); }
-void locator::updateStatusTop   (ST7796S::MSP4021 &tft, const char* value) { _updateGrid(tft, _statusTop, value, _drawStatusTop); }
-
+void locator::updateLocator    (ST7796S::MSP4021 &tft, const char* value) { _updateLocator(tft, value); }
 void locator::updateOTACode    (ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.info.title,    value); }
 void locator::updateOTABearing (ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.info.bearing,  value); }
 void locator::updateOTADistance(ST7796S::MSP4021 &tft, const char* value) { _updateOta(tft, _ota.info.distance, value); }
@@ -468,13 +450,6 @@ void locator::draw(ST7796S::MSP4021 &tft) {
 
     tft.setFont(ST7796S::RobotoMono_Regular_12);
     const int statusH    = tft.textHeight(_statusBottom.value) + (gap * 2);
-    const int statusTopY = _ota.info.titleArea.outerY + _ota.info.titleArea.outerH + gap;
-
-    _setArea(
-        _statusTop.area,
-        gridX + gap,        statusTopY,
-        gridW - (gap * 2),  statusH
-    );
 
     tft.setFont(ST7796S::Locator_40);
     const int locatorH = tft.textHeight(_locator.value) + (gap * 2);
@@ -485,7 +460,7 @@ void locator::draw(ST7796S::MSP4021 &tft) {
         gridX + gap,        locatorY,
         gridW - (gap * 2),  locatorH
     );
-    
+
     _setArea(
         _statusBottom.area,
         gridX + gap,        _locator.area.outerY + (_locator.area.outerH / 2) + (gap * 2),
@@ -494,7 +469,6 @@ void locator::draw(ST7796S::MSP4021 &tft) {
 
     _drawOta(tft);
     _drawLocator(tft);
-    _drawStatusTop(tft);
     _drawStatusBottom(tft);
     _drawMark(tft);
 }

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,19 +27,23 @@
 #include <cstdint>
 
 namespace services::navigation {
+    /** @brief Lifecycle state of the marked-QTH operation. */
     enum class MarkState : uint8_t {IDLE, RECORDING, READY_TO_SAVE};
 
+    /** @brief Geographic position used by navigation calculations. */
     struct Coordinate {
         double latitude;
         double longitude;
         double altitude;
     };
 
+    /** @brief Timestamped coordinate queued for trace persistence. */
     struct TracePoint {
         Coordinate coordinate;
         uint32_t utc;
     };
 
+    /** @brief Complete synchronized state of the active marked-QTH operation. */
     struct MarkSnapshot {
         Coordinate start;
         Coordinate end;
@@ -50,6 +54,7 @@ namespace services::navigation {
         bool hasEnd;
     };
 
+    /** @brief Reduced marked-QTH state prepared for screen rendering. */
     struct MarkDisplaySnapshot {
         MarkState state         = MarkState::IDLE;
         Coordinate start        {};

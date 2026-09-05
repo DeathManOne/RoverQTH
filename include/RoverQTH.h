@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -24,6 +24,8 @@
 #pragma once
 
 namespace RoverQTH {
+    /** @brief Initializes the complete RoverQTH application. */
     void setup();
+    /** @brief Executes one iteration of the RoverQTH application loop. */
     void loop();
 }

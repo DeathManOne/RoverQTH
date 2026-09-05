@@ -34,11 +34,11 @@ namespace {
     bool _digestToText(const uint8_t* const digest, char* const output, const size_t size) {
         if (digest == nullptr || output == nullptr || size < hash::SHA256_TEXT_SIZE) { return false; }
 
-        for (size_t index = 0; index < hash::SHA256_DIGEST_SIZE; ++index) {
-            const uint8_t value = digest[index];
+        for (size_t digestIndex = 0; digestIndex < hash::SHA256_DIGEST_SIZE; ++digestIndex) {
+            const uint8_t value = digest[digestIndex];
 
-            output[index * 2]     = HEX_CHARACTERS[static_cast<size_t>(value >> 4)];
-            output[index * 2 + 1] = HEX_CHARACTERS[static_cast<size_t>(value & 0x0FU)];
+            output[digestIndex * 2]     = HEX_CHARACTERS[static_cast<size_t>(value >> 4)];
+            output[digestIndex * 2 + 1] = HEX_CHARACTERS[static_cast<size_t>(value & 0x0FU)];
         }
 
         output[hash::SHA256_TEXT_SIZE - 1] = '\0';
@@ -49,8 +49,8 @@ namespace {
 bool hash::isSha256Text(const char* const value) {
     if (value == nullptr || std::strlen(value) != SHA256_TEXT_SIZE - 1) { return false; }
 
-    for (size_t index = 0; index < SHA256_TEXT_SIZE - 1; ++index) {
-        const unsigned char character = static_cast<unsigned char>(value[index]);
+    for (size_t characterIndex = 0; characterIndex < SHA256_TEXT_SIZE - 1; ++characterIndex) {
+        const unsigned char character = static_cast<unsigned char>(value[characterIndex]);
         if (!std::isxdigit(character)) { return false; }
     }
     return true;
@@ -61,8 +61,9 @@ bool hash::normalizeSha256Text(const char* const input, char* const output, cons
     output[0] = '\0';
 
     if (!isSha256Text(input) || size < SHA256_TEXT_SIZE) { return false; }
-    for (size_t index = 0; index < SHA256_TEXT_SIZE - 1; ++index)
-        { output[index] = static_cast<char>(std::tolower(static_cast<unsigned char>(input[index]))); }
+    for (size_t characterIndex = 0; characterIndex < SHA256_TEXT_SIZE - 1; ++characterIndex) {
+        output[characterIndex] = static_cast<char>(std::tolower(static_cast<unsigned char>(input[characterIndex])));
+    }
     output[SHA256_TEXT_SIZE - 1] = '\0';
     return true;
 }

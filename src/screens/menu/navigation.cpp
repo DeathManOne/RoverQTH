@@ -21,12 +21,14 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "screens/menu/navigation.h"
+
 #include <cstddef>
 
-#include "screens/menu/navigation.h"
 #include "ui/mockup/right.h"
 #include "ui/settings/mockup.h"
 #include "ui/settings/themes/defaults.h"
+#include "ui/widgets/buttons.h"
 
 #include "ui/fonts/RobotoMono_Bold_16.h"
 #include "ui/fonts/RobotoMono_Regular_14.h"
@@ -36,6 +38,7 @@ namespace navigation = screens::menu::navigation;
 namespace right      = ui::mockup::right;
 namespace uiMockup   = ui::settings::mockup;
 namespace theme      = ui::settings::themes::defaults;
+namespace buttons    = ui::widgets::buttons;
 
 namespace {
     struct Row {
@@ -51,8 +54,7 @@ namespace {
         int innerH = 0;
     };
 
-    Row _makeRow(menu::Item item, const char* label);
-    bool _isPressed(const Row &row, int tx, int ty);
+    Row _makeRow(menu::Item item, const char* const label);
 
     Row rows[] = {
         _makeRow(menu::Item::GENERAL,   "General"),
@@ -70,33 +72,15 @@ namespace {
         "Menu navigation rows mismatch"
     );
 
-    Row _makeRow(menu::Item item, const char* label) {
+    Row _makeRow(const menu::Item item, const char* const label) {
         Row row;
-        row.item   = item;
-        row.label  = label;
-        row.outerX = 0;
-        row.outerY = 0;
-        row.outerW = 0;
-        row.outerH = 0;
-        row.innerX = 0;
-        row.innerY = 0;
-        row.innerW = 0;
-        row.innerH = 0;
+        row.item  = item;
+        row.label = label;
         return row;
-    }
-
-    bool _isPressed(const Row &row, int tx, int ty) {
-        return (
-            tx >= row.innerX && tx < (row.innerX + row.innerW) &&
-            ty >= row.innerY && ty < (row.innerY + row.innerH)
-        );
     }
 }
 
-void navigation::draw(
-    ST7796S::MSP4021 &tft,
-    const menu::Item current
-) {
+void navigation::draw(ST7796S::MSP4021 &tft, const menu::Item current) {
     right::draw(tft);
 
     const int gap       = uiMockup::GAP;
@@ -147,15 +131,19 @@ void navigation::draw(
     }
 }
 
-bool navigation::handleTouch(
-    const int x,
-    const int y,
-    menu::Item &selected
-) {
+bool navigation::handleTouch(const int x, const int y, menu::Item &selected) {
     for (size_t i = 0; i < ROW_COUNT; i++) {
-        if (!_isPressed(rows[i], x, y)) { continue; }
-        selected = rows[i].item;
+        const Row &row = rows[i];
+        const buttons::ButtonArea area = buttons::makeArea(
+            row.innerX, row.innerY,
+            row.innerW, row.innerH
+        );
+
+        if (!buttons::isPressed(area, x, y)) { continue; }
+
+        selected = row.item;
         return true;
     }
+
     return false;
 }

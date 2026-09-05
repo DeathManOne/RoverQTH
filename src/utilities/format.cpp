@@ -69,22 +69,6 @@ bool format::durationCompact(uint32_t seconds, char* const buffer, const size_t 
     return _isWritten(written, size);
 }
 
-bool format::durationHMS(const uint32_t seconds, char* const buffer, const size_t size) {
-    if (!_isValidBuffer(buffer, size)) {return false; }
-
-    const uint32_t hours            = seconds / 3600U;
-    const uint32_t minutes          = (seconds % 3600U) / 60U;
-    const uint32_t remainingSeconds = seconds % 60U;
-
-    const int written = std::snprintf(buffer, size,
-        "%02lu:%02lu:%02lu",
-        static_cast<unsigned long>(hours),
-        static_cast<unsigned long>(minutes),
-        static_cast<unsigned long>(remainingSeconds)
-    );
-    return _isWritten(written, size);
-}
-
 bool format::speed(const double kilometersPerHour, const bool imperial, char* const buffer, const size_t size) {
     if (!_isValidBuffer(buffer, size)) { return false; }
 
@@ -149,12 +133,6 @@ bool format::percentage(const uint64_t value, char* const buffer, const size_t s
 bool format::voltage(const double volts, char* const buffer, const size_t size) {
     if (!_isValidBuffer(buffer, size)) { return false; }
     const int written = std::snprintf(buffer, size, "%.2f V", volts);
-    return _isWritten(written, size);
-}
-
-bool format::capacityMilliAmpHours(const uint32_t milliAmpHours, char* const buffer, const size_t size) {
-    if (!_isValidBuffer(buffer, size)) { return false; }
-    const int written = std::snprintf(buffer, size, "%lu mAh", static_cast<unsigned long>(milliAmpHours));
     return _isWritten(written, size);
 }
 

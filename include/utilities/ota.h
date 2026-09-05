@@ -22,35 +22,28 @@
  */
 
 #pragma once
-
 #include <cstddef>
-#include <cstdint>
 
 namespace utilities::ota {
-    constexpr size_t CODE_SIZE       = 16U;
-    constexpr size_t RESULT_CAPACITY = 64U;
-
-    enum class SearchStatus : uint8_t {
-        SUCCESS,
-        CANCELLED,
-        ERROR
-    };
-
-    struct SearchResult {
-        char code[CODE_SIZE] {};
-        double distanceKm = 0.0;
-        uint8_t points    = 0U;
-        uint8_t bonus     = 0U;
-    };
-
-    struct SearchResults {
-        SearchResult items[RESULT_CAPACITY] {};
-        size_t count = 0U;
-    };
-
-    using CancelCallback = bool (*)(void* userData);
-
+    /** @brief Normalizes user input into an OTA code prefix suitable for searching. */
     bool normalizeCodePrefix(const char* input, char* output, size_t outputSize);
-    void clear(SearchResults &results);
-    bool retainNearest(SearchResults &results, const SearchResult &candidate);
+
+    /** @brief Checks that a code prefix is normalized, terminated and within capacity. */
+    bool isNormalizedCodePrefix(const char* prefix, size_t prefixSize);
+
+    /** @brief Validates the coordinates and radius used by a nearby-site search. */
+    bool isValidSearchArea(double latitude, double longitude, double radiusKm);
+
+    /**
+     * @brief Tests whether a geographic candidate is nearer than the current selection.
+     * @param found Whether a previous candidate has already been selected.
+     * @param distanceKm Current best distance, updated when the candidate is nearer.
+     * @param selected Receives whether the candidate must replace the current selection.
+     * @return true when all coordinates and computed values are valid.
+     */
+    bool selectNearestDistance(
+        double latitude,          double longitude,
+        double candidateLatitude, double candidateLongitude,
+        bool found, double &distanceKm,  bool &selected
+    );
 }

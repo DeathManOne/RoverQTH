@@ -1,0 +1,163 @@
+/*
+ * src/screens/header.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include <cstddef>
+
+#include "services/battery.h"
+#include "services/settings.h"
+#include "screens/header.h"
+#include "ui/fonts/RobotoMono_Bold_16.h"
+#include "ui/mockup/header.h"
+#include "ui/settings/mockup.h"
+#include "ui/settings/themes/defaults.h"
+#include "utilities/format.h"
+#include "utilities/text.h"
+
+namespace battery      = services::battery;
+namespace settings     = services::settings;
+namespace title        = screens::header;
+namespace mockupHeader = ui::mockup::header;
+namespace mockup       = ui::settings::mockup;
+namespace theme        = ui::settings::themes::defaults;
+namespace format       = utilities::format;
+namespace text         = utilities::text;
+
+namespace {
+    struct Field {
+        int outerX = 0;
+        int outerW = 0;
+        int innerX = 0;
+        int innerW = 0;
+
+        char value[settings::FULL_CALLSIGN_SIZE] = {};
+
+        explicit Field(const char* initial) {
+            text::copy(value, sizeof(value), initial);
+        }
+    };
+
+    void _drawText(ST7796S::MSP4021 &tft, const Field &field);
+    void _drawLine(ST7796S::MSP4021 &tft, const Field &field);
+    void _drawRect(ST7796S::MSP4021 &tft, const Field &field);
+
+    void _setField(Field &field, const char* value);
+    void _updateField(ST7796S::MSP4021 &tft, Field &field, const char* value);
+
+    Field _callsign("");
+    Field _date("");
+    Field _time("");
+    Field _battery("");
+
+    void _drawText(ST7796S::MSP4021 &tft, const Field &field) {
+        tft.setFont(ST7796S::RobotoMono_Bold_16);
+        tft.setTextColor(theme::WHITE);
+        tft.textCenter(
+            field.innerX, mockupHeader::innerY(),
+            field.innerW, mockupHeader::innerHeight(),
+            field.value
+        );
+    }
+
+    void _drawLine(ST7796S::MSP4021 &tft, const Field &field) {
+        int gap = mockup::GAP;
+        tft.lineV(
+            field.outerX,
+            mockupHeader::innerY() + gap,
+            mockupHeader::innerHeight() - (gap * 2),
+            theme::BORDER
+        );
+    }
+
+    void _drawRect(ST7796S::MSP4021 &tft, const Field &field) {
+        tft.rectFill(
+            field.outerX + 1, mockupHeader::outerY() + 1,
+            field.outerW - 2, mockupHeader::outerHeight() - 2,
+            theme::BLACK
+        );
+    }
+
+    void _setField(Field &field, const char* value) {
+        text::copy(field.value, sizeof(field.value), value);
+    }
+
+    void _updateField(ST7796S::MSP4021 &tft, Field &field, const char* value) {
+        if (text::equals(field.value, value))
+            { return; }
+        _setField(field, value);
+        _drawRect(tft, field);
+        _drawText(tft, field);
+    }
+}
+
+void title::setCallsign(const char* value) { _setField(_callsign, value); }
+void title::setDate    (const char* value) { _setField(_date,     value); }
+void title::setTime    (const char* value) { _setField(_time,     value); }
+void title::setBattery (const char* value) { _setField(_battery,  value); }
+
+void title::updateCallsign(ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _callsign, value); }
+void title::updateDate    (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _date,     value); }
+void title::updateTime    (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _time,     value); }
+void title::updateBattery (ST7796S::MSP4021 &tft, const char* value) { _updateField(tft, _battery,  value); }
+
+void title::getBatteryLevel(char* const buffer, const size_t size) {
+    if (battery::isPresent()) {
+        format::percentage(battery::getPercent(), buffer, size);
+        return;
+    }
+
+    text::copy(buffer, size, "N/A");
+}
+
+void title::draw(ST7796S::MSP4021 &tft) {
+    mockupHeader::draw(tft);
+
+    const int gap     = mockup::GAP;
+    const int headerW = mockupHeader::outerWidth();
+
+    _callsign.outerX = mockupHeader::outerX();
+    _callsign.outerW = (headerW * 3) / 8;
+    _callsign.innerX = _callsign.outerX + (gap * 2);
+    _callsign.innerW = _callsign.outerW - (gap * 4);
+    _drawText(tft, _callsign);
+
+    _date.outerX = _callsign.outerX + _callsign.outerW;
+    _date.outerW = headerW / 4;
+    _date.innerX = _date.outerX + (gap * 2);
+    _date.innerW = _date.outerW - (gap * 4);
+    _drawLine(tft, _date);
+    _drawText(tft, _date);
+
+    _time.outerX = _date.outerX + _date.outerW;
+    _time.outerW = headerW / 4;
+    _time.innerX = _time.outerX + (gap * 2);
+    _time.innerW = _time.outerW - (gap * 4);
+    _drawLine(tft, _time);
+    _drawText(tft, _time);
+
+    _battery.outerX = _time.outerX + _time.outerW;
+    _battery.outerW = headerW - _callsign.outerW - _date.outerW - _time.outerW;
+    _battery.innerX = _battery.outerX + (gap * 2);
+    _battery.innerW = _battery.outerW - (gap * 4);
+    _drawLine(tft, _battery);
+    _drawText(tft, _battery);
+}

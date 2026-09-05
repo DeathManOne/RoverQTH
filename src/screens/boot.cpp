@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@
  */
 
 #include <cstddef>
+
 #include <DejaVuSans_Bold_18.h>
 
 #include "screens/boot.h"
@@ -37,111 +38,134 @@ namespace buttons = ui::widgets::buttons;
 namespace format  = utilities::format;
 
 void screens::Boot::_clearModule(ST7796S::MSP4021 &tft, const Field &field) {
-        tft.rectFill(
-            field.outerX + 1, field.outerY + 1,
-            field.outerW - 2, field.outerH - 2,
-            theme::BLACK
-        );
-}
-    
-void screens::Boot::_drawModuleStatus(ST7796S::MSP4021 &tft, Field &field) {
-        _clearModule(tft, field);
-
-        const int gap         = mockup::GAP;
-        const int labelH      = tft.textHeight(field.label);
-        const int innerValueX = field.innerX + (gap * 4);
-        const int innerValueY = field.innerY + gap + labelH;
-        
-        tft.setFont(ST7796S::DejaVuSans_Bold_18);
-        tft.setTextColor(theme::WHITE);
-        tft.text(field.innerX, field.innerY, field.label);
-
-        uint16_t color;
-        const char* status = nullptr;
-        if (!field.state) {
-            status  = "loading";
-            color   = theme::YELLOW;
-        } else if (*field.state) {
-            status  = "loaded";
-            color   = theme::GREEN;
-        } else {
-            status  = "failed";
-            color   = theme::RED;
-        }
-
-        tft.setTextColor(color);
-        tft.text(innerValueX, innerValueY, status);
+    tft.rectFill(
+        field.outerX + 1, field.outerY + 1,
+        field.outerW - 2, field.outerH - 2,
+        theme::BLACK
+    );
 }
 
-void screens::Boot::_updateField(ST7796S::MSP4021 &tft, Field &field, bool* state) {
-        field.state = state;
-        _drawModuleStatus(tft, field);
+void screens::Boot::_drawModuleStatus(ST7796S::MSP4021 &tft, const Field &field) {
+    _clearModule(tft, field);
+
+    tft.setFont(ST7796S::DejaVuSans_Bold_18);
+    tft.setTextColor(theme::WHITE);
+    tft.text(field.innerX, field.innerY, field.label);
+
+    const int gap         = mockup::GAP;
+    const int labelH      = tft.textHeight(field.label);
+    const int innerValueX = field.innerX + (gap * 4);
+    const int innerValueY = field.innerY + gap + labelH;
+
+    uint16_t color;
+    const char* status;
+
+    switch (field.state) {
+        case ModuleState::LOADED:
+            status = "loaded";
+            color  = theme::GREEN;
+            break;
+        case ModuleState::FAILED:
+            status = "failed";
+            color  = theme::RED;
+            break;
+        case ModuleState::LOADING:
+        default:
+            status = "loading";
+            color  = theme::YELLOW;
+            break;
+    }
+
+    tft.setTextColor(color);
+    tft.text(innerValueX, innerValueY, status);
+}
+
+void screens::Boot::_updateField(ST7796S::MSP4021 &tft, Field &field, const bool* state) {
+    if (state == nullptr) {
+        field.state = ModuleState::LOADING;
+    } else {
+        field.state = *state
+            ? ModuleState::LOADED
+            : ModuleState::FAILED;
+    }
+
+    _drawModuleStatus(tft, field);
 }
 
 void screens::Boot::_drawGPSSearch(ST7796S::MSP4021 &tft) {
-        const buttons::ButtonArea &btn = buttons::bootSearchGPS;
+    const buttons::ButtonArea &btn = buttons::bootSearchGPS;
 
-        tft.setFont(ST7796S::DejaVuSans_Bold_18);
-        tft.setTextColor(theme::WHITE);
-        tft.rectFill(
-            btn.x,      btn.y,
-            btn.width,  btn.height,
-            theme::GREY
-        );
-        tft.rect(
-            btn.x,      btn.y,
-            btn.width,  btn.height,
-            theme::WHITE
-        );
-        tft.textCenter(
-            btn.x,      btn.y,
-            btn.width,  btn.height,
-            "Search GPS"
-        );
+    tft.setFont(ST7796S::DejaVuSans_Bold_18);
+    tft.setTextColor(theme::WHITE);
+    tft.rectFill(
+        btn.x,      btn.y,
+        btn.width,  btn.height,
+        theme::GREY
+    );
+    tft.rect(
+        btn.x,      btn.y,
+        btn.width,  btn.height,
+        theme::WHITE
+    );
+    tft.textCenter(
+        btn.x,      btn.y,
+        btn.width,  btn.height,
+        "Search GPS"
+    );
 }
 
-void screens::Boot::_drawGPSProgress(ST7796S::MSP4021 &tft, uint8_t value) {
-        const buttons::ButtonArea &bar = buttons::bootSearchGPS;
-        constexpr size_t TEXT_SIZE = 8;
+void screens::Boot::_drawGPSProgress(ST7796S::MSP4021 &tft, const uint8_t value) {
+    const buttons::ButtonArea &bar = buttons::bootSearchGPS;
+    constexpr size_t TEXT_SIZE = 8;
 
-        if (value > 100) { value = 100; }
-        tft.progressBar(
-            bar.x,      bar.y,
-            bar.width,  bar.height,
-            value,      theme::CYAN
-        );
+    tft.progressBar(
+        bar.x,      bar.y,
+        bar.width,  bar.height,
+        value,      theme::CYAN
+    );
 
-        char text[TEXT_SIZE];
-        format::percentage(value, text, sizeof(text));
+    char text[TEXT_SIZE] = {};
+    if (!format::percentage(value, text, sizeof(text)))
+        { text[0] = '\0'; }
 
-        tft.setFont(ST7796S::DejaVuSans_Bold_18);
-        tft.setTextColor(theme::WHITE);
-        tft.textCenter(
-            bar.x,      bar.y,
-            bar.width,  bar.height,
-            text
-        );
+    tft.setFont(ST7796S::DejaVuSans_Bold_18);
+    tft.setTextColor(theme::WHITE);
+    tft.textCenter(
+        bar.x,      bar.y,
+        bar.width,  bar.height,
+        text
+    );
 }
 
 void screens::Boot::_drawGPSAction(ST7796S::MSP4021 &tft) {
-        const buttons::ButtonArea &area = buttons::bootSearchGPS;
-        tft.rectFill(
-            area.x,     area.y,
-            area.width, area.height,
-            theme::BLACK
-        );
+    const buttons::ButtonArea &area = buttons::bootSearchGPS;
+    tft.rectFill(
+        area.x,     area.y,
+        area.width, area.height,
+        theme::BLACK
+    );
 
-        if (_gps.state == nullptr) { return; }
-        if (!(*_gps.state)) {
+    switch (_gps.state) {
+        case ModuleState::LOADED:
+            _drawGPSProgress(tft, _gpsProgress);
+            return;
+        case ModuleState::FAILED:
             _drawGPSSearch(tft);
             return;
-        }
-        _drawGPSProgress(tft, _gpsProgress);
+        case ModuleState::LOADING:
+        default:
+            return;
+    }
 }
 
 void screens::Boot::clear(ST7796S::MSP4021 &tft) { tft.fillScreen(theme::BLACK); }
 
 void screens::Boot::draw(ST7796S::MSP4021 &tft) {
+    _wifi.state  = ModuleState::LOADING;
+    _sd.state    = ModuleState::LOADING;
+    _gps.state   = ModuleState::LOADING;
+    _gpsProgress = 0U;
+
     const int gap          = mockup::GAP;
     const int imgGapX      = 10;
     const int imgW         = ST7796S::logo_width;
@@ -178,16 +202,18 @@ void screens::Boot::draw(ST7796S::MSP4021 &tft) {
 
 void screens::Boot::drawLogo(ST7796S::MSP4021 &tft) { tft.image(0, 10, ST7796S::logo); }
 
-void screens::Boot::updateWifi(ST7796S::MSP4021 &tft, bool* value) { _updateField(tft, _wifi, value); }
-void screens::Boot::updateSD  (ST7796S::MSP4021 &tft, bool* value) { _updateField(tft, _sd,   value); }
-void screens::Boot::updateGPS (ST7796S::MSP4021 &tft, bool* value) {
+void screens::Boot::updateWifi(ST7796S::MSP4021 &tft, const bool* value) { _updateField(tft, _wifi, value); }
+void screens::Boot::updateSD  (ST7796S::MSP4021 &tft, const bool* value) { _updateField(tft, _sd,   value); }
+
+void screens::Boot::updateGPS(ST7796S::MSP4021 &tft, const bool* value) {
     _updateField(tft, _gps, value);
     _drawGPSAction(tft);
 }
 
 void screens::Boot::updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress) {
-    if (_gpsProgress == progress)
-        { return; }
+    if (progress > 100U) { progress = 100U; }
+    if (_gpsProgress == progress) { return; }
+
     _gpsProgress = progress;
     _drawGPSAction(tft);
 }

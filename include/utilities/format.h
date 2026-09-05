@@ -37,15 +37,6 @@ namespace utilities::format {
     bool durationCompact(uint32_t seconds, char* buffer, size_t size);
 
     /**
-     * Formats a duration as hours, minutes and seconds.
-     * @param seconds Duration in seconds.
-     * @param buffer  Destination buffer.
-     * @param size    Size of the destination buffer in bytes.
-     * @return true if the formatted duration was successfully written, false otherwise.
-     */
-    bool durationHMS(uint32_t seconds, char* buffer, size_t size);
-
-    /**
      * Formats a speed.
      * @param kilometersPerHour Speed in kilometers per hour.
      * @param imperial          true to use imperial units, false for metric units.
@@ -110,15 +101,6 @@ namespace utilities::format {
      * @return true if the formatted voltage was successfully written, false otherwise.
      */
     bool voltage(double volts, char* buffer, size_t size);
-
-    /**
-     * Formats a battery capacity.
-     * @param milliAmpHours Capacity in milliampere-hours.
-     * @param buffer        Destination buffer.
-     * @param size          Size of the destination buffer in bytes.
-     * @return true if the formatted capacity was successfully written, false otherwise.
-     */
-    bool capacityMilliAmpHours(uint32_t milliAmpHours, char* buffer, size_t size);
 
     /**
      * Formats a storage capacity.

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -25,13 +25,12 @@
 #include <cstdint>
 
 namespace ui::settings::mockup {
-    constexpr int GAP                       = 4;
-    constexpr int RADIUS                    = 10;
-    constexpr int HEADER_HEIGHT             = 36;
-    constexpr int GRID_WIDTH                = 320;
-    constexpr int RIGHT_ROW_COUNT           = 6;
-    constexpr int GRID_REF_ROW_COUNT        = 7;
-    constexpr int BUTTON_COUNT              = 3;
-    constexpr int BUTTON_HEIGHT             = 34;
-    constexpr int STATUS_TOP_BOTTOM_HEIGHT  = 20;
+    constexpr int GAP                       = 4;   /**< Standard spacing between UI elements. */
+    constexpr int RADIUS                    = 10;  /**< Standard rounded-corner radius. */
+    constexpr int HEADER_HEIGHT             = 36;  /**< Header height in pixels. */
+    constexpr int GRID_WIDTH                = 320; /**< Main grid width in pixels. */
+    constexpr int RIGHT_ROW_COUNT           = 6;   /**< Number of rows in the right panel. */
+    constexpr int GRID_REF_ROW_COUNT        = 7;   /**< Reference row count used by the main grid. */
+    constexpr int BUTTON_HEIGHT             = 34;  /**< Persistent button height in pixels. */
+    constexpr int STATUS_TOP_BOTTOM_HEIGHT  = 20;  /**< Height of a top or bottom status strip. */
 }

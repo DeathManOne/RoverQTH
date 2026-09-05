@@ -25,20 +25,27 @@
 #pragma once
 
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
 #include "services/settings.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays display settings and emits reconfiguration requests. */
     class Displayer final : public Page {
         public:
+            /** @brief Display operation requested by the settings page. */
             enum class Request {
                 NONE,
                 RELOAD_TOUCH_CALIBRATION,
                 RECALIBRATE_TOUCH
             };
 
+            /** @copydoc Page::draw() */
             void draw       (ST7796S::MSP4021 &tft) override;
+            /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
+            /** @brief Consumes the pending display operation request. */
             Request takeRequest();
 
         private:

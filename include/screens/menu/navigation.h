@@ -22,11 +22,14 @@
  */
 
 #pragma once
+
 #include <MSP4021.h>
 
-#include "screens/menu.h"
+#include "screens/menu/item.h"
 
 namespace screens::menu::navigation {
+    /** @brief Draws the menu navigation bar and highlights the current item. */
     void draw(ST7796S::MSP4021 &tft, Item current);
+    /** @brief Maps a navigation-bar touch to a selected menu item. */
     bool handleTouch(int x, int y, Item &selected);
 }

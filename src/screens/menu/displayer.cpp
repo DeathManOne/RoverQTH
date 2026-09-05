@@ -22,16 +22,19 @@
  */
 
 
+#include "screens/menu/displayer.h"
+
 #include <cstdio>
 
-#include "screens/menu/displayer.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
+#include "utilities/text.h"
 
 using screens::menu::Displayer;
 namespace settings = services::settings;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
+namespace text     = utilities::text;
 
 settings::TFTRotation Displayer::_nextRotation(settings::TFTRotation rotation) {
     switch (rotation) {
@@ -81,10 +84,33 @@ void Displayer::draw(ST7796S::MSP4021 &tft) {
         rowY += rowH;
     }
 
-    std::snprintf(_widthValue,  sizeof(_widthValue),  "%d px", TFT_WIDTH);
-    std::snprintf(_heightValue, sizeof(_heightValue), "%d px", TFT_HEIGHT);
-    _rotationField.value = _rotationToText(settings::getTFTRotation());
+    const int widthWritten = std::snprintf(
+        _widthValue,
+        sizeof(_widthValue),
+        "%d px",
+        TFT_WIDTH
+    );
+    if (
+        widthWritten < 0 ||
+        widthWritten >= static_cast<int>(sizeof(_widthValue))
+    ) {
+        text::copy(_widthValue, sizeof(_widthValue), "--");
+    }
 
+    const int heightWritten = std::snprintf(
+        _heightValue,
+        sizeof(_heightValue),
+        "%d px",
+        TFT_HEIGHT
+    );
+    if (
+        heightWritten < 0 ||
+        heightWritten >= static_cast<int>(sizeof(_heightValue))
+    ) {
+        text::copy(_heightValue, sizeof(_heightValue), "--");
+    }
+
+    _rotationField.value    = _rotationToText(settings::getTFTRotation());
     _widthField.value       = _widthValue;
     _heightField.value      = _heightValue;
     _calibrationField.value = "Recalibrate";

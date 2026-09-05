@@ -21,15 +21,16 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "screens/main/title.h"
 #include "screens/menu/general.h"
+
+#include "screens/header.h"
 #include "ui/mockup/grid.h"
 #include "ui/settings/mockup.h"
 #include "utilities/text.h"
 
 using screens::menu::General;
 
-namespace title    = screens::main::title;
+namespace title    = screens::header;
 namespace settings = services::settings;
 namespace grid     = ui::mockup::grid;
 namespace uiMockup = ui::settings::mockup;
@@ -146,9 +147,9 @@ void General::draw(ST7796S::MSP4021 &tft) {
     _suffixField.value     = suffixText[0] != '\0' ? suffixText : "None";
     _unitsField.value      = _unitsToText(configuration.units);
     _coordinateField.value = _coordinateFormatToText(configuration.coordinateFormat);
-    
+
     _drawTitle(tft, x, y, w, rowH, gap, "general");
-    for (Field<_Action>* field : _fields)
+    for (const Field<_Action>* field : _fields)
         { _drawLine(tft, *field); }
 }
 
@@ -162,8 +163,8 @@ void General::update(ST7796S::MSP4021 &tft) {
 bool General::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     if (_mode == Mode::KEYBOARD) {
         if (tft.KUpdate(x, y)) {
-            const char* value = tft.KRead();
-            settings::setCallsign(value);
+            const char* const value = tft.KRead();
+            if (!settings::setCallsign(value)) { return true; }
             _mode = Mode::GRID;
             tft.setTextScale(1);
             return true;

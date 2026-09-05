@@ -24,6 +24,13 @@
 #pragma once
 
 namespace security::otaRootCA {
+    /**
+     * @brief PEM bundle containing the trusted root certificates used for
+     *        secure HTTPS connections.
+     *
+     * The bundle is passed to the TLS client when checking or downloading
+     * firmware and OTA databases.
+     */
     constexpr const char OTA_ROOT_CA[] = R"PEM(
 -----BEGIN CERTIFICATE-----
 MIICOjCCAcGgAwIBAgIQQvLM2htpN0RfFf51KBC49DAKBggqhkjOPQQDAzBfMQswCQYDVQQGEwJH
