@@ -26,6 +26,7 @@
 #include <Arduino.h>
 #include <array>
 #include <cstddef>
+#include <cstdio>
 #include <MSP4021.h>
 #include <SPI.h>
 
@@ -381,16 +382,37 @@ namespace {
 
 void service::begin() {
     _resetState();
-    _tftSPI.begin(TFT_CLK, TFT_MISO, TFT_MOSI);
+    _tftSPI.begin(TFT_SHARED_CLK, TFT_TOUCH_MISO, TFT_SHARED_MOSI);
 
     if (_tftInstance == nullptr) {
         _tftInstance = new ST7796S::MSP4021(
             _tftSPI,
             TFT_TOUCH_CS,
-            TFT_SCREEN_CS, TFT_SCREEN_DC,
-            TFT_WIDTH,     TFT_HEIGHT,
-            TFT_SCREEN_RST
+            TFT_SCREEN_CS,   TFT_SCREEN_DC,
+            TFT_WIDTH,       TFT_HEIGHT,
+            TFT_SCREEN_RST,  TFT_SCREEN_MISO,
+            TFT_TOUCH_MISO,
+            TFT_SHARED_MOSI, TFT_SHARED_CLK
         );
+    }
+
+    if (!_tft().detected()) {
+        storage::appendErrorRecord("DISPLAY_CONTROLLER_DETECTION_FAILED");
+        return;
+    }
+
+    char controllerRecord[64];
+    const int controllerWritten = std::snprintf(
+        controllerRecord,
+        sizeof(controllerRecord),
+        "DISPLAY_CONTROLLER controller=%s",
+        _tft().controllerName()
+    );
+
+    if (controllerWritten > 0 &&
+        static_cast<size_t>(controllerWritten) < sizeof(controllerRecord)
+    ) {
+        storage::appendLogRecord(controllerRecord);
     }
 
     _tft().setRotation(static_cast<uint8_t>(settings::getTFTRotation()));

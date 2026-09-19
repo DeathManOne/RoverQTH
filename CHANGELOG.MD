@@ -16,10 +16,14 @@ Versioning follows Semantic Versioning.
 - Complete Doxygen documentation for public project headers
 - Git attributes enforcing consistent LF line endings
 - Concise project architecture documentation
+- Separate LCD SDO and XPT2046 T_DO pin configuration
+- Display-controller detection validation and startup logging
 
 ### Changed
 
 - Updated SparkFun u-blox GNSS Arduino Library from `2.2.28` to `2.2.29`
+- Updated the ST7796 MSP4020/MSP4021 display library from `1.4.0` to `1.5.0`
+- Enabled automatic ST7796S and ILI9488 controller selection during display initialization
 - Consolidated shared parsing, validation and diagnostic processing in the utilities layer
 - Improved separation between databases, stateless utilities, stateful services and screens
 - Strengthened OTA database processing and service coordination
