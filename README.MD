@@ -158,7 +158,9 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 |-- export/
 |-- logs/
 |   |-- system.log
-|   `-- error.log
+|   |-- system.1.log ... system.9.log
+|   |-- error.log
+|   `-- error.1.log ... error.9.log
 |-- qth/
 |   |-- <QTH-ID>.json
 |   |-- QTH.tmp
@@ -192,6 +194,8 @@ Logs are automatically timestamped using:
 
 * Boot-relative timestamps before GNSS synchronization
 * ISO 8601 UTC timestamps maintained by the synchronized system clock
+
+Each active log is rotated during SD card initialization when it reaches 256 KiB. The previous file becomes `.1.log`, older archives are shifted up to `.9.log`, and the oldest archive is permanently removed. Up to nine archives plus the active file are retained independently for system and error logs.
 
 ---
 

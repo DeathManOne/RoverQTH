@@ -18,6 +18,7 @@ Versioning follows Semantic Versioning.
 - Concise project architecture documentation
 - Separate LCD SDO and XPT2046 T_DO pin configuration
 - Display-controller detection validation and startup logging
+- Size-bounded system and error log rotation with nine retained archives
 
 ### Changed
 
