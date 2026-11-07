@@ -1,4 +1,25 @@
-
+/*
+ * src/utilities/json/writer.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include <cmath>
 #include <cstdarg>
@@ -8,7 +29,7 @@
 using utilities::json::Writer;
 
 bool Writer::_beforeValue(const char* const key) {
-    if (!_valid) { return false; }
+    if (!_valid)      { return false; }
     if (_depth == 0U) {
         if ( _hasRoot || key != nullptr) {
             _invalidate();
@@ -20,7 +41,8 @@ bool Writer::_beforeValue(const char* const key) {
 
     Context& context = _contexts[_depth - 1U];
     if (!context.first) {
-        if (!_append(',')) { return false; }
+        if (!_append(','))
+            { return false; }
     }
 
     context.first = false;
@@ -28,7 +50,6 @@ bool Writer::_beforeValue(const char* const key) {
         _invalidate();
         return false;
     }
-
     return _appendQuoted(key) && _append(':');
 }
 
@@ -52,9 +73,9 @@ bool Writer::_append(const char* const value) {
         return false;
     }
 
-    size_t length = 0U;
-    while (value[length] != '\0') { ++length; }
-    return _write(value, length);
+    size_t valueLength = 0U;
+    while (value[valueLength] != '\0') { ++valueLength; }
+    return _write(value, valueLength);
 }
 
 bool Writer::_appendFormatted(const char* const format, ...) {
@@ -152,12 +173,12 @@ Writer::Writer(char* const buffer, const size_t size) :
 { if (_valid) { _buffer[0] = '\0'; } }
 
 bool Writer::beginObject(const char* const key) {
-    if (!_valid)
-        { return false; }
+    if (!_valid)             { return false; }
     if (_depth >= MAX_DEPTH) {
         _invalidate();
         return false;
     }
+
     if (!_beforeValue(key) || !_append('{'))
         { return false; }
     return _push();
@@ -175,8 +196,7 @@ bool Writer::endObject() {
 }
 
 bool Writer::string(const char* const key, const char* const value) {
-    if (!_valid)
-        { return false; }
+    if (!_valid)          { return false; }
     if (value == nullptr) {
         _invalidate();
         return false;
@@ -187,12 +207,14 @@ bool Writer::string(const char* const key, const char* const value) {
 }
 
 bool Writer::boolean(const char* const key, const bool value) {
-    if (!_beforeValue(key)) { return false; }
+    if (!_beforeValue(key))
+        { return false; }
     return _append(value ? "true" : "false");
 }
 
 bool Writer::unsignedInteger(const char* const key, const uint64_t value) {
-    if (!_beforeValue(key)) { return false; }
+    if (!_beforeValue(key))
+        { return false; }
     return _appendFormatted("%llu", static_cast<unsigned long long>(value));
 }
 

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -23,12 +23,18 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays SD-card presence, type and capacity information. */
     class Storage final : public Page {
         public:
+            /** @copydoc Page::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
         private:
             enum class _Action {NONE};
@@ -40,7 +46,7 @@ namespace screens::menu {
             Field<_Action> _typeField     = _makeField("Type",     _Action::NONE,   ui::settings::themes::defaults::WHITE);
             Field<_Action> _capacityField = _makeField("Capacity", _Action::NONE,   ui::settings::themes::defaults::WHITE);
             Field<_Action> _usageField    = _makeField("Usage",    _Action::NONE,   ui::settings::themes::defaults::WHITE);
-            
+
             Field<_Action>* _fields[3] = {
                 &_typeField,
                 &_capacityField,

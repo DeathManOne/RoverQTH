@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -20,6 +20,8 @@
  * along with RoverQTH.
  * If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include "RoverQTH.h"
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -40,23 +42,20 @@
 #include "services/storage.h"
 #include "services/update.h"
 #include "services/wifi.h"
-#include "ui/settings/gps.h"
-#include "RoverQTH.h"
 
-namespace boot        = core::boot;
-namespace battery     = services::battery;
-namespace sDisplay    = services::display;
-namespace gps         = services::gps;
-namespace navigation  = services::navigation;
-namespace ota         = services::ota;
-namespace power       = services::power;
-namespace qth         = services::qth;
-namespace settings    = services::settings;
-namespace storage     = services::storage;
-namespace update      = services::update;
-namespace wifi        = services::wifi;
-namespace gpsSettings = ui::settings::gps;
-namespace app         = RoverQTH;
+namespace boot       = core::boot;
+namespace battery    = services::battery;
+namespace sDisplay   = services::display;
+namespace gps        = services::gps;
+namespace navigation = services::navigation;
+namespace ota        = services::ota;
+namespace power      = services::power;
+namespace qth        = services::qth;
+namespace settings   = services::settings;
+namespace storage    = services::storage;
+namespace update     = services::update;
+namespace wifi       = services::wifi;
+namespace app        = RoverQTH;
 
 namespace {
     SPIClass _sdSPI(HSPI);
@@ -64,9 +63,8 @@ namespace {
 
     uint32_t _nextScreenRefresh  = 0;
     uint32_t _nextBatteryRefresh = 0;
-    TaskHandle_t _gpsTaskHandle  = nullptr;
 
-    constexpr uint32_t GPS_SAMPLE_PERIOD_MS  = 1000 / gpsSettings::NAVIGATION_RATE_HZ;
+    constexpr uint32_t GPS_SAMPLE_PERIOD_MS  = 1000U / gps::NAVIGATION_RATE_HZ;
     constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = GPS_SAMPLE_PERIOD_MS + 100;
     constexpr uint32_t SCREEN_REFRESH_MS     = 1000;
     constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
@@ -74,11 +72,15 @@ namespace {
     void _gpsTask(void*) {
         while (true) {
             const uint32_t startMs = millis();
-            gps::update(GPS_UPDATE_TIMEOUT_MS);
+            const bool updated     = gps::update(GPS_UPDATE_TIMEOUT_MS);
 
             gps::Snapshot snapshot {};
-            if (gps::getSnapshot(snapshot)) {
-                const navigation::Coordinate coordinate { snapshot.latitude, snapshot.longitude, snapshot.altitude};
+            if (updated && gps::getSnapshot(snapshot)) {
+                const navigation::Coordinate coordinate {
+                    snapshot.latitude,
+                    snapshot.longitude,
+                    snapshot.altitude
+                };
                 navigation::updateGPSFix(coordinate, snapshot.fixValid && snapshot.positionValid);
             } else { navigation::updateGPSFix({}, false); }
 
@@ -93,28 +95,21 @@ void app::setup() {
     storage::appendLogRecord("SYSTEM_START");
 
     char versionRecord[48];
-    const int versionWritten = snprintf(
-        versionRecord, sizeof(versionRecord),
-        "FIRMWARE_VERSION version=%s",
-        PROJECT_VERSION
-    );
+    const int versionWritten = snprintf(versionRecord, sizeof(versionRecord), "FIRMWARE_VERSION version=%s", PROJECT_VERSION);
 
-    if (versionWritten > 0 &&
-        static_cast<size_t>(versionWritten) < sizeof(versionRecord)
-    ) { storage::appendLogRecord(versionRecord); }
+    if (versionWritten > 0 && static_cast<size_t>(versionWritten) < sizeof(versionRecord))
+        { storage::appendLogRecord(versionRecord); }
 
     char resetRecord[64];
     const int written = snprintf(
-        resetRecord, sizeof(resetRecord),
-        "RESET_REASON esp=%d cpu0=%d cpu1=%d",
+        resetRecord, sizeof(resetRecord), "RESET_REASON esp=%d cpu0=%d cpu1=%d",
         static_cast<int>(esp_reset_reason()),
         static_cast<int>(rtc_get_reset_reason(0)),
         static_cast<int>(rtc_get_reset_reason(1))
     );
 
-    if (written > 0 &&
-        static_cast<size_t>(written) < sizeof(resetRecord)
-    ) { storage::appendLogRecord(resetRecord); }
+    if (written > 0 && static_cast<size_t>(written) < sizeof(resetRecord))
+        { storage::appendLogRecord(resetRecord); }
 
     settings::begin();
     power::begin();
@@ -123,7 +118,6 @@ void app::setup() {
     if (battery::isCritical()) { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
 
     sDisplay::begin();
-
     navigation::begin();
     wifi::begin();
 
@@ -131,7 +125,8 @@ void app::setup() {
     update::begin();
 
     ota::begin();
-    if (ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE ||
+    if(
+        ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE ||
         ota::snapshot(ota::Type::PARKS).status   != ota::Status::UNAVAILABLE
     ) { sDisplay::setButtonState(sDisplay::Button::OTA, sDisplay::ButtonState::READY); }
 
@@ -140,35 +135,29 @@ void app::setup() {
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
 
-    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(
-        _gpsTask, "GNSS", 8192, nullptr, 1, &_gpsTaskHandle, 0
-    );
+    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, nullptr, 0);
 
     if (gpsTaskResult != pdPASS) { storage::appendErrorRecord("GPS_TASK_CREATE_FAILED"); }
     else {
         char memoryRecord[96];
         const int memoryWritten = snprintf(
-            memoryRecord, sizeof(memoryRecord),
-            "MEMORY_READY free=%lu minimum=%lu largest=%lu",
+            memoryRecord, sizeof(memoryRecord), "MEMORY_READY free=%lu minimum=%lu largest=%lu",
             static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
             static_cast<unsigned long>(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)),
             static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))
         );
 
-        if (memoryWritten > 0 &&
-            static_cast<size_t>(memoryWritten) < sizeof(memoryRecord)
-        ) { storage::appendLogRecord(memoryRecord); }
+        if (memoryWritten > 0 && static_cast<size_t>(memoryWritten) < sizeof(memoryRecord))
+            { storage::appendLogRecord(memoryRecord); }
 
         char bootRecord[48];
         const int bootWritten = snprintf(
-            bootRecord, sizeof(bootRecord),
-            "SYSTEM_BOOT_DURATION duration_ms=%lu",
+            bootRecord, sizeof(bootRecord), "SYSTEM_BOOT_DURATION duration_ms=%lu",
             static_cast<unsigned long>(millis())
         );
 
-        if (bootWritten > 0 &&
-            static_cast<size_t>(bootWritten) < sizeof(bootRecord)
-        ) { storage::appendLogRecord(bootRecord); }
+        if (bootWritten > 0 && static_cast<size_t>(bootWritten) < sizeof(bootRecord))
+            { storage::appendLogRecord(bootRecord); }
         storage::appendLogRecord("SYSTEM_READY");
     }
 }

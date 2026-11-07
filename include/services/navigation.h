@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,19 +27,23 @@
 #include <cstdint>
 
 namespace services::navigation {
+    /** @brief Lifecycle state of the marked-QTH operation. */
     enum class MarkState : uint8_t {IDLE, RECORDING, READY_TO_SAVE};
 
+    /** @brief Geographic position used by navigation calculations. */
     struct Coordinate {
         double latitude;
         double longitude;
         double altitude;
     };
 
+    /** @brief Timestamped coordinate queued for trace persistence. */
     struct TracePoint {
         Coordinate coordinate;
         uint32_t utc;
     };
 
+    /** @brief Complete synchronized state of the active marked-QTH operation. */
     struct MarkSnapshot {
         Coordinate start;
         Coordinate end;
@@ -50,6 +54,7 @@ namespace services::navigation {
         bool hasEnd;
     };
 
+    /** @brief Reduced marked-QTH state prepared for screen rendering. */
     struct MarkDisplaySnapshot {
         MarkState state         = MarkState::IDLE;
         Coordinate start        {};
@@ -58,60 +63,59 @@ namespace services::navigation {
         double bearingDeg       = -1.0;
     };
 
-    /**
-     * Initializes the navigation service.
-     */
+    /** @brief Initializes the navigation service. */
     void begin();
 
-   /**
+    /**
      * @brief Updates the current GPS fix.
-     * A fix marked as valid is ignored if either coordinate is non-finite
-     * or outside its geographic range.
-     * @param coordinate Current coordinate. Its latitude must be from -90 to 90 and its longitude from -180 to 180.
-     * @param fixValid Whether the receiver reports a valid fix.
+     *
+     * A fix reported as valid is rejected when its latitude, longitude
+     * or altitude is non-finite, or when its coordinates are outside
+     * their geographic ranges.
+     *
+     * @param coordinate Current geographic coordinate.
+     * @param fixValid Whether the receiver reports a valid position fix.
      */
-    void updateGPSFix(const Coordinate& coordinate, bool fixValid);
+    void updateGPSFix(const Coordinate &coordinate, bool fixValid);
 
     /**
-     * Retrieves the next pending trace point without removing it.
+     * @brief Retrieves the next pending trace point without removing it.
      * @param point Receives the pending trace point.
-     * @return true if a trace point is available, false otherwise.
+     * @return `true` when a trace point is available.
      */
-    bool peekPendingTracePoint(TracePoint& point);
+    bool peekPendingTracePoint(TracePoint &point);
 
     /**
-     * Removes the current pending trace point.
-     * @return true if a trace point was discarded, false otherwise.
+     * @brief Removes the current pending trace point.
+     * @return `true` when a trace point was discarded.
      */
     bool discardPendingTracePoint();
 
     /**
-     * Starts a new mark.
-     * @return true if the mark was successfully started, false otherwise.
+     * @brief Starts a new marked-QTH operation.
+     * @return `true` when the mark was started successfully.
      */
     bool startMark();
 
     /**
-     * Restores a previously started mark.
-     * @param start    Starting coordinate.
+     * @brief Restores a previously started marked-QTH operation.
+     * @param start Starting coordinate of the restored mark.
      * @param startUTC UTC timestamp of the mark start.
-     * @return true if the mark was restored, false if its timestamps, coordinates, or state are invalid.
+     * @return `true` when the mark was restored successfully.
      */
-    bool restoreMark(const Coordinate& start, uint32_t startUTC);
+    bool restoreMark(const Coordinate &start, uint32_t startUTC);
 
     /**
-     * Stops the current mark.
-     * @return true if the mark was successfully stopped, false otherwise.
+     * @brief Stops the current marked-QTH operation.
+     * @return `true` when the mark was stopped successfully.
      */
     bool stopMark();
 
-    /**
-     * Clears the current mark.
-     */
+    /** @brief Clears the current mark and its pending trace points. */
     void clearMark();
 
     /**
-     * Returns the current mark state.
+     * @brief Returns the current marked-QTH lifecycle state.
      * @return Current mark state.
      */
     MarkState markState();
@@ -123,16 +127,16 @@ namespace services::navigation {
     uint32_t markDurationSeconds();
 
     /**
-     * Retrieves a complete snapshot of the current mark.
-     * @param snapshot Receives the mark snapshot.
-     * @return true if a snapshot is available, false otherwise.
+     * @brief Retrieves a complete snapshot of the current mark.
+     * @param snapshot Receives the synchronized mark snapshot.
+     * @return `true` when a mark is active or waiting to be saved.
      */
-    bool getMarkSnapshot(MarkSnapshot& snapshot);
+    bool getMarkSnapshot(MarkSnapshot &snapshot);
 
     /**
-     * Retrieves the information required to display the current mark.
-     * @param snapshot Receives the display snapshot.
-     * @return true if a display snapshot is available, false otherwise.
+     * @brief Retrieves the information required to display the current mark.
+     * @param snapshot Receives the prepared display snapshot.
+     * @return `true` when a mark is active or waiting to be saved.
      */
-    bool getMarkDisplaySnapshot(MarkDisplaySnapshot& snapshot);
+    bool getMarkDisplaySnapshot(MarkDisplaySnapshot &snapshot);
 }

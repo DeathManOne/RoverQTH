@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,14 +22,15 @@
  */
 
 #pragma once
+
 #include <cstdint>
 
 namespace services::power {
+    /** @brief Identifies the event that requested device shutdown. */
     enum class ShutdownReason : uint8_t {BUTTON, BATTERY_CRITICAL};
 
     /**
      * Initializes the power management service.
-     * @return true if the service was successfully initialized, false otherwise.
      */
     void begin();
 

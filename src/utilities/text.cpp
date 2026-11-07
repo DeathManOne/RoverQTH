@@ -21,6 +21,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstring>
 #include "utilities/text.h"
 
 namespace text = utilities::text;
@@ -32,25 +33,29 @@ bool text::copy(char* const destination, const size_t destinationSize, const cha
 
     if (source == nullptr)
         { return false; }
-    size_t index = 0U;
+    size_t copyIndex = 0U;
 
-    while (index + 1U < destinationSize && source[index] != '\0') {
-        destination[index] = source[index];
-        ++index;
+    while (copyIndex + 1U < destinationSize && source[copyIndex] != '\0') {
+        destination[copyIndex] = source[copyIndex];
+        ++copyIndex;
     }
 
-    destination[index] = '\0';
-    return source[index] == '\0';
+    destination[copyIndex] = '\0';
+    return source[copyIndex] == '\0';
+}
+
+bool text::isTerminated(const char* const value, const size_t capacity) {
+    return value != nullptr && capacity > 0U && std::memchr(value, '\0', capacity) != nullptr;
 }
 
 bool text::startsWith(const char* const value, const char* const prefix) {
     if (value == nullptr || prefix == nullptr) { return false; }
 
-    size_t index = 0U;
-    while (prefix[index] != '\0') {
-        if (value[index] == '\0' || value[index] != prefix[index])
+    size_t prefixIndex = 0U;
+    while (prefix[prefixIndex] != '\0') {
+        if (value[prefixIndex] == '\0' || value[prefixIndex] != prefix[prefixIndex])
             { return false; }
-        ++index;
+        ++prefixIndex;
     }
     return true;
 }
@@ -59,11 +64,11 @@ bool text::equals(const char* const left, const char* const right) {
     if (left == right)                       { return true; }
     if (left == nullptr || right == nullptr) { return false; }
 
-    size_t index = 0U;
-    while (left[index] != '\0' && right[index] != '\0') {
-        if (left[index] != right[index])
+    size_t characterIndex = 0U;
+    while (left[characterIndex] != '\0' && right[characterIndex] != '\0') {
+        if (left[characterIndex] != right[characterIndex])
             { return false; }
-        ++index;
+        ++characterIndex;
     }
-    return left[index] == '\0' && right[index] == '\0';
+    return left[characterIndex] == '\0' && right[characterIndex] == '\0';
 }

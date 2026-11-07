@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -25,29 +25,29 @@
 
 namespace utilities::units {
     /**
-     * Converts kilometers to meters.
-     * @param kilometers Distance in kilometers.
-     * @return Distance in meters.
+     * Converts kilometres to metres.
+     * @param kilometers Distance in kilometres.
+     * @return Distance in metres.
      */
     double kilometersToMeters(double kilometers);
 
     /**
-     * Converts kilometers to miles.
-     * @param kilometers Distance in kilometers.
+     * Converts kilometres to miles.
+     * @param kilometers Distance in kilometres.
      * @return Distance in miles.
      */
     double kilometersToMiles(double kilometers);
 
     /**
-     * Converts meters to feet.
-     * @param meters Distance in meters.
+     * Converts metres to feet.
+     * @param meters Distance in metres.
      * @return Distance in feet.
      */
     double metersToFeet(double meters);
 
     /**
-     * Converts a speed from kilometers per hour to miles per hour.
-     * @param kilometersPerHour Speed in kilometers per hour.
+     * Converts a speed from kilometres per hour to miles per hour.
+     * @param kilometersPerHour Speed in kilometres per hour.
      * @return Speed in miles per hour.
      */
     double kilometersPerHourToMilesPerHour(double kilometersPerHour);

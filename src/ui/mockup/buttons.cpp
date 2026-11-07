@@ -84,38 +84,20 @@ namespace {
                 break;
         }
 
-        if (fillColor != theme::BLACK) {
-            tft.rectRoundFill(
-                button.x,       button.y,
-                button.width,   button.height,
-                radius,         fillColor
-            );
-        } else {
-            tft.rectFill(
-                button.x,       button.y,
-                button.width,   button.height,
-                theme::BLACK
-            );
-        }
+        if (fillColor != theme::BLACK)
+            { tft.rectRoundFill(button.x, button.y, button.width, button.height, radius, fillColor); }
+        else { tft.rectFill(button.x, button.y, button.width, button.height, theme::BLACK); }
 
         tft.setFont(ST7796S::RobotoMono_Bold_16);
         tft.setTextColor(textColor);
-        tft.rectRound(
-            button.x,       button.y,
-            button.width,   button.height,
-            radius,         borderColor
-        );
-        tft.textCenter(
-            button.x,       button.y,
-            button.width,   button.height,
-            field.label
-        );
+        tft.rectRound(button.x, button.y, button.width, button.height, radius, borderColor);
+        tft.textCenter(button.x, button.y, button.width, button.height, field.label);
     }
 }
 
 void buttons::setState(const Id id, const State state) {
-    const size_t index = static_cast<size_t>(id);
-    if (index >= _states.size()) { return; }
+    const size_t buttonIndex = static_cast<size_t>(id);
+    if (buttonIndex >= _states.size()) { return; }
 
     switch (state) {
         case State::UNAVAILABLE:
@@ -126,15 +108,11 @@ void buttons::setState(const Id id, const State state) {
             return;
     }
 
-    _states[index] = state;
+    _states[buttonIndex] = state;
 }
 
 void buttons::clear(ST7796S::MSP4021 &tft) {
-    tft.rectFill(
-        _area.outerX, _area.outerY,
-        _area.outerW, _area.outerH,
-        theme::BLACK
-    );
+    tft.rectFill(_area.outerX, _area.outerY, _area.outerW, _area.outerH, theme::BLACK);
 }
 
 void buttons::draw(ST7796S::MSP4021 &tft) {
@@ -145,8 +123,9 @@ void buttons::draw(ST7796S::MSP4021 &tft) {
     _area.outerW = grid::outerWidth();
     _area.outerH = tft.height() - _area.outerY;
 
-    const int btnCount = uiMockup::BUTTON_COUNT;
-    const int btnW = (_area.outerW - (gap * (btnCount - 1))) / btnCount;
+    constexpr int btnCount = static_cast<int>(buttons::Id::COUNT);
+    const int btnW         = (_area.outerW - (gap * (btnCount - 1))) / btnCount;
+
     uiButtons::markQTH = uiButtons::makeArea(_area.outerX,                      _area.outerY, btnW, _area.outerH);
     uiButtons::ota     = uiButtons::makeArea(_area.outerX + btnW + gap,         _area.outerY, btnW, _area.outerH);
     uiButtons::menu    = uiButtons::makeArea(_area.outerX + ((btnW + gap) * 2), _area.outerY, btnW, _area.outerH);

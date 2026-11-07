@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -34,29 +34,46 @@ namespace {
     bool _ready = false;
     constexpr const char* NAMESPACE = "roverqth";
 
+    struct TouchCalibration {
+        bool swapXY  = false;
+        bool invertX = false;
+        bool invertY = false;
+        float cxa    = 0.0f;
+        float cxb    = 0.0f;
+        float cxc    = 0.0f;
+        float cya    = 0.0f;
+        float cyb    = 0.0f;
+        float cyc    = 0.0f;
+    };
+
+    struct TouchCalibrationKeys {
+        const char* valid;
+        const char* swapXY;
+        const char* invertX;
+        const char* invertY;
+        const char* cxa;
+        const char* cxb;
+        const char* cxc;
+        const char* cya;
+        const char* cyb;
+        const char* cyc;
+    };
+
     // TOUCHSCREEN NORMAL
-    constexpr const char* KEY_TN_TOUCH_OK   = "tn_ok";
-    constexpr const char* KEY_TN_SWAP_XY    = "tn_sxy";
-    constexpr const char* KEY_TN_INVERT_X   = "tn_ix";
-    constexpr const char* KEY_TN_INVERT_Y   = "tn_iy";
-    constexpr const char* KEY_TN_CXA        = "tn_cxa";
-    constexpr const char* KEY_TN_CXB        = "tn_cxb";
-    constexpr const char* KEY_TN_CXC        = "tn_cxc";
-    constexpr const char* KEY_TN_CYA        = "tn_cya";
-    constexpr const char* KEY_TN_CYB        = "tn_cyb";
-    constexpr const char* KEY_TN_CYC        = "tn_cyc";
+    constexpr TouchCalibrationKeys TOUCH_NORMAL_KEYS {
+        "tn_ok",
+        "tn_sxy", "tn_ix",  "tn_iy",
+        "tn_cxa", "tn_cxb", "tn_cxc",
+        "tn_cya", "tn_cyb", "tn_cyc"
+    };
 
     // TOUCHSCREEN REVERSED
-    constexpr const char* KEY_TR_TOUCH_OK   = "tr_ok";
-    constexpr const char* KEY_TR_SWAP_XY    = "tr_sxy";
-    constexpr const char* KEY_TR_INVERT_X   = "tr_ix";
-    constexpr const char* KEY_TR_INVERT_Y   = "tr_iy";
-    constexpr const char* KEY_TR_CXA        = "tr_cxa";
-    constexpr const char* KEY_TR_CXB        = "tr_cxb";
-    constexpr const char* KEY_TR_CXC        = "tr_cxc";
-    constexpr const char* KEY_TR_CYA        = "tr_cya";
-    constexpr const char* KEY_TR_CYB        = "tr_cyb";
-    constexpr const char* KEY_TR_CYC        = "tr_cyc";
+    constexpr TouchCalibrationKeys TOUCH_REVERSED_KEYS {
+        "tr_ok",
+        "tr_sxy", "tr_ix",  "tr_iy",
+        "tr_cxa", "tr_cxb", "tr_cxc",
+        "tr_cya", "tr_cyb", "tr_cyc"
+    };
 
     // GENERAL
     constexpr const char* KEY_CALLSIGN          = "callsign";
@@ -94,6 +111,63 @@ namespace {
     // OTA SELECTION
     constexpr const char* KEY_OTA_TYPE = "ota_type";
     constexpr const char* KEY_OTA_CODE = "ota_code";
+
+    bool _getTouchCalibration(const TouchCalibrationKeys& keys, TouchCalibration& calibration) {
+        if (!_ready && !nvs::begin())           { return false; }
+        if (!_prefs.getBool(keys.valid, false)) { return false; }
+
+        TouchCalibration stored {};
+        stored.swapXY  = _prefs.getBool(keys.swapXY,  false);
+        stored.invertX = _prefs.getBool(keys.invertX, false);
+        stored.invertY = _prefs.getBool(keys.invertY, false);
+        stored.cxa     = _prefs.getFloat(keys.cxa, 0.0f);
+        stored.cxb     = _prefs.getFloat(keys.cxb, 0.0f);
+        stored.cxc     = _prefs.getFloat(keys.cxc, 0.0f);
+        stored.cya     = _prefs.getFloat(keys.cya, 0.0f);
+        stored.cyb     = _prefs.getFloat(keys.cyb, 0.0f);
+        stored.cyc     = _prefs.getFloat(keys.cyc, 0.0f);
+
+        calibration = stored;
+        return true;
+    }
+
+    bool _setTouchCalibration(const TouchCalibrationKeys& keys, const TouchCalibration& calibration) {
+        if (!_ready && !nvs::begin()) { return false;}
+
+        bool success = true;
+        success = _prefs.putBool(keys.swapXY,  calibration.swapXY)  > 0U && success;
+        success = _prefs.putBool(keys.invertX, calibration.invertX) > 0U && success;
+        success = _prefs.putBool(keys.invertY, calibration.invertY) > 0U && success;
+        success = _prefs.putFloat(keys.cxa, calibration.cxa) > 0U && success;
+        success = _prefs.putFloat(keys.cxb, calibration.cxb) > 0U && success;
+        success = _prefs.putFloat(keys.cxc, calibration.cxc) > 0U && success;
+        success = _prefs.putFloat(keys.cya, calibration.cya) > 0U && success;
+        success = _prefs.putFloat(keys.cyb, calibration.cyb) > 0U && success;
+        success = _prefs.putFloat(keys.cyc, calibration.cyc) > 0U && success;
+
+        if (!success) {
+            _prefs.remove(keys.valid);
+            return false;
+        }
+        return _prefs.putBool(keys.valid, true) > 0U;
+    }
+
+    bool _resetTouchCalibration(const TouchCalibrationKeys& keys) {
+        if (!_ready && !nvs::begin()) { return false; }
+
+        _prefs.remove(keys.valid);
+        _prefs.remove(keys.swapXY);
+        _prefs.remove(keys.invertX);
+        _prefs.remove(keys.invertY);
+        _prefs.remove(keys.cxa);
+        _prefs.remove(keys.cxb);
+        _prefs.remove(keys.cxc);
+        _prefs.remove(keys.cya);
+        _prefs.remove(keys.cyb);
+        _prefs.remove(keys.cyc);
+
+        return true;
+    }
 }
 
 bool nvs::begin() {
@@ -102,106 +176,93 @@ bool nvs::begin() {
     return _ready;
 }
 
-bool nvs::getTouchCalibrationNormal(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc) {
-    if (!_ready && !begin())                     { return false; }
-    if (!_prefs.getBool(KEY_TN_TOUCH_OK, false)) { return false; }
-    swapXY  = _prefs.getBool(KEY_TN_SWAP_XY,    false);
-    invertX = _prefs.getBool(KEY_TN_INVERT_X,   false);
-    invertY = _prefs.getBool(KEY_TN_INVERT_Y,   false);
-    cxa     = _prefs.getFloat(KEY_TN_CXA,       0.0f);
-    cxb     = _prefs.getFloat(KEY_TN_CXB,       0.0f);
-    cxc     = _prefs.getFloat(KEY_TN_CXC,       0.0f);
-    cya     = _prefs.getFloat(KEY_TN_CYA,       0.0f);
-    cyb     = _prefs.getFloat(KEY_TN_CYB,       0.0f);
-    cyc     = _prefs.getFloat(KEY_TN_CYC,       0.0f);
+bool nvs::getTouchCalibrationNormal(
+    bool& swapXY,  bool& invertX, bool& invertY,
+    float& cxa,    float& cxb,    float& cxc,
+    float& cya,    float& cyb,    float& cyc
+) {
+    TouchCalibration calibration {};
+    if (!_getTouchCalibration(TOUCH_NORMAL_KEYS, calibration)) { return false; }
+
+    swapXY  = calibration.swapXY;
+    invertX = calibration.invertX;
+    invertY = calibration.invertY;
+    cxa     = calibration.cxa;
+    cxb     = calibration.cxb;
+    cxc     = calibration.cxc;
+    cya     = calibration.cya;
+    cyb     = calibration.cyb;
+    cyc     = calibration.cyc;
+
     return true;
 }
 
-bool nvs::setTouchCalibrationNormal(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
-    if (!_ready && !begin()) { return false; }
+bool nvs::setTouchCalibrationNormal(
+    const bool swapXY, const bool invertX, const bool invertY,
+    const float cxa,   const float cxb,    const float cxc,
+    const float cya,   const float cyb,    const float cyc
+) {
+    TouchCalibration calibration {};
+    calibration.swapXY  = swapXY;
+    calibration.invertX = invertX;
+    calibration.invertY = invertY;
+    calibration.cxa     = cxa;
+    calibration.cxb     = cxb;
+    calibration.cxc     = cxc;
+    calibration.cya     = cya;
+    calibration.cyb     = cyb;
+    calibration.cyc     = cyc;
 
-    bool success = true;
-    success = _prefs.putBool (KEY_TN_SWAP_XY,  swapXY)  > 0U && success;
-    success = _prefs.putBool (KEY_TN_INVERT_X, invertX) > 0U && success;
-    success = _prefs.putBool (KEY_TN_INVERT_Y, invertY) > 0U && success;
-    success = _prefs.putFloat(KEY_TN_CXA,      cxa)     > 0U && success;
-    success = _prefs.putFloat(KEY_TN_CXB,      cxb)     > 0U && success;
-    success = _prefs.putFloat(KEY_TN_CXC,      cxc)     > 0U && success;
-    success = _prefs.putFloat(KEY_TN_CYA,      cya)     > 0U && success;
-    success = _prefs.putFloat(KEY_TN_CYB,      cyb)     > 0U && success;
-    success = _prefs.putFloat(KEY_TN_CYC,      cyc)     > 0U && success;
-
-    if (!success) {
-        _prefs.remove(KEY_TN_TOUCH_OK);
-        return false;
-    }
-    return _prefs.putBool(KEY_TN_TOUCH_OK, true) > 0U;
+    return _setTouchCalibration(TOUCH_NORMAL_KEYS, calibration);
 }
 
 bool nvs::resetTouchCalibrationNormal() {
-    if (!_ready && !begin()) { return false; }
-    _prefs.remove(KEY_TN_TOUCH_OK);
-    _prefs.remove(KEY_TN_SWAP_XY);
-    _prefs.remove(KEY_TN_INVERT_X);
-    _prefs.remove(KEY_TN_INVERT_Y);
-    _prefs.remove(KEY_TN_CXA);
-    _prefs.remove(KEY_TN_CXB);
-    _prefs.remove(KEY_TN_CXC);
-    _prefs.remove(KEY_TN_CYA);
-    _prefs.remove(KEY_TN_CYB);
-    _prefs.remove(KEY_TN_CYC);
+    return _resetTouchCalibration(TOUCH_NORMAL_KEYS);
+}
+
+bool nvs::getTouchCalibrationReversed(
+    bool& swapXY, bool& invertX, bool& invertY,
+    float& cxa,   float& cxb,    float& cxc,
+    float& cya,   float& cyb,    float& cyc
+) {
+    TouchCalibration calibration {};
+
+    if (!_getTouchCalibration(TOUCH_REVERSED_KEYS, calibration)) { return false; }
+
+    swapXY  = calibration.swapXY;
+    invertX = calibration.invertX;
+    invertY = calibration.invertY;
+    cxa     = calibration.cxa;
+    cxb     = calibration.cxb;
+    cxc     = calibration.cxc;
+    cya     = calibration.cya;
+    cyb     = calibration.cyb;
+    cyc     = calibration.cyc;
+
     return true;
 }
 
-bool nvs::getTouchCalibrationReversed(bool &swapXY, bool &invertX, bool &invertY, float &cxa, float &cxb, float &cxc, float &cya, float &cyb, float &cyc) {
-    if (!_ready && !begin())                     { return false; }
-    if (!_prefs.getBool(KEY_TR_TOUCH_OK, false)) { return false; }
-    swapXY  = _prefs.getBool(KEY_TR_SWAP_XY,    false);
-    invertX = _prefs.getBool(KEY_TR_INVERT_X,   false);
-    invertY = _prefs.getBool(KEY_TR_INVERT_Y,   false);
-    cxa     = _prefs.getFloat(KEY_TR_CXA,       0.0f);
-    cxb     = _prefs.getFloat(KEY_TR_CXB,       0.0f);
-    cxc     = _prefs.getFloat(KEY_TR_CXC,       0.0f);
-    cya     = _prefs.getFloat(KEY_TR_CYA,       0.0f);
-    cyb     = _prefs.getFloat(KEY_TR_CYB,       0.0f);
-    cyc     = _prefs.getFloat(KEY_TR_CYC,       0.0f);
-    return true;
-}
+bool nvs::setTouchCalibrationReversed(
+    const bool swapXY, const bool invertX, const bool invertY,
+    const float cxa,   const float cxb,    const float cxc,
+    const float cya,   const float cyb,    const float cyc
+) {
+    TouchCalibration calibration {};
+    calibration.swapXY  = swapXY;
+    calibration.invertX = invertX;
+    calibration.invertY = invertY;
+    calibration.cxa     = cxa;
+    calibration.cxb     = cxb;
+    calibration.cxc     = cxc;
+    calibration.cya     = cya;
+    calibration.cyb     = cyb;
+    calibration.cyc     = cyc;
 
-bool nvs::setTouchCalibrationReversed(bool swapXY, bool invertX, bool invertY, float cxa, float cxb, float cxc, float cya, float cyb, float cyc) {
-    if (!_ready && !begin()) { return false; }
-
-    bool success = true;
-    success = _prefs.putBool (KEY_TR_SWAP_XY,  swapXY)  > 0U && success;
-    success = _prefs.putBool (KEY_TR_INVERT_X, invertX) > 0U && success;
-    success = _prefs.putBool (KEY_TR_INVERT_Y, invertY) > 0U && success;
-    success = _prefs.putFloat(KEY_TR_CXA,      cxa)     > 0U && success;
-    success = _prefs.putFloat(KEY_TR_CXB,      cxb)     > 0U && success;
-    success = _prefs.putFloat(KEY_TR_CXC,      cxc)     > 0U && success;
-    success = _prefs.putFloat(KEY_TR_CYA,      cya)     > 0U && success;
-    success = _prefs.putFloat(KEY_TR_CYB,      cyb)     > 0U && success;
-    success = _prefs.putFloat(KEY_TR_CYC,      cyc)     > 0U && success;
-
-    if (!success) {
-        _prefs.remove(KEY_TR_TOUCH_OK);
-        return false;
-    }
-    return _prefs.putBool(KEY_TR_TOUCH_OK, true) > 0U;
+    return _setTouchCalibration(TOUCH_REVERSED_KEYS, calibration);
 }
 
 bool nvs::resetTouchCalibrationReversed() {
-    if (!_ready && !begin()) { return false; }
-    _prefs.remove(KEY_TR_TOUCH_OK);
-    _prefs.remove(KEY_TR_SWAP_XY);
-    _prefs.remove(KEY_TR_INVERT_X);
-    _prefs.remove(KEY_TR_INVERT_Y);
-    _prefs.remove(KEY_TR_CXA);
-    _prefs.remove(KEY_TR_CXB);
-    _prefs.remove(KEY_TR_CXC);
-    _prefs.remove(KEY_TR_CYA);
-    _prefs.remove(KEY_TR_CYB);
-    _prefs.remove(KEY_TR_CYC);
-    return true;
+    return _resetTouchCalibration(TOUCH_REVERSED_KEYS);
 }
 
 float nvs::getBatteryMinimal() {

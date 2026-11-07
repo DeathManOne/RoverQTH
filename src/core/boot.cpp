@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -21,9 +21,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "core/boot.h"
+
 #include <cstring>
 
-#include "core/boot.h"
 #include "services/display.h"
 #include "services/gps.h"
 #include "services/qth.h"
@@ -46,8 +47,8 @@ namespace {
 
     void _initWifi();
     void _initSdCard(SPIClass &sdSPI, uint32_t timeout);
-    void _initGPS           (HardwareSerial &gpsUART);
-    void _waitGPSAcquisition(HardwareSerial &gpsUART);
+    void _initGPS(HardwareSerial &gpsUART);
+    bool _waitGPSAcquisition(HardwareSerial &gpsUART);
     void _restoreQTH();
 
     void _initWifi() {
@@ -103,67 +104,65 @@ namespace {
     void _initGPS(HardwareSerial &gpsUART) {
         gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
         _gpsOk = gps::isInitialized();
-
         sDisplay::updateBootGPS(&_gpsOk);
-        if (_gpsOk) {
-            _waitGPSAcquisition(gpsUART);
-            return;
-        }
 
         while (true) {
-            int x, y;
-            if (sDisplay::readTouch(x, y) &&
-                sDisplay::handleBootTouch(x, y)
-            ) {
-                sDisplay::updateBootGPS(nullptr);
-                gps::begin(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
-                _gpsOk = gps::isInitialized();
+            while (!_gpsOk) {
+                int x;
+                int y;
 
-                sDisplay::updateBootGPS(&_gpsOk);
-                if (_gpsOk) { break; }
+                if (sDisplay::readTouch(x, y) && sDisplay::handleBootTouch(x, y)) {
+                    sDisplay::updateBootGPS(nullptr);
+                    _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+                    sDisplay::updateBootGPS(&_gpsOk);
+                }
+
+                delay(50);
             }
-            delay(50);
+
+            if (_waitGPSAcquisition(gpsUART)) { return; }
         }
-        _waitGPSAcquisition(gpsUART);
     }
 
-    void _waitGPSAcquisition(HardwareSerial &gpsUART) {
-        constexpr uint32_t CHECK_INTERVAL_MS = 500;
-        constexpr uint32_t STALL_TIMEOUT_MS  = 30000;
+    bool _waitGPSAcquisition(HardwareSerial &gpsUART) {
+        constexpr uint32_t CHECK_INTERVAL_MS = 500U;
+        constexpr uint32_t STALL_TIMEOUT_MS  = 30000U;
 
-        uint8_t progress        = 0;
+        uint8_t progress        = 0U;
         uint32_t lastProgressAt = millis();
 
         while (true) {
             delay(CHECK_INTERVAL_MS);
+
             const uint8_t currentProgress = gps::getAcquisitionProgress();
-            
             if (currentProgress > progress) {
                 progress       = currentProgress;
                 lastProgressAt = millis();
 
                 sDisplay::updateBootGPSProgress(progress);
-                if (progress >= 100) {
+                if (progress >= 100U) {
                     storage::appendLogRecord("GPS_ACQUISITION_COMPLETE");
-                    break;
+                    return true;
                 }
                 continue;
             }
 
-            if (progress == 0U) { continue; }
-            if ((millis() - lastProgressAt) >= STALL_TIMEOUT_MS) {
-                storage::appendErrorRecord("GPS_ACQUISITION_STALLED");
-                sDisplay::updateBootGPS(nullptr);
+            if ((millis() - lastProgressAt) < STALL_TIMEOUT_MS)
+                { continue; }
 
-                _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+            storage::appendErrorRecord("GPS_ACQUISITION_STALLED");
+            sDisplay::updateBootGPS(nullptr);
 
+            _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
+            if (!_gpsOk) {
                 sDisplay::updateBootGPS(&_gpsOk);
-                if (!_gpsOk) { _initGPS(gpsUART); }
-
-                progress       = 0;
-                lastProgressAt = millis();
-                sDisplay::updateBootGPSProgress(progress);
+                return false;
             }
+
+            progress       = 0U;
+            lastProgressAt = millis();
+            sDisplay::updateBootGPSProgress(progress);
+            sDisplay::updateBootGPS(&_gpsOk);
         }
     }
 
@@ -189,10 +188,10 @@ namespace {
     }
 }
 
-bool boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
+void boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
     _wifiOk = false;
     _sdOk   = false;
-    _gpsOk  = false;    
+    _gpsOk  = false;
 
     sDisplay::clearBoot();
     sDisplay::drawBootLogo();
@@ -204,5 +203,4 @@ bool boot::run(HardwareSerial &gpsUART, SPIClass &sdSPI) {
     _restoreQTH();
 
     sDisplay::setButtonState(sDisplay::Button::MENU, sDisplay::ButtonState::READY);
-    return _sdOk && _gpsOk;
 }

@@ -45,11 +45,7 @@ namespace {
 }
 
 void header::clear(ST7796S::MSP4021 &tft) {
-    tft.rectFill(
-        outerX(),     outerY(),
-        outerWidth(), outerHeight(),
-        theme::BLACK
-    );
+    tft.rectFill(outerX(), outerY(), outerWidth(), outerHeight(), theme::BLACK);
 }
 
 void header::draw(ST7796S::MSP4021 &tft) {
@@ -65,24 +61,16 @@ void header::draw(ST7796S::MSP4021 &tft) {
     _area.innerW = _area.outerW - (gap * 2);
     _area.innerH = _area.outerH - (gap * 2);
 
-    tft.rectFill(
-        _area.outerX, _area.outerY,
-        _area.outerW, _area.outerH,
-        theme::BLACK
-    );
-    tft.rectRound(
-        _area.outerX,      _area.outerY,
-        _area.outerW,      _area.outerH,
-        uiMockup::RADIUS, theme::BORDER
-    );
+    tft.rectFill(_area.outerX, _area.outerY, _area.outerW, _area.outerH, theme::BLACK);
+    tft.rectRound(_area.outerX, _area.outerY, _area.outerW, _area.outerH, uiMockup::RADIUS, theme::BORDER);
 }
 
-int header::outerX()        { return _area.outerX; }
-int header::outerY()        { return _area.outerY; }
-int header::outerWidth()    { return _area.outerW; }
-int header::outerHeight()   { return _area.outerH; }
+int header::outerX()      { return _area.outerX; }
+int header::outerY()      { return _area.outerY; }
+int header::outerWidth()  { return _area.outerW; }
+int header::outerHeight() { return _area.outerH; }
 
-int header::innerX()        { return _area.innerX; }
-int header::innerY()        { return _area.innerY; }
-int header::innerWidth()    { return _area.innerW; }
-int header::innerHeight()   { return _area.innerH; }
+int header::innerX()      { return _area.innerX; }
+int header::innerY()      { return _area.innerY; }
+int header::innerWidth()  { return _area.innerW; }
+int header::innerHeight() { return _area.innerH; }

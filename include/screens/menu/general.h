@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -21,23 +21,30 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
 #include "services/settings.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays and edits general callsign, units and coordinate settings. */
     class General final : public Page {
         public:
-            void draw       (ST7796S::MSP4021 &tft) override;
-            void update     (ST7796S::MSP4021 &tft) override;
+            /** @copydoc Page::draw() */
+            void draw(ST7796S::MSP4021 &tft) override;
+
+            /** @copydoc Page::update() */
+            void update(ST7796S::MSP4021 &tft) override;
+
+            /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
             enum class _Action {NONE, CALLSIGN, SUFFIX, UNITS, COORDINATES};
 
-            char _callsignValue[32] = "";
+            char _callsignValue[services::settings::CALLSIGN_SIZE] = "";
 
             Field<_Action> _callsignField   = _makeField("Callsign",    _Action::CALLSIGN,    ui::settings::themes::defaults::GREEN);
             Field<_Action> _suffixField     = _makeField("Suffix",      _Action::SUFFIX,      ui::settings::themes::defaults::GREEN);
@@ -52,16 +59,15 @@ namespace screens::menu {
             };
 
             void _actionCallsign(ST7796S::MSP4021 &tft);
-            static services::settings::CallsignSuffix _nextSuffix(services::settings::CallsignSuffix suffix);
-
-            void _actionSuffix(ST7796S::MSP4021 &tft, Field<_Action> &field);
             static services::settings::Units _nextUnits(services::settings::Units units);
+            static services::settings::CallsignSuffix _nextSuffix(services::settings::CallsignSuffix suffix);
+            static services::settings::CoordinateFormat _nextCoordinateFormat(services::settings::CoordinateFormat format);
+
+            static const char* _coordinateFormatToText(services::settings::CoordinateFormat format);
             static const char* _unitsToText(services::settings::Units units);
 
             void _actionUnits(ST7796S::MSP4021 &tft, Field<_Action> &field);
-
+            void _actionSuffix(ST7796S::MSP4021 &tft, Field<_Action> &field);
             void _actionCoordinateFormat(ST7796S::MSP4021 &tft, Field<_Action> &field);
-            static services::settings::CoordinateFormat _nextCoordinateFormat(services::settings::CoordinateFormat format);
-            static const char* _coordinateFormatToText(services::settings::CoordinateFormat format);
     };
 }

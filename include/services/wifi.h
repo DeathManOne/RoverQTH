@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,30 +22,30 @@
  */
 
 #pragma once
+
 #include <cstdint>
 
 namespace services::wifi {
     /**
      * Initializes the Wi-Fi service.
-     * @return true if the service was successfully initialized, false otherwise.
      */
     void begin();
 
     /**
      * Indicates whether the Wi-Fi service has been initialized.
-     * @return true if the service is initialized, false otherwise.
+     * @return `true` when the service is initialized, otherwise `false`.
      */
     bool isInitialized();
 
     /**
      * Indicates whether the device is connected to a Wi-Fi network.
-     * @return true if the device is connected, false otherwise.
+     * @return `true` when the device is connected, otherwise `false`.
      */
     bool isConnected();
 
     /**
      * Indicates whether a Wi-Fi connection attempt is in progress.
-     * @return true if a connection attempt is in progress, false otherwise.
+     * @return `true` when a connection attempt is in progress, otherwise `false`.
      */
     bool isConnecting();
 
@@ -54,8 +54,8 @@ namespace services::wifi {
      * @param ssid       Wi-Fi network SSID.
      * @param password   Wi-Fi network password.
      * @param timeoutSec Connection timeout in seconds.
-     * @return true if the connection attempt was started successfully,
-     *         false if the parameters are invalid or startup failed.
+     * @return `true` when the connection attempt was started successfully,
+     *         `false` when the parameters are invalid or startup failed.
      */
     bool connect(const char* ssid, const char* password, uint32_t timeoutSec = 15);
 
@@ -65,8 +65,7 @@ namespace services::wifi {
     void update();
 
     /**
-     * @brief Cancels any active connection attempt and disconnects
-     *        from the current Wi-Fi network.
+     * @brief Cancels any active connection attempt and disconnects from the current Wi-Fi network.
      */
     void disconnect();
 }

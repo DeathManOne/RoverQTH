@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ namespace utilities::distance {
      * @param longitudeFrom Longitude of the starting point in decimal degrees.
      * @param latitudeTo    Latitude of the destination point in decimal degrees.
      * @param longitudeTo   Longitude of the destination point in decimal degrees.
-     * @return Distance in kilometers.
+     * @return Distance in kilometres.
      */
     double betweenKilometers(double latitudeFrom, double longitudeFrom, double latitudeTo, double longitudeTo);
 
@@ -40,14 +40,15 @@ namespace utilities::distance {
      * @param longitudeFrom Longitude of the starting point in decimal degrees.
      * @param latitudeTo    Latitude of the destination point in decimal degrees.
      * @param longitudeTo   Longitude of the destination point in decimal degrees.
-     * @return Initial bearing in degrees within the range [0, 360].
+     * @return Initial bearing in degrees within the range [0, 360).
      */
     double bearingDegrees(double latitudeFrom, double longitudeFrom, double latitudeTo, double longitudeTo);
 
     /**
      * Returns the cardinal direction corresponding to a bearing.
      * @param degrees Bearing in degrees.
-     * @return Cardinal direction ("N", "NE", "E", "SE", "S", "SW", "W" or "NW").
+     * @return Cardinal direction ("N", "NE", "E", "SE", "S", "SW", "W" or "NW"),
+     *         or an empty string when the bearing is not finite.
      */
     const char* cardinal(double degrees);
 }

@@ -1,4 +1,25 @@
-
+/*
+ * src/utilities/json/reader.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include <cerrno>
 #include <cmath>
@@ -22,8 +43,8 @@ bool Reader::_findValue(const char* const key, const char*& begin, const char*& 
 
     const char* cursor          = _begin + 1;
     const char* const objectEnd = _end - 1;
-    const char* foundBegin = nullptr;
-    const char* foundEnd   = nullptr;
+    const char* foundBegin      = nullptr;
+    const char* foundEnd        = nullptr;
 
     while (cursor < objectEnd) {
         _skipSpaces(cursor, objectEnd);
@@ -32,7 +53,7 @@ bool Reader::_findValue(const char* const key, const char*& begin, const char*& 
         const char* keyCursor = cursor;
         const bool matches    = _matchString(keyCursor, objectEnd, key);
 
-        if (!_skipString(cursor, objectEnd)) { return false; }
+        if (!_skipString(cursor, objectEnd))       { return false; }
         _skipSpaces(cursor, objectEnd);
 
         if (cursor >= objectEnd || *cursor != ':') { return false; }
@@ -40,7 +61,7 @@ bool Reader::_findValue(const char* const key, const char*& begin, const char*& 
         _skipSpaces(cursor, objectEnd);
 
         const char* const valueBegin = cursor;
-        if (!_skipValue(cursor, objectEnd, 0U)) { return false; }
+        if (!_skipValue(cursor, objectEnd, 0U))    { return false; }
 
         const char* valueEnd = cursor;
         while (valueEnd > valueBegin && (
@@ -49,7 +70,8 @@ bool Reader::_findValue(const char* const key, const char*& begin, const char*& 
         )) { --valueEnd; }
 
         if (matches) {
-            if (foundBegin != nullptr) { return false; }
+            if (foundBegin != nullptr)
+                { return false; }
             foundBegin = valueBegin;
             foundEnd   = valueEnd;
         }
@@ -179,7 +201,7 @@ bool Reader::_skipObject(const char*& cursor, const char* const end, const uint8
     }
 
     while (cursor < end) {
-        if (!_skipString(cursor, end)) { return false; }
+        if (!_skipString(cursor, end))       { return false; }
 
         _skipSpaces(cursor, end);
         if (cursor >= end || *cursor != ':') { return false; }
@@ -188,12 +210,12 @@ bool Reader::_skipObject(const char*& cursor, const char* const end, const uint8
         if (!_skipValue(cursor, end, depth)) { return false; }
 
         _skipSpaces(cursor, end);
-        if (cursor >= end) { return false; }
+        if (cursor >= end)                   { return false; }
         if (*cursor == '}') {
             ++cursor;
             return true;
         }
-        if (*cursor != ',') { return false; }
+        if (*cursor != ',')                  { return false; }
 
         ++cursor;
         _skipSpaces(cursor, end);
@@ -216,12 +238,12 @@ bool Reader::_skipArray(const char*& cursor, const char* const end, const uint8_
         if (!_skipValue(cursor, end, depth)) { return false; }
 
         _skipSpaces(cursor, end);
-        if (cursor >= end) { return false; }
+        if (cursor >= end)                   { return false; }
         if (*cursor == ']') {
             ++cursor;
             return true;
         }
-        if (*cursor != ',') { return false; }
+        if (*cursor != ',')                  { return false; }
 
         ++cursor;
         _skipSpaces(cursor, end);
@@ -413,10 +435,7 @@ bool Reader::_isDigit(const char value) {
 }
 
 bool Reader::_isHexDigit(const char value) {
-    return
-        (value >= '0' && value <= '9') ||
-        (value >= 'A' && value <= 'F') ||
-        (value >= 'a' && value <= 'f');
+    return (value >= '0' && value <= '9') || (value >= 'A' && value <= 'F') || (value >= 'a' && value <= 'f');
 }
 
 uint8_t Reader::_hexValue(const char value) {
@@ -433,10 +452,8 @@ Reader::Reader(const char* const content) : _begin(content), _end(content), _val
     const char* end   = _end;
     _skipSpaces(begin, end);
 
-    while (end > begin && (
-        end[-1] == ' '  || end[-1] == '\t' ||
-        end[-1] == '\r' || end[-1] == '\n'
-    )) { --end; }
+    while (end > begin && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\r' || end[-1] == '\n'))
+        { --end; }
 
     if (end - begin < 2 || *begin != '{' || end[-1] != '}')
         { return;}
@@ -460,7 +477,7 @@ bool Reader::object(const char* const key, Reader& value) const {
     if (!_findValue(key, begin, end)) { return false; }
     Reader objectReader(begin, end);
 
-    if (!objectReader.valid()) { return false; }
+    if (!objectReader.valid())        { return false; }
     value = objectReader;
     return true;
 }
@@ -469,7 +486,7 @@ bool Reader::number(const char* const key, double& value) const {
     const char* begin = nullptr;
     const char* end   = nullptr;
 
-    if (!_findValue(key, begin, end)) { return false; }
+    if (!_findValue(key, begin, end))  { return false; }
     const size_t length = static_cast<size_t>(end - begin);
 
     if (length == 0U || length >= 64U) { return false; }
@@ -479,8 +496,8 @@ bool Reader::number(const char* const key, double& value) const {
         { buffer[index] = begin[index]; }
     buffer[length] = '\0';
 
-    errno = 0;
-    char* parseEnd = nullptr;
+    errno               = 0;
+    char* parseEnd      = nullptr;
     const double parsed = std::strtod(buffer, &parseEnd);
 
     if (parseEnd == buffer || *parseEnd != '\0' || errno == ERANGE || !std::isfinite(parsed))
@@ -514,7 +531,7 @@ bool Reader::string(const char* const key, char* const buffer, const size_t size
     const char* begin = nullptr;
     const char* end   = nullptr;
 
-    if (!_findValue(key, begin, end)) { return false; }
+    if (!_findValue(key, begin, end))             { return false; }
     if (!_decodeString(begin, end, buffer, size)) {
         buffer[0] = '\0';
         return false;
@@ -526,10 +543,10 @@ bool Reader::unsignedInteger(const char* const key, uint64_t& value) const {
     const char* begin = nullptr;
     const char* end   = nullptr;
 
-    if (!_findValue(key, begin, end)) { return false; }
+    if (!_findValue(key, begin, end))                   { return false; }
     const size_t length = static_cast<size_t>(end - begin);
 
-    if (length == 0U || length >= 32U) { return false; }
+    if (length == 0U || length >= 32U)                  { return false; }
 
     for (size_t index = 0U; index < length; ++index)
         { if (begin[index] < '0' || begin[index] > '9') { return false; } }
@@ -540,7 +557,7 @@ bool Reader::unsignedInteger(const char* const key, uint64_t& value) const {
     buffer[length] = '\0';
 
     errno = 0;
-    char* parseEnd = nullptr;
+    char* parseEnd                  = nullptr;
     const unsigned long long parsed = std::strtoull(buffer, &parseEnd, 10);
 
     if (parseEnd == buffer || *parseEnd != '\0' || errno == ERANGE)

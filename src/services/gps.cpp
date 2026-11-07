@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,12 +27,12 @@
 #include "services/dtc.h"
 #include "services/gps.h"
 #include "services/storage.h"
-#include "ui/settings/gps.h"
+#include "utilities/dtc.h"
 
-namespace dtc      = services::dtc;
-namespace gps      = services::gps;
-namespace storage  = services::storage;
-namespace settings = ui::settings::gps;
+namespace dtc     = services::dtc;
+namespace gps     = services::gps;
+namespace storage = services::storage;
+namespace uDtc    = utilities::dtc;
 
 namespace {
     portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
@@ -77,11 +77,8 @@ namespace {
         }
 
         if (_gps->getDateValid() && _gps->getTimeValid()) {
-            const uint32_t utcEpoch = dtc::toEpochUTC(
-                    _dateYear, _dateMonth,  _dateDay,
-                    next.hour, next.minute, next.second
-                );
-            if (utcEpoch != 0) { dtc::sync(utcEpoch); }
+            const uint32_t utcEpoch = uDtc::toEpochUTC(_dateYear, _dateMonth, _dateDay, next.hour, next.minute, next.second);
+            if (utcEpoch != 0U) { dtc::sync(utcEpoch); }
         }
 
         portENTER_CRITICAL(&_lock);
@@ -109,9 +106,7 @@ namespace {
         }
 
         static constexpr uint32_t BAUD_COUNT    = 4U;
-        static const uint32_t bauds[BAUD_COUNT] = {
-            9600U, 38400U, 57600U, 115200U
-        };
+        static const uint32_t bauds[BAUD_COUNT] = {9600U, 38400U, 57600U, 115200U};
 
         for (const uint32_t baud : bauds) {
             uart.begin(baud, SERIAL_8N1, rx, tx);
@@ -124,7 +119,7 @@ namespace {
                 if (_gps->begin(uart)) {
                     _gps->setAutoPVT(true);
                     _gps->setAutoDOPrate(1);
-                    _gps->setNavigationFrequency(settings::NAVIGATION_RATE_HZ);
+                    _gps->setNavigationFrequency(gps::NAVIGATION_RATE_HZ);
                     _gps->setSerialRate(finalBaud);
 
                     delay(100);
@@ -148,11 +143,7 @@ void gps::begin(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const 
         return;
     }
 
-    storage::appendErrorRecord(
-        result == GPSInitResult::ALLOCATION_FAILED
-            ? "GPS_ALLOCATION_FAILED"
-            : "GPS_INIT_FAILED"
-    );
+    storage::appendErrorRecord(result == GPSInitResult::ALLOCATION_FAILED ? "GPS_ALLOCATION_FAILED" : "GPS_INIT_FAILED");
 }
 
 bool gps::restart(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const uint32_t finalBaud, const uint32_t timeout) {
@@ -175,11 +166,7 @@ bool gps::restart(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, cons
         return true;
     }
 
-    storage::appendErrorRecord(
-        result == GPSInitResult::ALLOCATION_FAILED
-            ? "GPS_RESTART_ALLOCATION_FAILED"
-            : "GPS_RESTART_FAILED"
-    );
+    storage::appendErrorRecord(result == GPSInitResult::ALLOCATION_FAILED ? "GPS_RESTART_ALLOCATION_FAILED" : "GPS_RESTART_FAILED");
     return false;
 }
 
@@ -188,8 +175,8 @@ bool gps::isInitialized() {
 }
 
 bool gps::update(uint32_t timeoutMs) {
-    if (!_gps)
-        { return false; }
+    if (!_gps) { return false; }
+
     const uint32_t start = millis();
     do {
         _gps->checkUblox();
@@ -213,25 +200,25 @@ uint8_t gps::getAcquisitionProgress() {
     update();
 
     Snapshot snapshot {};
-    if (!getSnapshot(snapshot)) { return 0; }
+    if (!getSnapshot(snapshot))    { return 0; }
 
     uint8_t progress = 0;
     if (snapshot.satellites >= 1U) { progress += 10U; }
     if (snapshot.satellites >= 4U) { progress += 15U; }
     if (snapshot.satellites >= 8U) { progress += 10U; }
 
-    if (snapshot.fixType >= 2U) { progress += 20U; }
-    if (snapshot.fixType >= 3U) { progress += 20U; }
+    if (snapshot.fixType >= 2U)    { progress += 20U; }
+    if (snapshot.fixType >= 3U)    { progress += 20U; }
 
-    const bool goodHDOP      = snapshot.hdop > 0.0 && snapshot.hdop < settings::HDOP_FAIR;
-    const bool excellentHDOP = snapshot.hdop > 0.0 && snapshot.hdop < settings::HDOP_GOOD;
+    const bool goodHDOP      = snapshot.hdop > 0.0 && snapshot.hdop < gps::HDOP_FAIR;
+    const bool excellentHDOP = snapshot.hdop > 0.0 && snapshot.hdop < gps::HDOP_GOOD;
     const bool goodPDOP      = snapshot.pdop > 0.0 && snapshot.pdop < 3.0;
 
     if (goodHDOP)      { progress += 10U; }
     if (excellentHDOP) { progress += 10U; }
     if (goodPDOP)      { progress += 5U; }
 
-    if (snapshot.fixValid && snapshot.fixType >= 3U && snapshot.satellites >= settings::SAT_MIN_FIX && goodHDOP)
+    if (snapshot.fixValid && snapshot.fixType >= 3U && snapshot.satellites >= gps::SAT_MIN_FIX && goodHDOP)
         { return 100U; }
     return progress > 100U ? 100U : progress;
 }

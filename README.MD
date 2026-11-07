@@ -19,7 +19,7 @@
 
 RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator, operating information and selected SOTA or POTA references, allowing operators to accurately determine their current operating position in the field.
 
-The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and installable SOTA and POTA databases, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
+The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S or ILI9488 touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and installable SOTA and POTA databases, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
 
 ---
 
@@ -72,7 +72,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 
 ### Touchscreen Interface
 
-* 4-inch ST7796S display support (clone)
+* Automatic ST7796S and ILI9488 display-controller detection
 * Persistent touchscreen calibration
 * Independent NORMAL and REVERSED calibration profiles
 * Runtime screen rotation support
@@ -158,7 +158,9 @@ RoverQTH stores its persistent data on the SD card using a dedicated directory s
 |-- export/
 |-- logs/
 |   |-- system.log
-|   `-- error.log
+|   |-- system.1.log ... system.9.log
+|   |-- error.log
+|   `-- error.1.log ... error.9.log
 |-- qth/
 |   |-- <QTH-ID>.json
 |   |-- QTH.tmp
@@ -192,6 +194,8 @@ Logs are automatically timestamped using:
 
 * Boot-relative timestamps before GNSS synchronization
 * ISO 8601 UTC timestamps maintained by the synchronized system clock
+
+Each active log is rotated during SD card initialization when it reaches 256 KiB. The previous file becomes `.1.log`, older archives are shifted up to `.9.log`, and the oldest archive is permanently removed. Up to nine archives plus the active file are retained independently for system and error logs.
 
 ---
 
@@ -234,6 +238,21 @@ SOTA and POTA searches run in background FreeRTOS tasks. Users can search within
 
 Firmware updates, database updates and database searches are coordinated so that only one heavy operation runs at a time. A selected SOTA or POTA reference is stored in NVS and restored after restart. No automatic full-database search is performed during startup.
 
+## Architecture
+
+RoverQTH separates persistent data, stateless processing, stateful services and user-interface components into dedicated layers.
+
+```text
+RoverQTH
+|-- database    Persistent settings and binary SOTA/POTA databases
+|-- utilities   Stateless parsing, validation, formatting and calculations
+|-- services    Stateful hardware adapters and application services
+|-- screens     Stateful user-interface screens
+`-- ui          Reusable visual components, settings and resources
+```
+
+`services::display` owns the active screens and coordinates their lifecycle, navigation, refresh and touch-event routing. Hardware access and long-running operations remain encapsulated in their corresponding services, while shared transformations remain independent in `utilities`.
+
 ## Hardware Requirements
 
 ### Supported Controller
@@ -246,8 +265,9 @@ Firmware updates, database updates and database searches are coordinated so that
 
 ### Supported Display
 
-* ST7796S 480x320 touchscreen display (clone)
+* ST7796S or ILI9488 480x320 touchscreen display
 * MSP4020 / MSP4021 compatible hardware
+* Automatic display-controller detection during initialization
 
 ### Supported SD Reader
 
@@ -304,7 +324,7 @@ SparkFun u-blox GNSS Arduino Library
 
 Version:
 
-* v2.2.28
+* v2.2.29
 
 Repository:
 
@@ -316,7 +336,7 @@ ST7796 MSP4020/MSP4021 Display Library
 
 Version:
 
-* v1.4.0
+* v1.5.0
 
 Repository:
 
@@ -377,13 +397,13 @@ Example configuration:
 -D SD_CLK=7
 
 -D TFT_TOUCH_CS=8
+-D TFT_TOUCH_MISO=12
 -D TFT_SCREEN_CS=9
 -D TFT_SCREEN_DC=10
 -D TFT_SCREEN_RST=17
-
--D TFT_MOSI=11
--D TFT_MISO=12
--D TFT_CLK=13
+-D TFT_SCREEN_MISO=20
+-D TFT_SHARED_MOSI=11
+-D TFT_SHARED_CLK=13
 
 -D TFT_WIDTH=480
 -D TFT_HEIGHT=320

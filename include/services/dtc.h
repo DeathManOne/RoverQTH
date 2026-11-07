@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -28,32 +28,6 @@
 
 namespace services::dtc {
     /**
-     * @brief Converts a calendar date and time to a non-zero UTC epoch.
-     * @param year Full year, greater than or equal to 1970.
-     * @param month  Month from 1 to 12.
-     * @param day    Day valid for the selected month and year.
-     * @param hour   Hour from 0 to 23.
-     * @param minute Minute from 0 to 59.
-     * @param second Second from 0 to 59.
-     * @return Unix epoch in seconds, or zero on failure.
-     */
-    uint32_t toEpochUTC(
-        int year, int month,  int day,
-        int hour, int minute, int second
-    );
-
-    /**
-     * Formats a Unix epoch as an ISO 8601 UTC timestamp.
-     * The resulting format is YYYY-MM-DDTHH:MM:SSZ.
-     * The destination buffer is cleared if the operation fails.
-     * @param utcEpoch Unix epoch in seconds.
-     * @param buffer   Destination buffer.
-     * @param size     Total destination capacity.
-     * @return True on success, otherwise false.
-     */
-    bool formatISO8601(uint32_t utcEpoch, char* buffer, size_t size);
-
-    /**
      * @brief Synchronizes the internal UTC clock and the ESP32 system clock.
      * A zero or older epoch is ignored. An identical or newer epoch refreshes
      * the internal millis() reference and updates the system clock used by TLS.
@@ -63,7 +37,7 @@ namespace services::dtc {
 
     /**
      * Indicates whether the clock has received a valid UTC synchronization.
-     * @return True when synchronized, otherwise false.
+     * @return `true` when synchronized, otherwise `false`.
      */
     bool isSynced();
 
@@ -76,31 +50,12 @@ namespace services::dtc {
     uint32_t now();
 
     /**
-     * Formats an hour, minute and second for display.
-     * Invalid values produce a placeholder string. The output can
-     * include or omit seconds.
-     * @param hour       Hour from 0 to 23.
-     * @param minute     Minute from 0 to 59.
-     * @param second     Second from 0 to 59.
-     * @param valid      Whether the provided time is valid.
-     * @param buffer     Destination buffer.
-     * @param size       Total destination capacity.
-     * @param withSecond True to include seconds.
-     * @return True if a complete string was produced, otherwise false.
-     */
-    bool formatTime(
-        uint8_t hour, uint8_t minute, uint8_t second,
-        bool valid,   char* buffer,   size_t size,
-        bool withSecond = true
-    );
-
-    /**
      * Formats the current UTC date for display.
      * The resulting format is YYYY MM DD. If the clock is not
      * synchronized, a placeholder string is produced.
      * @param buffer Destination buffer.
      * @param size   Total destination capacity.
-     * @return True if a complete string was produced, otherwise false.
+     * @return `true` when a complete string was produced, otherwise `false`.
      */
     bool getDate(char* buffer, size_t size);
 
@@ -111,13 +66,13 @@ namespace services::dtc {
      * @param buffer     Destination buffer.
      * @param size       Total destination capacity.
      * @param withSecond True to include seconds.
-     * @return True if a complete string was produced, otherwise false.
+     * @return `true` when a complete string was produced, otherwise `false`.
      */
     bool getTime(char* buffer, size_t size, bool withSecond = true);
 
     /**
      * Clears the current UTC synchronization.
-     * After reset(), isSynced() returns false and now() returns zero
+     * After reset(), isSynced() returns `false` and now() returns zero
      * until a new valid synchronization is received.
      */
     void reset();

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <cstdint>
 
 namespace utilities::coordinates {
+    /** @brief Identifies whether a coordinate is a latitude or longitude. */
     enum class Axis : uint8_t {LATITUDE, LONGITUDE};
 
     /**
@@ -38,7 +39,7 @@ namespace utilities::coordinates {
      * @param axis   Coordinate axis.
      * @param buffer Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return True if the formatted coordinate fits in the destination buffer, otherwise false.
+     * @return `true` when the formatted coordinate fits in the destination buffer, otherwise `false`.
      */
     bool formatDD(double value, Axis axis, char* buffer, size_t size);
 
@@ -51,7 +52,7 @@ namespace utilities::coordinates {
      * @param axis   Coordinate axis.
      * @param buffer Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return True if the formatted coordinate fits in the destination buffer, otherwise false.
+     * @return `true` when the formatted coordinate fits in the destination buffer, otherwise `false`.
      */
     bool formatDDM(double value, Axis axis, char* buffer, size_t size);
 
@@ -64,7 +65,7 @@ namespace utilities::coordinates {
      * @param axis   Coordinate axis.
      * @param buffer Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return if the formatted coordinate fits in the destination buffer, otherwise false.
+     * @return `true` when the formatted coordinate fits in the destination buffer, otherwise `false`.
      */
     bool formatDMS(double value, Axis axis, char* buffer, size_t size);
 }

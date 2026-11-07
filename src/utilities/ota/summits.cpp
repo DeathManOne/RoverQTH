@@ -1,3 +1,26 @@
+/*
+ * src/utilities/ota/summits.cpp
+ *
+ * Copyright (c) 2026 DeathManOne
+ * https://github.com/DeathManOne
+ *
+ * This file is part of the RoverQTH project.
+ *
+ * RoverQTH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * RoverQTH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RoverQTH.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include "utilities/ota/summits.h"
 
 #include <cerrno>
@@ -6,77 +29,20 @@
 #include <cstring>
 #include <limits>
 
-#include "utilities/distance.h"
+#include "utilities/csv.h"
+#include "utilities/ota.h"
 
-namespace summits  = utilities::ota::summits;
 namespace summitsDB = database::ota::summits;
-namespace distance = utilities::distance;
+namespace csv       = utilities::csv;
+namespace ota       = utilities::ota;
+namespace summits   = utilities::ota::summits;
 
 namespace {
     constexpr size_t CSV_FIELD_COUNT = 17U;
 
-    bool _copyField(const char* const source, const size_t length, char* const destination, const size_t size);
-    bool _readField(const char*& cursor, char* const destination, const size_t size, bool& delimiter);
     bool _parseLong(const char* const value, const long minimum, const long maximum, long& result);
     bool _parseDouble(const char* const value, const double minimum, const double maximum, double& result);
     bool _isDate(const char* const value);
-
-    bool _copyField(const char* const source, const size_t length, char* const destination, const size_t size) {
-        if (source == nullptr || destination == nullptr || size == 0U || length >= size) { return false; }
-
-        std::memcpy(destination, source, length);
-        destination[length] = '\0';
-
-        return true;
-    }
-
-    bool _readField(const char*& cursor, char* const destination, const size_t size, bool& delimiter) {
-        delimiter = false;
-        if (cursor == nullptr || destination == nullptr || size == 0U) { return false; }
-
-        size_t length = 0U;
-        bool quoted   = false;
-        if (*cursor == '"') {
-            quoted = true;
-            ++cursor;
-        }
-
-        while (*cursor != '\0') {
-            if (quoted) {
-                if (*cursor == '"') {
-                    if (cursor[1] == '"') {
-                        if (length + 1U >= size)
-                            { return false; }
-                        destination[length++] = '"';
-                        cursor += 2;
-                        continue;
-                    }
-                    ++cursor;
-                    quoted = false;
-                    while (*cursor == ' ' || *cursor == '\t')
-                        { ++cursor; }
-                    if (*cursor != ',' && *cursor != '\0')
-                        { return false; }
-                    break;
-                }
-            } else {
-                if (*cursor == ',') { break; }
-                if (*cursor == '"') { return false; }
-            }
-
-            if (length + 1U >= size) { return false; }
-            destination[length++] = *cursor++;
-        }
-
-        if (quoted) { return false; }
-        destination[length] = '\0';
-
-        if (*cursor == ',') {
-            delimiter = true;
-            ++cursor;
-        }
-        return true;
-    }
 
     bool _parseLong(const char* const value, const long minimum, const long maximum, long& result) {
         if (value == nullptr || value[0] == '\0') { return false; }
@@ -85,10 +51,8 @@ namespace {
         char* end         = nullptr;
         const long parsed = std::strtol(value, &end, 10);
 
-        if (errno == ERANGE  ||
-            end == value     || *end != '\0' ||
-            parsed < minimum || parsed > maximum
-        ) { return false; }
+        if (errno == ERANGE || end == value || *end != '\0' || parsed < minimum || parsed > maximum)
+            { return false; }
 
         result = parsed;
         return true;
@@ -101,11 +65,8 @@ namespace {
         char* end           = nullptr;
         const double parsed = std::strtod(value, &end);
 
-        if (errno == ERANGE  ||
-            end == value     || *end != '\0' ||
-            !std::isfinite(parsed)           ||
-            parsed < minimum || parsed > maximum
-        ) { return false; }
+        if (errno == ERANGE || end == value || *end != '\0' || !std::isfinite(parsed) || parsed < minimum || parsed > maximum)
+            { return false; }
 
         result = parsed;
         return true;
@@ -114,11 +75,11 @@ namespace {
     bool _isDate(const char* const value) {
         if (value == nullptr || std::strlen(value) != summitsDB::VERSION_SIZE - 1U) { return false; }
 
-        for (size_t index = 0U; index < summitsDB::VERSION_SIZE - 1U; ++index) {
-            if (index == 4U || index == 7U) {
-                if (value[index] != '-')
+        for (size_t characterIndex = 0U; characterIndex < summitsDB::VERSION_SIZE - 1U; ++characterIndex) {
+            if (characterIndex == 4U || characterIndex == 7U) {
+                if (value[characterIndex] != '-')
                     { return false; }
-            } else if (value[index] < '0' || value[index] > '9')
+            } else if (value[characterIndex] < '0' || value[characterIndex] > '9')
                 { return false; }
         }
 
@@ -137,7 +98,7 @@ namespace {
 }
 
 bool summits::parseListVersion(const char* const line, char* const version, const size_t size) {
-    if (version == nullptr || size == 0U)       { return false; }
+    if (version == nullptr || size == 0U)                  { return false; }
     version[0] = '\0';
     if (line == nullptr || size < summitsDB::VERSION_SIZE) { return false; }
 
@@ -191,27 +152,27 @@ bool summits::parseCsvRecord(const char* const line, summitsDB::Summit& summit) 
     char bonus[8];
 
     code[0] = area[0] = altitude[0] = longitude[0] = latitude[0] = points[0] = bonus[0] = '\0';
-    for (size_t index = 0U; index < CSV_FIELD_COUNT; ++index) {
+    for (size_t fieldIndex = 0U; fieldIndex < CSV_FIELD_COUNT; ++fieldIndex) {
         char* destination = field;
         size_t destinationSize = sizeof(field);
-        if (index == 0U) { destination = code;        destinationSize = sizeof(code); }
-        if (index == 1U) { destination = area;        destinationSize = sizeof(area); }
-        if (index == 4U) { destination = altitude;    destinationSize = sizeof(altitude); }
-        if (index == 8U) { destination = longitude;   destinationSize = sizeof(longitude); }
-        if (index == 9U) { destination = latitude;    destinationSize = sizeof(latitude); }
-        if (index == 10U){ destination = points;      destinationSize = sizeof(points); }
-        if (index == 11U){ destination = bonus;       destinationSize = sizeof(bonus); }
+        if (fieldIndex == 0U) { destination = code;        destinationSize = sizeof(code); }
+        if (fieldIndex == 1U) { destination = area;        destinationSize = sizeof(area); }
+        if (fieldIndex == 4U) { destination = altitude;    destinationSize = sizeof(altitude); }
+        if (fieldIndex == 8U) { destination = longitude;   destinationSize = sizeof(longitude); }
+        if (fieldIndex == 9U) { destination = latitude;    destinationSize = sizeof(latitude); }
+        if (fieldIndex == 10U){ destination = points;      destinationSize = sizeof(points); }
+        if (fieldIndex == 11U){ destination = bonus;       destinationSize = sizeof(bonus); }
 
         bool delimiter = false;
-        if (!_readField(cursor, destination, destinationSize, delimiter) ||
-            delimiter != (index + 1U < CSV_FIELD_COUNT)
-        ) { return false; }
+        if (!csv::readField(cursor, destination, destinationSize, delimiter) || delimiter != (fieldIndex + 1U < CSV_FIELD_COUNT))
+            { return false; }
     }
     if (*cursor != '\0') { return false; }
 
     long parsedAltitude = 0;
     long parsedPoints   = 0;
     long parsedBonus    = 0;
+
     if (code[0] == '\0' || area[0] == '\0' ||
         !_parseLong(altitude, std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max(), parsedAltitude) ||
         !_parseLong(points, 0L, std::numeric_limits<uint8_t>::max(), parsedPoints) ||
@@ -219,16 +180,14 @@ bool summits::parseCsvRecord(const char* const line, summitsDB::Summit& summit) 
         !_parseDouble(latitude,  -90.0,  90.0,  summit.latitude)                             ||
         !_parseDouble(longitude, -180.0, 180.0, summit.longitude)
     ) { return false; }
-    if (!_copyField(code, std::strlen(code), summit.code, sizeof(summit.code))) { return false; }
 
-    const size_t areaLength = std::strlen(area) < sizeof(summit.area) - 1U
-        ? std::strlen(area)
-        : sizeof(summit.area) - 1U;
+    if (!csv::copyField(code, std::strlen(code), summit.code, sizeof(summit.code)))
+        { return false; }
 
-    if (!_copyField(
-        area,        areaLength,
-        summit.area, sizeof(summit.area))
-    ) { return false; }
+    const size_t areaLength = std::strlen(area) < sizeof(summit.area) - 1U ? std::strlen(area) : sizeof(summit.area) - 1U;
+
+    if (!csv::copyField(area, areaLength, summit.area, sizeof(summit.area)))
+        { return false; }
 
     summit.altitude = static_cast<int16_t>(parsedAltitude);
     summit.points   = static_cast<uint8_t>(parsedPoints);
@@ -237,40 +196,18 @@ bool summits::parseCsvRecord(const char* const line, summitsDB::Summit& summit) 
     return true;
 }
 
-bool summits::isVersionNewer(const char* const candidate, const char* const installed) {
-    if (!_isDate(candidate)) { return false; }
-    if (!_isDate(installed)) { return true; }
-    return std::strcmp(candidate, installed) > 0;
-}
-
 bool summits::isVersionValid(const char* const version) {
     return _isDate(version);
 }
 
-bool summits::selectNearest(const double latitude, const double longitude,
-    const summitsDB::Summit& candidate, bool& found,
-    summitsDB::Summit& nearest,         double& distanceKm
-) {
-    if (!std::isfinite(latitude)           || !std::isfinite(longitude)           ||
-        latitude  < -90.0  || latitude  > 90.0  ||
-        longitude < -180.0 || longitude > 180.0 ||
-        !std::isfinite(candidate.latitude) || !std::isfinite(candidate.longitude) ||
-        candidate.latitude  < -90.0  || candidate.latitude  > 90.0                ||
-        candidate.longitude < -180.0 || candidate.longitude > 180.0               ||
-        (found && (!std::isfinite(distanceKm) || distanceKm < 0.0))
-    ) { return false; }
+bool summits::selectNearest(const double latitude, const double longitude, const summitsDB::Summit& candidate, bool& found, summitsDB::Summit& nearest, double& distanceKm) {
+    bool selected = false;
 
-    const double candidateDistance = distance::betweenKilometers(
-        latitude,           longitude,
-        candidate.latitude, candidate.longitude
-    );
-
-    if (!std::isfinite(candidateDistance)) { return false; }
-    if (!found || candidateDistance < distanceKm) {
-        nearest    = candidate;
-        distanceKm = candidateDistance;
-        found      = true;
+    if (!ota::selectNearestDistance(latitude, longitude, candidate.latitude, candidate.longitude, found, distanceKm, selected))
+        { return false; }
+    if (selected) {
+        nearest = candidate;
+        found   = true;
     }
-
     return true;
 }

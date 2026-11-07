@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -24,33 +24,52 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 
 namespace utilities::ota {
-    constexpr size_t CODE_SIZE       = 16U;
-    constexpr size_t RESULT_CAPACITY = 64U;
-
-    enum class SearchStatus : uint8_t {
-        SUCCESS,
-        CANCELLED,
-        ERROR
-    };
-
-    struct SearchResult {
-        char code[CODE_SIZE] {};
-        double distanceKm = 0.0;
-        uint8_t points    = 0U;
-        uint8_t bonus     = 0U;
-    };
-
-    struct SearchResults {
-        SearchResult items[RESULT_CAPACITY] {};
-        size_t count = 0U;
-    };
-
-    using CancelCallback = bool (*)(void* userData);
-
+    /**
+     * @brief Normalizes user input into an OTA code prefix suitable for searching.
+     * @param input Null-terminated user input to normalize.
+     * @param output Destination buffer receiving the uppercase alphanumeric prefix.
+     * @param outputSize Capacity of the destination buffer in bytes.
+     * @return `true` when a non-empty normalized prefix was produced.
+     */
     bool normalizeCodePrefix(const char* input, char* output, size_t outputSize);
-    void clear(SearchResults &results);
-    bool retainNearest(SearchResults &results, const SearchResult &candidate);
+
+    /**
+     * @brief Checks that a code prefix is normalized, terminated and within capacity.
+     * @param prefix Null-terminated prefix to validate.
+     * @param prefixSize Maximum accessible capacity of the prefix in bytes.
+     * @return `true` when the prefix is non-empty, uppercase alphanumeric and properly terminated.
+     */
+    bool isNormalizedCodePrefix(const char* prefix, size_t prefixSize);
+
+    /**
+     * @brief Validates the coordinates and radius used by a nearby-site search.
+     * @param latitude Search-centre latitude in decimal degrees.
+     * @param longitude Search-centre longitude in decimal degrees.
+     * @param radiusKm Search radius in kilometres.
+     * @return `true` when every value is finite and inside its valid range.
+     */
+    bool isValidSearchArea(double latitude, double longitude, double radiusKm);
+
+    /**
+     * @brief Tests whether a geographic candidate is nearer than the current selection.
+     * @param latitude Reference latitude in decimal degrees.
+     * @param longitude Reference longitude in decimal degrees.
+     * @param candidateLatitude Candidate latitude in decimal degrees.
+     * @param candidateLongitude Candidate longitude in decimal degrees.
+     * @param found Whether a previous candidate has already been selected.
+     * @param distanceKm Current best distance, updated in kilometres when the candidate is nearer.
+     * @param selected Receives whether the candidate must replace the current selection.
+     * @return `true` when all coordinates, state and computed values are valid.
+     */
+    bool selectNearestDistance(
+        double latitude,
+        double longitude,
+        double candidateLatitude,
+        double candidateLongitude,
+        bool found,
+        double &distanceKm,
+        bool &selected
+    );
 }

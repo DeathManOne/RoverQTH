@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -42,7 +42,7 @@ namespace utilities::hash {
     /**
      * Checks whether a string is a valid SHA-256 hash.
      * @param value SHA-256 hash as a null-terminated hexadecimal string.
-     * @return true if the string is a valid SHA-256 hash, false otherwise.
+     * @return `true` when the string is a valid SHA-256 hash, otherwise `false`.
      */
     bool isSha256Text(const char* value);
 
@@ -51,7 +51,7 @@ namespace utilities::hash {
      * @param input  Source SHA-256 hash.
      * @param output Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return true if the normalized hash was successfully written, false otherwise.
+     * @return `true` when the normalized hash was successfully written, otherwise `false`.
      */
     bool normalizeSha256Text(const char* input, char* output, size_t size);
 
@@ -73,26 +73,26 @@ namespace utilities::hash {
             /**
              * Copy constructor is disabled.
              */
-            Sha256(const Sha256&) = delete;
+            Sha256(const Sha256 &) = delete;
 
             /**
              * Copy assignment operator is disabled.
              */
-            Sha256& operator = (const Sha256&) = delete;
+            Sha256 &operator=(const Sha256 &) = delete;
 
             /**
              * Move constructor is disabled.
              */
-            Sha256(Sha256&&) = delete;
+            Sha256(Sha256 &&) = delete;
 
             /**
              * Move assignment operator is disabled.
              */
-            Sha256& operator = (Sha256&&) = delete;
+            Sha256 &operator=(Sha256 &&) = delete;
 
             /**
              * Initializes a new incremental SHA-256 computation.
-             * @return true if the context was successfully initialized, false otherwise.
+             * @return `true` when the context was successfully initialized, otherwise `false`.
              */
             bool begin();
 
@@ -100,7 +100,7 @@ namespace utilities::hash {
              * Adds data to the current SHA-256 computation.
              * @param data Pointer to the input data.
              * @param size Size of the input data in bytes.
-             * @return true if the data was successfully processed, false otherwise.
+             * @return `true` when the data was successfully processed, otherwise `false`.
              */
             bool update(const uint8_t* data, size_t size);
 
@@ -108,7 +108,7 @@ namespace utilities::hash {
              * Finalizes the current SHA-256 computation and writes the hexadecimal digest.
              * @param output Destination buffer.
              * @param size Size of the destination buffer in bytes.
-             * @return true if the hash was successfully written, false otherwise.
+             * @return `true` when the hash was successfully written, otherwise `false`.
              */
             bool finish(char* output, size_t size);
         private:

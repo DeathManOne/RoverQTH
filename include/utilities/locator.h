@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #include <cstddef>
 
 namespace utilities::locator {
@@ -31,7 +32,7 @@ namespace utilities::locator {
      * @param longitude Longitude in decimal degrees.
      * @param buffer    Destination buffer.
      * @param size      Size of the destination buffer in bytes.
-     * @return true if the locator was successfully generated, false otherwise.
+     * @return `true` when the locator was successfully generated, otherwise `false`.
      */
     bool fromCoordinates(double latitude, double longitude, char* buffer, size_t size);
 }

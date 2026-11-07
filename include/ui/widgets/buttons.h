@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #pragma once
 
 namespace ui::widgets::buttons {
+    /** @brief Rectangular touch target expressed in display coordinates. */
     struct ButtonArea {
         int x       = 0;
         int y       = 0;
@@ -31,11 +32,34 @@ namespace ui::widgets::buttons {
         int height  = 0;
     };
 
+    /** @brief Touch target for the boot-screen GNSS search action. */
     extern ButtonArea bootSearchGPS;
+
+    /** @brief Touch target for the persistent marked-QTH action. */
     extern ButtonArea markQTH;
+
+    /** @brief Touch target for the persistent OTA-screen action. */
     extern ButtonArea ota;
+
+    /** @brief Touch target for the persistent menu action. */
     extern ButtonArea menu;
 
+    /**
+     * @brief Constructs a rectangular touch target from its geometry.
+     * @param x Horizontal origin of the target in pixels.
+     * @param y Vertical origin of the target in pixels.
+     * @param width Width of the target in pixels.
+     * @param height Height of the target in pixels.
+     * @return Constructed touch-target area.
+     */
     ButtonArea makeArea(int x, int y, int width, int height);
+
+    /**
+     * @brief Tests whether mapped touch coordinates fall inside a target.
+     * @param button Touch-target area to test.
+     * @param tx Horizontal touch coordinate in pixels.
+     * @param ty Vertical touch coordinate in pixels.
+     * @return `true` when the coordinates lie inside a valid target.
+     */
     bool isPressed(const ButtonArea &button, int tx, int ty);
 }

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -24,11 +24,15 @@
 #pragma once
 
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays project identity, version and licensing information. */
     class About final : public Page {
         public:
+            /** @copydoc Page::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
         private:
             enum class _Action {NONE};

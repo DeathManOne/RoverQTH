@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -21,37 +21,38 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include <cstddef>
 #include <cstdint>
+
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
+#include "services/update.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Coordinates firmware, SOTA and POTA update actions in the menu. */
     class Updates final : public Page {
         public:
+            /** @copydoc Page::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
+
+            /** @copydoc Page::update() */
             void update(ST7796S::MSP4021 &tft) override;
+
+            /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
-            enum class _Action {
-                NONE,
-                CHECK_FIRMWARE,
-                DOWNLOAD_FIRMWARE,
-                CHECK_SOTA,
-                DOWNLOAD_SOTA,
-                CHECK_POTA,
-                DOWNLOAD_POTA
-            };
+            enum class _Action {NONE, CHECK_FIRMWARE, DOWNLOAD_FIRMWARE, CHECK_SOTA, DOWNLOAD_SOTA, CHECK_POTA, DOWNLOAD_POTA};
 
-            char _firmwareVersionValue[32] = "";
-            char _firmwareStatusValue[64]  = "";
-            char _sotaVersionValue[32]     = "";
-            char _sotaStatusValue[64]      = "";
-            char _potaVersionValue[32]     = "";
-            char _potaStatusValue[64]      = "";
+            char _firmwareVersionValue[(services::update::FIRMWARE_VERSION_SIZE * 2U) + 3U] = "";
+            char _firmwareStatusValue[services::update::ERROR_SIZE]                         = "";
+            char _sotaVersionValue[(services::update::SOTA_VERSION_SIZE * 2U) + 3U]         = "";
+            char _sotaStatusValue[services::update::ERROR_SIZE]                             = "";
+            char _potaVersionValue[32]                                                      = "";
+            char _potaStatusValue[services::update::ERROR_SIZE]                             = "";
 
             Field<_Action> _firmwareVersionField = _makeField("Firmware", _Action::NONE, ui::settings::themes::defaults::WHITE);
             Field<_Action> _firmwareStatusField  = _makeField("",         _Action::NONE, ui::settings::themes::defaults::GREY);
@@ -69,31 +70,30 @@ namespace screens::menu {
                 &_potaStatusField
             };
 
-            void _prepareFirmwareFields();
-            void _updateFirmwareFields(ST7796S::MSP4021 &tft);
-
-            void _setFirmwareStatus(const char* value, _Action action, uint16_t color);
-            void _setFirmwareVersion(const char* currentVersion, const char* latestVersion = nullptr);
-
             void _actionCheckFirmware(ST7796S::MSP4021 &tft);
-            void _actionDownloadFirmware(ST7796S::MSP4021 &tft);
+            void _actionCheckSota(ST7796S::MSP4021 &tft);
+            void _actionCheckPota(ST7796S::MSP4021 &tft);
 
+            void _prepareFirmwareFields();
             void _prepareSotaFields();
+            void _preparePotaFields();
+
+            void _updateFirmwareFields(ST7796S::MSP4021 &tft);
+            void _updatePotaFields(ST7796S::MSP4021 &tft);
             void _updateSotaFields(ST7796S::MSP4021 &tft);
 
-            void _setSotaStatus(const char* value, _Action action, uint16_t color);
+            void _setProgressStatus(Field<_Action> &field, char* buffer, size_t size, const char* label, uint8_t progress, uint16_t color);
+            void _setFirmwareVersion(const char* currentVersion, const char* latestVersion = nullptr);
             void _setSotaVersion(const char* installedVersion, const char* latestVersion = nullptr);
 
-            void _actionCheckSota(ST7796S::MSP4021 &tft);
-            void _actionDownloadSota(ST7796S::MSP4021 &tft);
-
-            void _preparePotaFields();
-            void _updatePotaFields(ST7796S::MSP4021 &tft);
-
+            void _setFirmwareStatus(const char* value, _Action action, uint16_t color);
+            void _setSotaStatus(const char* value, _Action action, uint16_t color);
             void _setPotaStatus(const char* value, _Action action, uint16_t color);
+
             void _setPotaRecords(uint32_t records);
 
-            void _actionCheckPota(ST7796S::MSP4021 &tft);
+            void _actionDownloadFirmware(ST7796S::MSP4021 &tft);
+            void _actionDownloadSota(ST7796S::MSP4021 &tft);
             void _actionDownloadPota(ST7796S::MSP4021 &tft);
     };
 }

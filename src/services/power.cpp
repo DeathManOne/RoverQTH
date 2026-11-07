@@ -21,13 +21,14 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "services/power.h"
+
 #include <Arduino.h>
 
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
 #include "services/display.h"
-#include "services/power.h"
 #include "services/storage.h"
 #include "services/update.h"
 
@@ -58,21 +59,36 @@ namespace {
         }
     }
 
+    bool _restoreButtonInput() {
+        if (rtc_gpio_deinit(_wakeupGpio) != ESP_OK) {
+            storage::appendErrorRecord("POWER_RTC_GPIO_DEINIT_FAILED");
+            return false;
+        }
+
+        pinMode(_buttonPin, INPUT_PULLUP);
+        return true;
+    }
+
     void _tryShutdown() {
         if (!_initialized || !_shutdownPending) { return; }
         if (update::isBusy())                   { return; }
         if (digitalRead(_buttonPin) == LOW)     { return; }
 
-        rtc_gpio_pullup_en(_wakeupGpio);
-        rtc_gpio_pulldown_dis(_wakeupGpio);
+        const esp_err_t pullupResult   = rtc_gpio_pullup_en(_wakeupGpio);
+        const esp_err_t pulldownResult = rtc_gpio_pulldown_dis(_wakeupGpio);
+
+        if (pullupResult != ESP_OK || pulldownResult != ESP_OK) {
+            storage::appendErrorRecord("POWER_WAKEUP_PULL_CONFIGURATION_FAILED");
+            _shutdownPending = false;
+            _restoreButtonInput();
+            return;
+        }
 
         const esp_err_t wakeupResult = esp_sleep_enable_ext0_wakeup(_wakeupGpio, 0);
         if (wakeupResult != ESP_OK) {
             storage::appendErrorRecord("POWER_WAKEUP_CONFIGURATION_FAILED");
             _shutdownPending = false;
-
-            rtc_gpio_deinit(_wakeupGpio);
-            pinMode(_buttonPin, INPUT_PULLUP);
+            _restoreButtonInput();
             return;
         }
 
@@ -99,8 +115,10 @@ void power::begin() {
         return;
     }
 
-    rtc_gpio_deinit(_wakeupGpio);
-    pinMode(_buttonPin, INPUT_PULLUP);
+    if (!_restoreButtonInput()) {
+        _wakeupGpio = GPIO_NUM_NC;
+        return;
+    }
 
     _rawPressed       = digitalRead(_buttonPin) == LOW;
     _stablePressed    = _rawPressed;
@@ -119,7 +137,7 @@ void power::update() {
     const uint32_t now = millis();
 
     if (pressed != _rawPressed) {
-        _rawPressed      = pressed;
+        _rawPressed       = pressed;
         _lastButtonChange = now;
     }
 

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -24,12 +24,14 @@
 #pragma once
 
 #include <cstdint>
+
 #include <MSP4021.h>
 
 #include "screens/screen.h"
 #include "services/settings.h"
 
 namespace screens {
+    /** @brief Presents the primary GNSS, locator, QTH and OTA information screen. */
     class Main final : public Screen {
         private:
             services::settings::OtaSelection _otaSelection {};
@@ -38,22 +40,23 @@ namespace screens {
             void _preloadOTA();
             void _preloadMARK();
             void _updateOTA(ST7796S::MSP4021 &tft);
-
         public:
+            /** @copydoc Screen::preload() */
             void preload() override;
+
+            /** @copydoc Screen::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
 
-            void update(
-                ST7796S::MSP4021 &tft,
-                uint32_t &nextRefreshIn
-            ) override;
+            /** @copydoc Screen::update() */
+            void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) override;
 
-            bool handleTouch(
-                ST7796S::MSP4021 &tft,
-                int x,
-                int y
-            ) override;
+            /** @copydoc Screen::handleTouch() */
+            bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
 
+            /**
+             * @brief Refreshes the marked-QTH fields immediately.
+             * @param tft Display instance used to redraw the marked-QTH fields.
+             */
             void updateMARK(ST7796S::MSP4021 &tft);
     };
 }

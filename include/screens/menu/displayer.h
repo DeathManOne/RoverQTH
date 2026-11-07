@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -21,26 +21,32 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include <MSP4021.h>
+
 #include "screens/menu/page.h"
 #include "services/settings.h"
+#include "ui/settings/themes/defaults.h"
 
 namespace screens::menu {
+    /** @brief Displays display settings and emits reconfiguration requests. */
     class Displayer final : public Page {
         public:
-            enum class Request {
-                NONE,
-                RELOAD_TOUCH_CALIBRATION,
-                RECALIBRATE_TOUCH
-            };
+            /** @brief Display operation requested by the settings page. */
+            enum class Request {NONE, RELOAD_TOUCH_CALIBRATION, RECALIBRATE_TOUCH};
 
-            void draw       (ST7796S::MSP4021 &tft) override;
+            /** @copydoc Page::draw() */
+            void draw(ST7796S::MSP4021 &tft) override;
+
+            /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
-            Request takeRequest();
 
+            /**
+             * @brief Consumes the pending display operation request.
+             * @return Pending request before it is cleared, or `Request::NONE`.
+             */
+            Request takeRequest();
         private:
             enum class _Action {NONE, ROTATION, CALIBRATION};
 
@@ -62,8 +68,8 @@ namespace screens::menu {
 
             static services::settings::TFTRotation _nextRotation(services::settings::TFTRotation rotation);
             static const char* _rotationToText(services::settings::TFTRotation rotation);
-            void _actionRotation(ST7796S::MSP4021 &tft);
 
+            void _actionRotation(ST7796S::MSP4021 &tft);
             void _actionCalibration();
     };
 }

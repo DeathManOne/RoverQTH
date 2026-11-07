@@ -29,37 +29,44 @@
 
 #include "services/dtc.h"
 #include "services/storage.h"
+#include "utilities/dtc.h"
 #include "utilities/text.h"
 
 namespace dtc     = services::dtc;
 namespace storage = services::storage;
+namespace uDtc    = utilities::dtc;
 namespace text    = utilities::text;
 
 namespace {
     SemaphoreHandle_t _mutex = nullptr;
 
-    constexpr size_t MAX_LOGS_WAITING = 20;
-    constexpr size_t MAX_LOGS_LENGTH  = 256;
+    constexpr size_t MAX_LOGS_WAITING   = 20;
+    constexpr size_t MAX_LOGS_LENGTH    = 256;
+    constexpr size_t LOG_MAX_SIZE       = 256U * 1024U;
+    constexpr size_t LOG_PATH_SIZE      = 48U;
+    constexpr uint8_t LOG_ARCHIVE_COUNT = 9U;
 
-    constexpr const char* DIR_ROOT             = "/RoverQTH";
+    constexpr const char* DIR_ROOT                = "/RoverQTH";
 
-    constexpr const char* DIR_DATABASE         = "/RoverQTH/database";
-    constexpr const char* FILE_DATABASE_POTA   = "/RoverQTH/database/pota.bin";
-    constexpr const char* FILE_DATABASE_SOTA   = "/RoverQTH/database/sota.bin";
+    constexpr const char* DIR_DATABASE            = "/RoverQTH/database";
+    constexpr const char* FILE_DATABASE_POTA      = "/RoverQTH/database/pota.bin";
+    constexpr const char* FILE_DATABASE_SOTA      = "/RoverQTH/database/sota.bin";
 
-    constexpr const char* DIR_EXPORT           = "/RoverQTH/export";
-    constexpr const char* FILE_EXPORT_QTH      = "/RoverQTH/export/QTH.json";
-    constexpr const char* FILE_EXPORT_SETTINGS = "/RoverQTH/export/settings.json";
+    constexpr const char* DIR_EXPORT              = "/RoverQTH/export";
+    constexpr const char* FILE_EXPORT_QTH         = "/RoverQTH/export/QTH.json";
+    constexpr const char* FILE_EXPORT_SETTINGS    = "/RoverQTH/export/settings.json";
 
-    constexpr const char* DIR_LOGS             = "/RoverQTH/logs";
-    constexpr const char* FILE_LOGS_ERROR      = "/RoverQTH/logs/error.log";
-    constexpr const char* FILE_LOGS_SYSTEM     = "/RoverQTH/logs/system.log";
+    constexpr const char* DIR_LOGS                = "/RoverQTH/logs";
+    constexpr const char* FILE_LOGS_ERROR         = "/RoverQTH/logs/error.log";
+    constexpr const char* FILE_LOGS_ERROR_PREFIX  = "/RoverQTH/logs/error";
+    constexpr const char* FILE_LOGS_SYSTEM        = "/RoverQTH/logs/system.log";
+    constexpr const char* FILE_LOGS_SYSTEM_PREFIX = "/RoverQTH/logs/system";
 
-    constexpr const char* DIR_QTH              = "/RoverQTH/qth";
-    constexpr const char* DIR_TMP              = "/RoverQTH/tmp";
-    constexpr const char* FILE_TMP_FIRMWARE    = "/RoverQTH/tmp/firmware.tmp";
-    constexpr const char* FILE_TMP_POTA        = "/RoverQTH/tmp/pota.tmp";
-    constexpr const char* FILE_TMP_SOTA        = "/RoverQTH/tmp/sota.tmp";
+    constexpr const char* DIR_QTH                 = "/RoverQTH/qth";
+    constexpr const char* DIR_TMP                 = "/RoverQTH/tmp";
+    constexpr const char* FILE_TMP_FIRMWARE       = "/RoverQTH/tmp/firmware.tmp";
+    constexpr const char* FILE_TMP_POTA           = "/RoverQTH/tmp/pota.tmp";
+    constexpr const char* FILE_TMP_SOTA           = "/RoverQTH/tmp/sota.tmp";
 
     struct WaitingLog {
         const char* path;
@@ -85,6 +92,9 @@ namespace {
     bool _queueLogs(const char* path, const char* data);
     bool _flushWaitingLogs();
     bool _ensureTree();
+    bool _buildLogArchivePath(const char* prefix, uint8_t archive, char* path, size_t size);
+    bool _rotateLog(const char* activePath, const char* archivePrefix);
+    bool _rotateLogs();
     bool _readFileChunk(const uint8_t* const data, const size_t length, void* const userData);
 
     bool _isReadyUnlocked() {
@@ -97,15 +107,10 @@ namespace {
         int written = 0;
         if (dtc::isSynced()) {
             char timestamp[21];
-            if (!dtc::formatISO8601(dtc::now(), timestamp, sizeof(timestamp)))
+            if (!uDtc::formatISO8601(dtc::now(), timestamp, sizeof(timestamp)))
                 { return false; }
             written = std::snprintf(buffer, size, "%s | %s\n", timestamp, data);
-        } else {
-            written = std::snprintf(buffer, size,
-                "BOOT+%010lums | %s\n",
-                static_cast<unsigned long>(millis()), data
-            );
-        }
+        } else { written = std::snprintf(buffer, size, "BOOT+%010lums | %s\n", static_cast<unsigned long>(millis()), data); }
         return (written > 0 && static_cast<size_t>(written) < size);
     }
 
@@ -141,11 +146,12 @@ namespace {
 
         if (writtenCount > 0U) {
             const size_t remaining = _waitingLogsCount - writtenCount;
-            for (size_t index = 0U; index < remaining; ++index)
-                { _waitingLogs[index] = _waitingLogs[writtenCount + index]; }
-            for (size_t index = remaining; index < _waitingLogsCount; ++index) {
-                _waitingLogs[index].path    = nullptr;
-                _waitingLogs[index].data[0] = '\0';
+            for (size_t shiftIndex = 0U; shiftIndex < remaining; ++shiftIndex)
+                { _waitingLogs[shiftIndex] = _waitingLogs[writtenCount + shiftIndex]; }
+
+            for (size_t clearIndex = remaining; clearIndex < _waitingLogsCount; ++clearIndex) {
+                _waitingLogs[clearIndex].path    = nullptr;
+                _waitingLogs[clearIndex].data[0] = '\0';
             }
             _waitingLogsCount = remaining;
         }
@@ -164,18 +170,71 @@ namespace {
         return ok;
     }
 
+    bool _buildLogArchivePath(const char* const prefix, const uint8_t archive, char* const path, const size_t size) {
+        if (prefix == nullptr || prefix[0] == '\0'           ||
+            archive == 0U     || archive > LOG_ARCHIVE_COUNT ||
+            path == nullptr   || size == 0U
+        ) { return false; }
+
+        const int written = std::snprintf(path, size, "%s.%u.log", prefix, static_cast<unsigned int>(archive));
+        return written > 0 && static_cast<size_t>(written) < size;
+    }
+
+    bool _rotateLog(const char* const activePath, const char* const archivePrefix) {
+        if (!_isReadyUnlocked()      ||
+            activePath == nullptr    || activePath[0]    == '\0' ||
+            archivePrefix == nullptr || archivePrefix[0] == '\0'
+        ) { return false; }
+
+        if (!_sd->fileExists(activePath) || _sd->fileSize(activePath) < LOG_MAX_SIZE)
+            { return true; }
+
+        char sourcePath[LOG_PATH_SIZE];
+        char destinationPath[LOG_PATH_SIZE];
+
+        if (!_buildLogArchivePath(archivePrefix, LOG_ARCHIVE_COUNT, destinationPath, sizeof(destinationPath)) ||
+            !_sd->fileDelete(destinationPath))
+            { return false; }
+
+        for (uint8_t archive = LOG_ARCHIVE_COUNT; archive > 1U; --archive) {
+            if (!_buildLogArchivePath(archivePrefix, static_cast<uint8_t>(archive - 1U), sourcePath,      sizeof(sourcePath))      ||
+                !_buildLogArchivePath(archivePrefix, archive,                            destinationPath, sizeof(destinationPath))
+            ) { return false; }
+
+            if (_sd->fileExists(sourcePath) && !_sd->fileRename(sourcePath, destinationPath))
+                { return false; }
+        }
+
+        if (!_buildLogArchivePath(archivePrefix, 1U, destinationPath, sizeof(destinationPath)))
+            { return false; }
+        return _sd->fileRename(activePath, destinationPath);
+    }
+
+    bool _rotateLogs() {
+        bool success = true;
+
+        if (!_rotateLog(FILE_LOGS_SYSTEM, FILE_LOGS_SYSTEM_PREFIX))
+            { success = false; }
+        if (!_rotateLog(FILE_LOGS_ERROR, FILE_LOGS_ERROR_PREFIX))
+            { success = false; }
+
+        return success;
+    }
+
     bool _readFileChunk(const uint8_t* const data, const size_t length, void* const userData) {
         if (data == nullptr || userData == nullptr) { return false; }
 
-        FileReadContext* const context =static_cast<FileReadContext*>(userData);
-        if (!context->valid || context->buffer == nullptr || context->size == 0U) { return false; }
+        FileReadContext* const context = static_cast<FileReadContext*>(userData);
+        if (!context->valid || context->buffer == nullptr || context->size == 0U)
+            { return false; }
         if (context->length + length >= context->size) {
             context->valid = false;
             return false;
         }
 
-        for (size_t index = 0U; index < length; ++index)
-            { context->buffer[context->length + index] = static_cast<char>(data[index]); }
+        for (size_t byteIndex = 0U; byteIndex < length; ++byteIndex) {
+            context->buffer[context->length + byteIndex] = static_cast<char>(data[byteIndex]);
+        }
         context->length += length;
         context->buffer[context->length] = '\0';
         return true;
@@ -250,7 +309,10 @@ void storage::begin(SPIClass &spi, uint32_t timeoutSec) {
                 return;
             }
 
+            const bool logsRotated = _rotateLogs();
             _flushWaitingLogs();
+            if (!logsRotated)
+                { storage::appendErrorRecord("LOG_ROTATION_FAILED"); }
             storage::appendLogRecord("SD_READY");
             return;
         }
@@ -264,7 +326,8 @@ void storage::begin(SPIClass &spi, uint32_t timeoutSec) {
 
 bool storage::isReady() {
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard)
+        { return false; }
     return _isReadyUnlocked();
 }
 
@@ -293,7 +356,8 @@ size_t storage::fileSize(const char* const path) {
 
 bool storage::readFile(const char* const path, char* const buffer, const size_t size) {
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard)
+        { return false; }
     if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || buffer == nullptr || size == 0U)
         { return false; }
     buffer[0] = '\0';
@@ -423,13 +487,13 @@ bool storage::appendErrorRecord(const char* const data) {
 }
 
 bool storage::appendLogRecord(const char* const data) {
-    if (data == nullptr || data[0] == '\0') { return false; }
+    if (data == nullptr || data[0] == '\0')              { return false; }
 
     char line[MAX_LOGS_LENGTH];
-    if (!_formatRecord(data, line, sizeof(line))) { return false; }
+    if (!_formatRecord(data, line, sizeof(line)))        { return false; }
 
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard)                                          { return false; }
 
     if (!_isReadyUnlocked())                             { return _queueLogs(FILE_LOGS_SYSTEM, line); }
     if (_waitingLogsCount > 0U && !_flushWaitingLogs())  { return _queueLogs(FILE_LOGS_SYSTEM, line); }

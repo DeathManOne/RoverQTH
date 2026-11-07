@@ -47,20 +47,15 @@ namespace {
 }
 
 void grid::clear(ST7796S::MSP4021 &tft) {
-    tft.rectFill(
-        outerX(),     outerY(),
-        outerWidth(), outerHeight(),
-        theme::BLACK
-    );
+    tft.rectFill(outerX(), outerY(), outerWidth(), outerHeight(), theme::BLACK);
 }
 
 void grid::draw(ST7796S::MSP4021 &tft) {
-    const int gap       = uiMockup::GAP;
-    const int btnH      = uiMockup::BUTTON_HEIGHT;
-    const int headerH   = uiMockup::HEADER_HEIGHT;
+    const int gap  = uiMockup::GAP;
+    const int btnH = uiMockup::BUTTON_HEIGHT;
 
     _area.outerX = 0;
-    _area.outerY = ui::mockup::header::outerHeight() + gap;
+    _area.outerY = header::outerHeight() + gap;
     _area.outerW = uiMockup::GRID_WIDTH;
     _area.outerH = tft.height() - _area.outerY - btnH - gap;
 
@@ -69,16 +64,8 @@ void grid::draw(ST7796S::MSP4021 &tft) {
     _area.innerW = _area.outerW - (gap * 2);
     _area.innerH = _area.outerH - (gap * 2);
 
-    tft.rectFill(
-        _area.outerX, _area.outerY,
-        _area.outerW, _area.outerH,
-        theme::BLACK
-    );
-    tft.rectRound(
-        _area.outerX,      _area.outerY,
-        _area.outerW,      _area.outerH,
-        uiMockup::RADIUS, theme::BORDER
-    );
+    tft.rectFill(_area.outerX, _area.outerY, _area.outerW, _area.outerH, theme::BLACK);
+    tft.rectRound(_area.outerX, _area.outerY, _area.outerW, _area.outerH, uiMockup::RADIUS, theme::BORDER);
 }
 
 int grid::outerX()        { return _area.outerX; }
