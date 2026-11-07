@@ -93,8 +93,7 @@ namespace {
 
     void _prepareGPSView(GPSView &view) {
         const settings::General configuration = settings::general();
-        const bool imperial =
-            configuration.units == settings::Units::IMPERIAL;
+        const bool imperial = configuration.units == settings::Units::IMPERIAL;
 
         gps::Snapshot snapshot {};
         gps::getSnapshot(snapshot);
@@ -102,64 +101,28 @@ namespace {
         dtc::getDate(view.date, sizeof(view.date));
         dtc::getTime(view.time, sizeof(view.time));
 
-        if (!uDtc::formatTime(
-            snapshot.hour,
-            snapshot.minute,
-            snapshot.second,
-            snapshot.timeValid,
-            view.gpsTime,
-            sizeof(view.gpsTime)
-        )) {
-            text::copy(view.gpsTime, sizeof(view.gpsTime), "-- : -- : --");
-        }
+        if (!uDtc::formatTime(snapshot.hour, snapshot.minute, snapshot.second, snapshot.timeValid, view.gpsTime, sizeof(view.gpsTime)))
+            { text::copy(view.gpsTime, sizeof(view.gpsTime), "-- : -- : --"); }
 
         _getFormattedPosition(
-            snapshot,
-            configuration.coordinateFormat,
-            view.latitude,
-            sizeof(view.latitude),
-            view.longitude,
-            sizeof(view.longitude),
-            view.locator,
-            sizeof(view.locator)
+            snapshot,       configuration.coordinateFormat,
+            view.latitude,  sizeof(view.latitude),
+            view.longitude, sizeof(view.longitude),
+            view.locator,   sizeof(view.locator)
         );
 
-        const bool moving = snapshot.speed >= gps::MIN_HEADING_SPEED_KMH;
+        const bool moving    = snapshot.speed >= gps::MIN_HEADING_SPEED_KMH;
+        const double heading = moving ? snapshot.heading : std::numeric_limits<double>::quiet_NaN();
+        const double speed   = moving ? snapshot.speed   : 0.0;
 
-        const double heading = moving
-            ? snapshot.heading
-            : std::numeric_limits<double>::quiet_NaN();
+        if (!format::heading(heading, view.heading, sizeof(view.heading)))
+            { text::copy(view.heading, sizeof(view.heading), "--"); }
 
-        const double speed = moving ? snapshot.speed : 0.0;
+        if (!format::speed(speed, imperial, view.speed, sizeof(view.speed)))
+            { text::copy(view.speed, sizeof(view.speed), "--"); }
 
-        if (!format::heading(
-            heading,
-            view.heading,
-            sizeof(view.heading)
-        )) {
-            text::copy(view.heading, sizeof(view.heading), "--");
-        }
-
-        if (!format::speed(
-            speed,
-            imperial,
-            view.speed,
-            sizeof(view.speed)
-        )) {
-            text::copy(view.speed, sizeof(view.speed), "--");
-        }
-
-        if (
-            !snapshot.positionValid ||
-            !format::altitude(
-                snapshot.altitude,
-                imperial,
-                view.altitude,
-                sizeof(view.altitude)
-            )
-        ) {
-            text::copy(view.altitude, sizeof(view.altitude), "--");
-        }
+        if (!snapshot.positionValid || !format::altitude(snapshot.altitude, imperial, view.altitude, sizeof(view.altitude)))
+            { text::copy(view.altitude, sizeof(view.altitude), "--"); }
 
         _formatGPSStatus(snapshot, view.status, sizeof(view.status));
     }
@@ -170,50 +133,22 @@ namespace {
         if (!navigation::getMarkDisplaySnapshot(mark)) { return; }
 
         const settings::General configuration = settings::general();
-        const bool imperial =
-            configuration.units == settings::Units::IMPERIAL;
+        const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
-        if (!uLocator::fromCoordinates(
-            mark.start.latitude,
-            mark.start.longitude,
-            view.locator,
-            sizeof(view.locator)
-        )) {
-            text::copy(view.locator, sizeof(view.locator), "---");
-        }
+        if (!uLocator::fromCoordinates(mark.start.latitude, mark.start.longitude, view.locator, sizeof(view.locator)))
+            { text::copy(view.locator, sizeof(view.locator), "---"); }
 
-        if (!format::distance(
-            mark.distanceKm,
-            imperial,
-            view.distance,
-            sizeof(view.distance)
-        )) {
-            text::copy(view.distance, sizeof(view.distance), "---");
-        }
+        if (!format::distance(mark.distanceKm, imperial, view.distance, sizeof(view.distance)))
+            { text::copy(view.distance, sizeof(view.distance), "---"); }
 
-        if (!format::bearing(
-            mark.bearingDeg,
-            view.bearing,
-            sizeof(view.bearing)
-        )) {
-            text::copy(view.bearing, sizeof(view.bearing), "---");
-        }
+        if (!format::bearing(mark.bearingDeg, view.bearing, sizeof(view.bearing)))
+            { text::copy(view.bearing, sizeof(view.bearing), "---"); }
 
-        if (!format::durationCompact(
-            mark.elapsedSeconds,
-            view.timer,
-            sizeof(view.timer)
-        )) {
-            text::copy(view.timer, sizeof(view.timer), "-- : -- : --");
-        }
+        if (!format::durationCompact(mark.elapsedSeconds, view.timer, sizeof(view.timer)))
+            { text::copy(view.timer, sizeof(view.timer), "-- : -- : --"); }
     }
 
-    void _getFormattedPosition(const gps::Snapshot &snapshot,
-        const settings::CoordinateFormat coordinateFormat,
-        char* const latitude,  const size_t latitudeSize,
-        char* const longitude, const size_t longitudeSize,
-        char* const qth,       const size_t qthSize
-    ) {
+    void _getFormattedPosition(const gps::Snapshot &snapshot, const settings::CoordinateFormat coordinateFormat, char* const latitude, const size_t latitudeSize, char* const longitude, const size_t longitudeSize, char* const qth, const size_t qthSize) {
         if (!snapshot.positionValid) {
             text::copy(latitude,  latitudeSize,  "--");
             text::copy(longitude, longitudeSize, "--");
@@ -262,33 +197,14 @@ namespace {
             else if (snapshot.fixType == 2U) { fix = "2D"; }
         }
 
-        const bool hdopValid =
-            std::isfinite(snapshot.hdop) &&
-            snapshot.hdop > 0.0;
+        const bool hdopValid = std::isfinite(snapshot.hdop) && snapshot.hdop > 0.0;
 
         const int written = hdopValid
-            ? std::snprintf(
-                buffer,
-                size,
-                "FIX %s  SAT %02u  HDOP %.1f",
-                fix,
-                static_cast<unsigned>(snapshot.satellites),
-                snapshot.hdop
-            )
-            : std::snprintf(
-                buffer,
-                size,
-                "FIX %s  SAT %02u  HDOP --",
-                fix,
-                static_cast<unsigned>(snapshot.satellites)
-            );
+            ? std::snprintf(buffer, size, "FIX %s  SAT %02u  HDOP %.1f", fix, static_cast<unsigned>(snapshot.satellites), snapshot.hdop)
+            : std::snprintf(buffer, size, "FIX %s  SAT %02u  HDOP --",   fix, static_cast<unsigned>(snapshot.satellites));
 
-        if (
-            written < 0 ||
-            static_cast<size_t>(written) >= size
-        ) {
-            text::copy(buffer, size, "FIX --  SAT --  HDOP --");
-        }
+        if (written < 0 || static_cast<size_t>(written) >= size)
+            { text::copy(buffer, size, "FIX --  SAT --  HDOP --"); }
     }
 }
 
@@ -382,46 +298,33 @@ void Main::_updateOTA(ST7796S::MSP4021 &tft) {
         return;
     }
 
-    if (
-        (
-            _otaSelection.type != settings::OtaType::SOTA &&
-            _otaSelection.type != settings::OtaType::POTA
-        ) || _otaSelection.code[0] == '\0'
-    ) {
+    if ((_otaSelection.type != settings::OtaType::SOTA && _otaSelection.type != settings::OtaType::POTA ) || _otaSelection.code[0] == '\0') {
         _updateOTAStatus(tft, "---");
         return;
     }
 
-    const bool isPota = _otaSelection.type == settings::OtaType::POTA;
-    const ota::Type selectedType = isPota
-        ? ota::Type::PARKS
-        : ota::Type::SUMMITS;
+    const bool isPota            = _otaSelection.type == settings::OtaType::POTA;
+    const ota::Type selectedType = isPota ? ota::Type::PARKS : ota::Type::SUMMITS;
 
-    ota::requestByCode(
-        selectedType,     _otaSelection.code,
-        gpsData.latitude, gpsData.longitude
-    );
+    ota::requestByCode(selectedType, _otaSelection.code, gpsData.latitude, gpsData.longitude);
 
     const ota::Snapshot result = ota::snapshot(selectedType);
 
     if (!text::equals(result.reference.code, _otaSelection.code)) {
-        const char* const status =
-            result.status == ota::Status::SEARCHING
-                ? "Searching"
-                : "---";
-
+        const char* const status = result.status == ota::Status::SEARCHING ? "Searching" : "---";
         _updateOTAStatus(tft, status);
         return;
     }
 
     const settings::General configuration = settings::general();
-    const bool imperial = configuration.units == settings::Units::IMPERIAL;
+    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
     char bearing[16];
     char distance[16];
 
     if (!format::bearing(result.bearingDeg, bearing, sizeof(bearing)))
         { text::copy(bearing, sizeof(bearing), "---"); }
+
     if (!format::distance(result.distanceKm, imperial, distance, sizeof(distance)))
         { text::copy(distance, sizeof(distance), "---"); }
 
@@ -430,58 +333,22 @@ void Main::_updateOTA(ST7796S::MSP4021 &tft) {
     char code[32];
 
     if (!isPota) {
-        if (!format::altitude(
-            result.reference.altitude,
-            imperial,
-            altitude,
-            sizeof(altitude)
-        )) {
-            text::copy(altitude, sizeof(altitude), "---");
-        }
+        if (!format::altitude(result.reference.altitude, imperial, altitude, sizeof(altitude)))
+            { text::copy(altitude, sizeof(altitude), "---"); }
 
         const int pointsWritten = result.reference.bonus > 0U
-            ? std::snprintf(
-                points,
-                sizeof(points),
-                "%u+%u",
-                static_cast<unsigned int>(result.reference.points),
-                static_cast<unsigned int>(result.reference.bonus)
-            )
-            : std::snprintf(
-                points,
-                sizeof(points),
-                "%u",
-                static_cast<unsigned int>(result.reference.points)
-            );
+            ? std::snprintf(points, sizeof(points), "%u+%u", static_cast<unsigned int>(result.reference.points), static_cast<unsigned int>(result.reference.bonus))
+            : std::snprintf(points, sizeof(points), "%u",    static_cast<unsigned int>(result.reference.points));
 
-        if (
-            pointsWritten < 0 ||
-            static_cast<size_t>(pointsWritten) >= sizeof(points)
-        ) {
-            text::copy(points, sizeof(points), "---");
-        }
+        if (pointsWritten < 0 || static_cast<size_t>(pointsWritten) >= sizeof(points))
+            { text::copy(points, sizeof(points), "---"); }
     }
 
     const char* const typeLabel = isPota ? "POTA" : "SOTA";
+    const int codeWritten       = std::snprintf(code, sizeof(code), "%s: %s", typeLabel, result.reference.code);
 
-    const int codeWritten = std::snprintf(
-        code,
-        sizeof(code),
-        "%s: %s",
-        typeLabel,
-        result.reference.code
-    );
-
-    if (
-        codeWritten < 0 ||
-        static_cast<size_t>(codeWritten) >= sizeof(code)
-    ) {
-        text::copy(
-            code,
-            sizeof(code),
-            isPota ? "POTA: ---" : "SOTA: ---"
-        );
-    }
+    if (codeWritten < 0 || static_cast<size_t>(codeWritten) >= sizeof(code))
+        { text::copy(code, sizeof(code), isPota ? "POTA: ---" : "SOTA: ---"); }
 
     locator::updateOTABearing (tft, bearing);
     locator::updateOTADistance(tft, distance);

@@ -71,29 +71,16 @@ namespace {
     void _drawText(ST7796S::MSP4021 &tft, const Field &field) {
         tft.setFont(ST7796S::RobotoMono_Bold_16);
         tft.setTextColor(theme::WHITE);
-        tft.textCenter(
-            field.innerX, mockupHeader::innerY(),
-            field.innerW, mockupHeader::innerHeight(),
-            field.value
-        );
+        tft.textCenter(field.innerX, mockupHeader::innerY(), field.innerW, mockupHeader::innerHeight(), field.value);
     }
 
     void _drawLine(ST7796S::MSP4021 &tft, const Field &field) {
         int gap = mockup::GAP;
-        tft.lineV(
-            field.outerX,
-            mockupHeader::innerY() + gap,
-            mockupHeader::innerHeight() - (gap * 2),
-            theme::BORDER
-        );
+        tft.lineV(field.outerX, mockupHeader::innerY() + gap, mockupHeader::innerHeight() - (gap * 2), theme::BORDER);
     }
 
     void _drawRect(ST7796S::MSP4021 &tft, const Field &field) {
-        tft.rectFill(
-            field.outerX + 1, mockupHeader::outerY() + 1,
-            field.outerW - 2, mockupHeader::outerHeight() - 2,
-            theme::BLACK
-        );
+        tft.rectFill(field.outerX + 1, mockupHeader::outerY() + 1, field.outerW - 2, mockupHeader::outerHeight() - 2, theme::BLACK);
     }
 
     void _setField(Field &field, const char* value) {
@@ -134,30 +121,30 @@ void title::draw(ST7796S::MSP4021 &tft) {
     const int gap     = mockup::GAP;
     const int headerW = mockupHeader::outerWidth();
 
-    _callsign.outerX = mockupHeader::outerX();
-    _callsign.outerW = (headerW * 3) / 8;
-    _callsign.innerX = _callsign.outerX + (gap * 2);
-    _callsign.innerW = _callsign.outerW - (gap * 4);
+    _callsign.outerX  = mockupHeader::outerX();
+    _callsign.outerW  = (headerW * 3) / 8;
+    _callsign.innerX  = _callsign.outerX + (gap * 2);
+    _callsign.innerW  = _callsign.outerW - (gap * 4);
     _drawText(tft, _callsign);
 
-    _date.outerX = _callsign.outerX + _callsign.outerW;
-    _date.outerW = headerW / 4;
-    _date.innerX = _date.outerX + (gap * 2);
-    _date.innerW = _date.outerW - (gap * 4);
+    _date.outerX      = _callsign.outerX + _callsign.outerW;
+    _date.outerW      = headerW / 4;
+    _date.innerX      = _date.outerX + (gap * 2);
+    _date.innerW      = _date.outerW - (gap * 4);
     _drawLine(tft, _date);
     _drawText(tft, _date);
 
-    _time.outerX = _date.outerX + _date.outerW;
-    _time.outerW = headerW / 4;
-    _time.innerX = _time.outerX + (gap * 2);
-    _time.innerW = _time.outerW - (gap * 4);
+    _time.outerX      = _date.outerX + _date.outerW;
+    _time.outerW      = headerW / 4;
+    _time.innerX      = _time.outerX + (gap * 2);
+    _time.innerW      = _time.outerW - (gap * 4);
     _drawLine(tft, _time);
     _drawText(tft, _time);
 
-    _battery.outerX = _time.outerX + _time.outerW;
-    _battery.outerW = headerW - _callsign.outerW - _date.outerW - _time.outerW;
-    _battery.innerX = _battery.outerX + (gap * 2);
-    _battery.innerW = _battery.outerW - (gap * 4);
+    _battery.outerX   = _time.outerX + _time.outerW;
+    _battery.outerW   = headerW - _callsign.outerW - _date.outerW - _time.outerW;
+    _battery.innerX   = _battery.outerX + (gap * 2);
+    _battery.innerW   = _battery.outerW - (gap * 4);
     _drawLine(tft, _battery);
     _drawText(tft, _battery);
 }

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,29 +22,67 @@
  */
 
 #pragma once
+
 #include <MSP4021.h>
 
 namespace ui::mockup::header {
-    /** @brief Clears the shared header area. */
+    /**
+     * @brief Clears the shared header area.
+     * @param tft Display instance whose header area is cleared.
+     */
     void clear(ST7796S::MSP4021 &tft);
-    /** @brief Draws the shared header frame. */
+
+    /**
+     * @brief Draws the shared header frame.
+     * @param tft Display instance used to calculate and draw the header.
+     */
     void draw(ST7796S::MSP4021 &tft);
 
-    /** @brief Returns the outer left coordinate. */
+    /**
+     * @brief Returns the outer left coordinate.
+     * @return Outer horizontal origin in pixels.
+     */
     int outerX();
-    /** @brief Returns the outer top coordinate. */
+
+    /**
+     * @brief Returns the outer top coordinate.
+     * @return Outer vertical origin in pixels.
+     */
     int outerY();
-    /** @brief Returns the outer width. */
+
+    /**
+     * @brief Returns the outer width.
+     * @return Outer width in pixels.
+     */
     int outerWidth();
-    /** @brief Returns the outer height. */
+
+    /**
+     * @brief Returns the outer height.
+     * @return Outer height in pixels.
+     */
     int outerHeight();
 
-    /** @brief Returns the inner left coordinate. */
+    /**
+     * @brief Returns the inner left coordinate.
+     * @return Inner horizontal origin in pixels.
+     */
     int innerX();
-    /** @brief Returns the inner top coordinate. */
+
+    /**
+     * @brief Returns the inner top coordinate.
+     * @return Inner vertical origin in pixels.
+     */
     int innerY();
-    /** @brief Returns the inner width. */
+
+    /**
+     * @brief Returns the inner width.
+     * @return Inner width in pixels.
+     */
     int innerWidth();
-    /** @brief Returns the inner height. */
+
+    /**
+     * @brief Returns the inner height.
+     * @return Inner height in pixels.
+     */
     int innerHeight();
 }

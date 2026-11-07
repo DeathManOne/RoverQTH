@@ -40,27 +40,23 @@ namespace screens {
             void _preloadOTA();
             void _preloadMARK();
             void _updateOTA(ST7796S::MSP4021 &tft);
-
         public:
             /** @copydoc Screen::preload() */
             void preload() override;
+
             /** @copydoc Screen::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
 
             /** @copydoc Screen::update() */
-            void update(
-                ST7796S::MSP4021 &tft,
-                uint32_t &nextRefreshIn
-            ) override;
+            void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) override;
 
             /** @copydoc Screen::handleTouch() */
-            bool handleTouch(
-                ST7796S::MSP4021 &tft,
-                int x,
-                int y
-            ) override;
+            bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
 
-            /** @brief Refreshes the marked-QTH fields immediately. */
+            /**
+             * @brief Refreshes the marked-QTH fields immediately.
+             * @param tft Display instance used to redraw the marked-QTH fields.
+             */
             void updateMARK(ST7796S::MSP4021 &tft);
     };
 }

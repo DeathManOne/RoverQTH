@@ -22,7 +22,6 @@
  */
 
 #pragma once
-#include <cstdint>
 
 namespace ui::settings::mockup {
     constexpr int GAP                       = 4;   /**< Standard spacing between UI elements. */

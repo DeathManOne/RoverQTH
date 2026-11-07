@@ -31,7 +31,7 @@ namespace utilities::json {
     class Writer {
         private:
             static constexpr size_t MAX_DEPTH = 8U;
-            struct Context {bool first;};
+            struct Context { bool first; };
 
             char* _buffer;
             bool _valid;
@@ -62,13 +62,13 @@ namespace utilities::json {
             /**
              * Creates a JSON object.
              * @param key Optional object key when creating a nested object.
-             * @return True on success, false if the Writer becomes invalid.
+             * @return `true` when the object was started successfully, otherwise `false`.
              */
             bool beginObject(const char* key = nullptr);
 
             /**
              * Closes the current JSON object.
-             * @return True on success, false on invalid nesting.
+             * @return `true` when the object was closed successfully, otherwise `false`.
              */
             bool endObject();
 
@@ -76,7 +76,7 @@ namespace utilities::json {
              * Writes a JSON string value.
              * @param key   Property name.
              * @param value UTF-8 string to serialize.
-             * @return True on success, false if the Writer becomes invalid.
+             * @return `true` when the string was written successfully, otherwise `false`.
              */
             bool string(const char* key, const char* value);
 
@@ -84,7 +84,7 @@ namespace utilities::json {
              * Writes a JSON boolean value.
              * @param key   Property name.
              * @param value Boolean value.
-             * @return True on success, false if the Writer becomes invalid.
+             * @return `true` when the boolean was written successfully, otherwise `false`.
              */
             bool boolean(const char* key, bool value);
 
@@ -92,7 +92,7 @@ namespace utilities::json {
              * Writes an unsigned integer value.
              * @param key   Property name.
              * @param value Unsigned integer.
-             * @return True on success, false if the Writer becomes invalid.
+             * @return `true` when the unsigned integer was written successfully, otherwise `false`.
              */
             bool unsignedInteger(const char* key, uint64_t value);
 
@@ -102,24 +102,26 @@ namespace utilities::json {
              * @param key      Property name.
              * @param value    Floating-point value.
              * @param decimals Number of decimal places (0-9).
-             * @return True on success, false if the Writer becomes invalid.
+             * @return `true` when the number was written successfully, otherwise `false`.
              */
             bool number(const char* key, double value, uint8_t decimals);
 
             /**
              * Indicates whether the generated JSON is complete and valid.
+             * @return `true` when the root object is complete and the Writer remains valid,
+             * otherwise `false`.
              */
             bool complete() const;
 
             /**
              * Returns the length of the generated JSON.
-             * Returns zero until complete() is true.
+             * @return Generated JSON length, or zero until complete() returns `true`.
              */
             size_t length() const;
 
             /**
              * Returns the generated JSON string.
-             * Returns nullptr until complete() is true.
+             * @return Null-terminated generated JSON, or `nullptr` until complete() returns `true`.
              */
             const char* c_str() const;
     };

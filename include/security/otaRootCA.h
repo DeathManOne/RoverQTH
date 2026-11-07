@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -25,8 +25,7 @@
 
 namespace security::otaRootCA {
     /**
-     * @brief PEM bundle containing the trusted root certificates used for
-     *        secure HTTPS connections.
+     * @brief PEM bundle containing the trusted root certificates used for secure HTTPS connections.
      *
      * The bundle is passed to the TLS client when checking or downloading
      * firmware and OTA databases.

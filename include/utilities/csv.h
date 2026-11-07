@@ -32,7 +32,7 @@ namespace utilities::csv {
      * @param length Number of source characters to copy.
      * @param destination Destination buffer.
      * @param destinationSize Total destination capacity.
-     * @return true when the complete field was copied, otherwise false.
+     * @return `true` when the complete field was copied, otherwise `false`.
      */
     bool copyField(const char* source, size_t length, char* destination, size_t destinationSize);
 
@@ -42,7 +42,8 @@ namespace utilities::csv {
      * @param destination Destination buffer for the decoded field.
      * @param destinationSize Total destination capacity.
      * @param delimiter Receives whether a field delimiter was consumed.
-     * @return true when the field is valid and fits in the destination buffer.
+     * @return `true` when the field is valid and fits in the destination buffer,
+     * otherwise `false`.
      */
-    bool readField(const char*& cursor, char* destination, size_t destinationSize, bool& delimiter);
+    bool readField(const char* &cursor, char* destination, size_t destinationSize, bool &delimiter);
 }

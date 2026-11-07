@@ -33,29 +33,13 @@ namespace services::ota {
     constexpr size_t AREA_SIZE = 96U;
 
     /** @brief Selects the summit or park database. */
-    enum class Type : uint8_t {
-        SUMMITS,
-        PARKS
-    };
+    enum class Type : uint8_t {SUMMITS, PARKS};
 
     /** @brief State of a single-reference OTA lookup. */
-    enum class Status : uint8_t {
-        UNAVAILABLE,
-        IDLE,
-        SEARCHING,
-        READY,
-        ERROR
-    };
+    enum class Status : uint8_t {UNAVAILABLE, IDLE, SEARCHING, READY, ERROR};
 
     /** @brief State of a multi-result OTA search. */
-    enum class NearbyStatus : uint8_t {
-        UNAVAILABLE,
-        IDLE,
-        SEARCHING,
-        READY,
-        EMPTY,
-        ERROR
-    };
+    enum class NearbyStatus : uint8_t {UNAVAILABLE, IDLE, SEARCHING, READY, EMPTY, ERROR};
 
     /** @brief Unified summit-or-park reference exposed to consumers. */
     struct Reference {
@@ -70,8 +54,8 @@ namespace services::ota {
 
     /** @brief Thread-safe snapshot of a single-reference lookup. */
     struct Snapshot {
-        Status status = Status::UNAVAILABLE;
-        Type type     = Type::SUMMITS;
+        Status status     = Status::UNAVAILABLE;
+        Type type         = Type::SUMMITS;
         Reference reference {};
         double distanceKm = 0.0;
         double bearingDeg = 0.0;
@@ -85,55 +69,84 @@ namespace services::ota {
 
     /** @brief Initializes the OTA lookup service and its synchronization resources. */
     void begin();
-    /** @brief Invalidates cached state associated with one database type. */
+
+    /**
+     * @brief Invalidates cached state associated with one database type.
+     * @param type Database type whose lookup state is invalidated.
+     */
     void invalidate(Type type);
 
-    /** @brief Starts an asynchronous nearest-reference lookup. */
-    bool requestNearest(
-        Type type,
-        double latitude,
-        double longitude
-    );
+    /**
+     * @brief Starts an asynchronous nearest-reference lookup.
+     * @param type Database type to search.
+     * @param latitude Reference latitude in decimal degrees.
+     * @param longitude Reference longitude in decimal degrees.
+     * @return `true` when the lookup request was accepted.
+     */
+    bool requestNearest(Type type, double latitude, double longitude);
 
-    /** @brief Starts an asynchronous exact-code lookup. */
-    bool requestByCode(
-        Type type,
-        const char* code,
-        double latitude,
-        double longitude
-    );
+    /**
+     * @brief Starts an asynchronous exact-code lookup.
+     * @param type Database type to search.
+     * @param code Exact OTA reference code to find.
+     * @param latitude Reference latitude used to calculate distance and bearing.
+     * @param longitude Reference longitude used to calculate distance and bearing.
+     * @return `true` when the lookup request was accepted.
+     */
+    bool requestByCode(Type type, const char* code, double latitude, double longitude);
 
-    /** @brief Starts an asynchronous code-prefix search. */
-    bool requestByPrefix(
-        Type type,
-        const char* prefix,
-        double latitude,
-        double longitude
-    );
+    /**
+     * @brief Starts an asynchronous code-prefix search.
+     * @param type Database type to search.
+     * @param prefix OTA code prefix to normalize and match.
+     * @param latitude Reference latitude used to rank the results.
+     * @param longitude Reference longitude used to rank the results.
+     * @return `true` when the search request was accepted.
+     */
+    bool requestByPrefix(Type type, const char* prefix, double latitude, double longitude);
 
-    /** @brief Starts an asynchronous geographic-radius search. */
-    bool requestNearby(
-        Type type,
-        double latitude,
-        double longitude,
-        double radiusKm
-    );
+    /**
+     * @brief Starts an asynchronous geographic-radius search.
+     * @param type Database type to search.
+     * @param latitude Centre latitude of the search in decimal degrees.
+     * @param longitude Centre longitude of the search in decimal degrees.
+     * @param radiusKm Maximum search radius in kilometres.
+     * @return `true` when the search request was accepted.
+     */
+    bool requestNearby(Type type, double latitude, double longitude, double radiusKm);
 
-    /** @brief Requests cancellation of the active OTA search. */
+    /**
+     * @brief Requests cancellation of the active OTA search.
+     * @return `true` when a running cancellable search received the request.
+     */
     bool cancel();
 
-    /** @brief Returns a synchronized snapshot of a single-reference lookup. */
+    /**
+     * @brief Returns a synchronized snapshot of a single-reference lookup.
+     * @param type Database type whose lookup snapshot is requested.
+     * @return Current synchronized lookup snapshot.
+     */
     Snapshot snapshot(Type type);
-    /** @brief Returns a synchronized summary of a multi-result search. */
+
+    /**
+     * @brief Returns a synchronized summary of a multi-result search.
+     * @param type Database type whose search summary is requested.
+     * @return Current synchronized multi-result search summary.
+     */
     NearbySnapshot nearbySnapshot(Type type);
 
-    /** @brief Copies one retained multi-result entry by index. */
-    bool nearbyResult(
-        Type type,
-        size_t index,
-        database::ota::SearchResult &result
-    );
+    /**
+     * @brief Copies one retained multi-result entry by index.
+     * @param type Database type whose retained results are queried.
+     * @param index Zero-based index of the retained result.
+     * @param result Receives the requested result.
+     * @return `true` when the requested result exists and was copied.
+     */
+    bool nearbyResult(Type type, size_t index, database::ota::SearchResult &result);
 
-    /** @brief Reports whether any OTA lookup task is currently active. */
+    /**
+     * @brief Reports whether any OTA lookup task is currently active.
+     * @return `true` while an OTA lookup task is running.
+     */
     bool isBusy();
 }

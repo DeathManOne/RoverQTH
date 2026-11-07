@@ -19,7 +19,7 @@
 
 RoverQTH is a standalone GNSS assistant designed for portable and mobile amateur radio operations. Built around the ESP32 platform, it provides a dedicated touchscreen interface displaying real-time GNSS position, Maidenhead locator, operating information and selected SOTA or POTA references, allowing operators to accurately determine their current operating position in the field.
 
-The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and installable SOTA and POTA databases, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
+The project runs on compact portable hardware featuring an ESP32 microcontroller, a u-blox GNSS receiver, a 4-inch ST7796S or ILI9488 touchscreen and SD-card storage. It provides persistent QTH session recording, onboard event logging, secure firmware updates and installable SOTA and POTA databases, simplifying field operation and post-operation analysis while laying the foundation for future synchronization with the RoverQTH web platform and desktop tools.
 
 ---
 
@@ -72,7 +72,7 @@ The project runs on compact portable hardware featuring an ESP32 microcontroller
 
 ### Touchscreen Interface
 
-* 4-inch ST7796S display support (clone)
+* Automatic ST7796S and ILI9488 display-controller detection
 * Persistent touchscreen calibration
 * Independent NORMAL and REVERSED calibration profiles
 * Runtime screen rotation support
@@ -265,8 +265,9 @@ RoverQTH
 
 ### Supported Display
 
-* ST7796S 480x320 touchscreen display (clone)
+* ST7796S or ILI9488 480x320 touchscreen display
 * MSP4020 / MSP4021 compatible hardware
+* Automatic display-controller detection during initialization
 
 ### Supported SD Reader
 

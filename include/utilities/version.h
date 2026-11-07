@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -29,6 +29,7 @@
 namespace utilities::version {
     /** @brief Capacity of a normalized version string, including its terminator. */
     constexpr size_t TEXT_SIZE = 16;
+
     /** @brief Relative ordering returned when comparing two valid versions. */
     enum class Comparison : uint8_t {OLDER, EQUAL, NEWER};
 
@@ -36,16 +37,16 @@ namespace utilities::version {
      * Converts a version string to its numeric build representation.
      * @param value Version string.
      * @param build Receives the converted build number.
-     * @return true if the conversion succeeded, false otherwise.
+     * @return `true` when the conversion succeeded, otherwise `false`.
      */
-    bool toBuild(const char* value, uint32_t& build);
+    bool toBuild(const char* value, uint32_t &build);
 
     /**
      * Compares two version strings.
      * @param left   Left version string.
      * @param right  Right version string.
      * @param result Receives the comparison result.
-     * @return true if both version strings are valid, false otherwise.
+     * @return `true` when both version strings are valid, otherwise `false`.
      */
-    bool compare(const char* left, const char* right, Comparison& result);
+    bool compare(const char* left, const char* right, Comparison &result);
 }

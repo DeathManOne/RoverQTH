@@ -47,11 +47,11 @@ const char* Storage::_typeToText(uint8_t type) {
 void Storage::draw(ST7796S::MSP4021 &tft) {
     grid::draw(tft);
 
-    const int gap   = uiMockup::GAP;
-    const int x     = grid::innerX()     + (gap * 2);
-    const int y     = grid::innerY()     + (gap * 2);
-    const int w     = grid::innerWidth() - (gap * 4);
-    const int rowH  = 28;
+    const int gap  = uiMockup::GAP;
+    const int x    = grid::innerX()     + (gap * 2);
+    const int y    = grid::innerY()     + (gap * 2);
+    const int w    = grid::innerWidth() - (gap * 4);
+    const int rowH = 28;
 
     int rowY = y + rowH + (gap * 3);
     for (Field<_Action>* field : _fields) {
@@ -67,34 +67,19 @@ void Storage::draw(ST7796S::MSP4021 &tft) {
     if (storage::readCardInfos(type, size, total, used)) {
         text::copy(_typeValue, sizeof(_typeValue), _typeToText(type));
 
-        if (!format::storageCapacity(
-                size,
-                _capacityValue,
-                sizeof(_capacityValue)
-            )) {
-            text::copy(_capacityValue, sizeof(_capacityValue), "--");
-        }
+        if (!format::storageCapacity(size, _capacityValue, sizeof(_capacityValue)))
+            { text::copy(_capacityValue, sizeof(_capacityValue), "--"); }
 
-        if (total == 0U) {
-            text::copy(_usageValue, sizeof(_usageValue), "--");
-        } else {
-            const uint64_t percentage =
-                used >= total
-                    ? 100U
-                    : (used * 100ULL) / total;
-
-            if (!format::percentage(
-                    percentage,
-                    _usageValue,
-                    sizeof(_usageValue)
-                )) {
-                text::copy(_usageValue, sizeof(_usageValue), "--");
-            }
+        if (total == 0U) { text::copy(_usageValue, sizeof(_usageValue), "--"); }
+        else {
+            const uint64_t percentage = used >= total ? 100U : (used * 100ULL) / total;
+            if (!format::percentage(percentage, _usageValue, sizeof(_usageValue)))
+                { text::copy(_usageValue, sizeof(_usageValue), "--"); }
         }
     } else {
-        text::copy(_typeValue,     sizeof(_typeValue),      "Missing");
-        text::copy(_capacityValue, sizeof(_capacityValue),  "--");
-        text::copy(_usageValue,    sizeof(_usageValue),     "--");
+        text::copy(_typeValue,     sizeof(_typeValue),     "Missing");
+        text::copy(_capacityValue, sizeof(_capacityValue), "--");
+        text::copy(_usageValue,    sizeof(_usageValue),    "--");
     }
 
     _typeField.value     = _typeValue;

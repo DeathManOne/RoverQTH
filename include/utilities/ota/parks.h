@@ -28,15 +28,23 @@
 namespace utilities::ota::parks {
     /**
      * @brief Converts one POTA CSV record into its binary park representation.
+     * @param line Null-terminated CSV record to parse.
+     * @param park Receives the parsed park when the record is active and usable.
      * @param active Receives whether the source park is active and usable.
+     * @return `true` when the CSV record was parsed successfully.
      */
-    bool parseCsvRecord(
-        const char* line,
-        database::ota::parks::Park &park,
-        bool &active
-    );
+    bool parseCsvRecord(const char* line, database::ota::parks::Park &park, bool &active);
 
-    /** @brief Updates the nearest-park selection with a valid candidate. */
+    /**
+     * @brief Updates the nearest-park selection with a valid candidate.
+     * @param latitude Reference latitude in decimal degrees.
+     * @param longitude Reference longitude in decimal degrees.
+     * @param candidate Park candidate to evaluate.
+     * @param found Indicates whether a previous nearest park exists and is updated when selected.
+     * @param nearest Receives the candidate when it becomes the nearest park.
+     * @param distanceKm Current nearest distance, updated in kilometres when the candidate is closer.
+     * @return `true` when the candidate distance was evaluated successfully.
+     */
     bool selectNearest(
         double latitude,
         double longitude,

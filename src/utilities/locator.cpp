@@ -31,9 +31,10 @@ bool locator::fromCoordinates(const double latitude, const double longitude, cha
     if (buffer == nullptr || size == 0) { return false; }
 
     buffer[0] = '\0';
-    if (!std::isfinite(latitude) || !std::isfinite(longitude) ||
-        latitude < -90.0 || latitude > 90.0 ||
-        longitude < -180.0 || longitude > 180.0
+    if (!std::isfinite(latitude)  ||
+        !std::isfinite(longitude) ||
+        latitude < -90.0          || latitude > 90.0   ||
+        longitude < -180.0        || longitude > 180.0
     ) { return false; }
 
     char grid[11];

@@ -45,10 +45,7 @@ bool text::copy(char* const destination, const size_t destinationSize, const cha
 }
 
 bool text::isTerminated(const char* const value, const size_t capacity) {
-    return
-        value != nullptr &&
-        capacity > 0U    &&
-        std::memchr(value, '\0', capacity) != nullptr;
+    return value != nullptr && capacity > 0U && std::memchr(value, '\0', capacity) != nullptr;
 }
 
 bool text::startsWith(const char* const value, const char* const prefix) {

@@ -30,11 +30,14 @@
 
 namespace database::ota::summits {
     /** @brief Binary capacity of a summit reference code. */
-    constexpr size_t CODE_SIZE    = database::ota::CODE_SIZE;
+    constexpr size_t CODE_SIZE = database::ota::CODE_SIZE;
+
     /** @brief Binary capacity of the source entity tag. */
-    constexpr size_t ETAG_SIZE    = database::ota::ETAG_SIZE;
+    constexpr size_t ETAG_SIZE = database::ota::ETAG_SIZE;
+
     /** @brief Binary capacity of a summit association name. */
-    constexpr size_t AREA_SIZE    = 64U;
+    constexpr size_t AREA_SIZE = 64U;
+
     /** @brief Binary capacity of the SOTA list version. */
     constexpr size_t VERSION_SIZE = 11U;
 
@@ -60,56 +63,74 @@ namespace database::ota::summits {
         char etag[database::ota::ETAG_SIZE] {};
     };
 
-    /** @brief Reads and validates the installed SOTA database metadata. */
+    /**
+     * @brief Reads and validates the installed SOTA database metadata.
+     * @param value Receives the validated database metadata.
+     * @return `true` when the installed database and its metadata are valid.
+     */
     bool info(Info &value);
 
-    /** @brief Converts a downloaded SOTA CSV file into a validated binary candidate. */
-    bool buildCandidate(
-        const char* csvPath,
-        const char* version,
-        const char* etag,
-        uint64_t sourceSize,
-        database::ota::ProgressCallback callback = nullptr,
-        void* userData = nullptr
-    );
+    /**
+     * @brief Converts a downloaded SOTA CSV file into a validated binary candidate.
+     * @param csvPath Path to the downloaded source CSV file.
+     * @param version Version reported by the downloaded SOTA source.
+     * @param etag Entity tag associated with the downloaded source.
+     * @param sourceSize Size of the downloaded source in bytes.
+     * @param callback Optional callback receiving build progress updates.
+     * @param userData Optional context forwarded unchanged to `callback`.
+     * @return `true` when the candidate was built and validated successfully.
+     */
+    bool buildCandidate(const char* csvPath, const char* version, const char* etag, uint64_t sourceSize, database::ota::ProgressCallback callback = nullptr, void* userData = nullptr);
 
-    /** @brief Atomically promotes the prepared SOTA candidate database. */
+    /**
+     * @brief Atomically promotes the prepared SOTA candidate database.
+     * @return `true` when the candidate was installed and validated successfully.
+     */
     bool installCandidate();
+
     /** @brief Removes any prepared SOTA candidate database. */
     void discardCandidate();
 
-    /** @brief Finds the summit nearest to the supplied coordinates. */
-    bool findNearest(
-        double latitude,
-        double longitude,
-        Summit &summit,
-        double &distanceKm,
-        double &bearing
-    );
+    /**
+     * @brief Finds the summit nearest to the supplied coordinates.
+     * @param latitude Reference latitude in decimal degrees.
+     * @param longitude Reference longitude in decimal degrees.
+     * @param summit Receives the nearest summit.
+     * @param distanceKm Receives the distance to the summit in kilometres.
+     * @param bearing Receives the initial bearing to the summit in degrees.
+     * @return `true` when a nearest summit was found.
+     */
+    bool findNearest(double latitude, double longitude, Summit &summit, double &distanceKm, double &bearing);
 
-    /** @brief Finds a summit by its exact reference code. */
-    bool findByCode(
-        const char* code,
-        Summit &summit
-    );
+    /**
+     * @brief Finds a summit by its exact reference code.
+     * @param code Exact SOTA reference code to find.
+     * @param summit Receives the matching summit.
+     * @return `true` when a matching summit was found.
+     */
+    bool findByCode(const char* code, Summit &summit);
 
-    /** @brief Finds the nearest summits whose codes match a normalized prefix. */
-    database::ota::SearchStatus findByPrefix(
-        double latitude,
-        double longitude,
-        const char* normalizedPrefix,
-        database::ota::SearchResults &results,
-        database::ota::CancelCallback cancelCallback = nullptr,
-        void* cancelUserData = nullptr
-    );
+    /**
+     * @brief Finds the nearest summits whose codes match a normalized prefix.
+     * @param latitude Reference latitude in decimal degrees.
+     * @param longitude Reference longitude in decimal degrees.
+     * @param normalizedPrefix Normalized summit-code prefix to match.
+     * @param results Receives the retained matching summits.
+     * @param cancelCallback Optional callback requesting cooperative cancellation.
+     * @param cancelUserData Optional context forwarded unchanged to `cancelCallback`.
+     * @return Status describing completion, cancellation, or failure.
+     */
+    database::ota::SearchStatus findByPrefix(double latitude, double longitude, const char* normalizedPrefix, database::ota::SearchResults &results, database::ota::CancelCallback cancelCallback = nullptr, void* cancelUserData = nullptr);
 
-    /** @brief Finds the nearest summits within a geographic radius. */
-    database::ota::SearchStatus findNearby(
-        double latitude,
-        double longitude,
-        double radiusKm,
-        database::ota::SearchResults &results,
-        database::ota::CancelCallback cancelCallback = nullptr,
-        void* cancelUserData = nullptr
-    );
+    /**
+     * @brief Finds the nearest summits within a geographic radius.
+     * @param latitude Reference latitude in decimal degrees.
+     * @param longitude Reference longitude in decimal degrees.
+     * @param radiusKm Maximum search radius in kilometres.
+     * @param results Receives the retained nearby summits.
+     * @param cancelCallback Optional callback requesting cooperative cancellation.
+     * @param cancelUserData Optional context forwarded unchanged to `cancelCallback`.
+     * @return Status describing completion, cancellation, or failure.
+     */
+    database::ota::SearchStatus findNearby(double latitude, double longitude, double radiusKm, database::ota::SearchResults &results, database::ota::CancelCallback cancelCallback = nullptr, void* cancelUserData = nullptr);
 }

@@ -44,10 +44,7 @@ bool version::toBuild(const char* const value, uint32_t& build) {
         }
         if (character < '0' || character > '9' || digits >= 3)
             { return false; }
-        parts[partIndex] = static_cast<uint16_t>(
-            parts[partIndex] * 10U +
-            static_cast<uint16_t>(character - '0')
-        );
+        parts[partIndex] = static_cast<uint16_t>(parts[partIndex] * 10U + static_cast<uint16_t>(character - '0'));
         ++digits;
     }
 

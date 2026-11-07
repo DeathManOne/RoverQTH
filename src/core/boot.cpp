@@ -47,7 +47,7 @@ namespace {
 
     void _initWifi();
     void _initSdCard(SPIClass &sdSPI, uint32_t timeout);
-    void _initGPS           (HardwareSerial &gpsUART);
+    void _initGPS(HardwareSerial &gpsUART);
     bool _waitGPSAcquisition(HardwareSerial &gpsUART);
     void _restoreQTH();
 
@@ -111,10 +111,7 @@ namespace {
                 int x;
                 int y;
 
-                if (
-                    sDisplay::readTouch(x, y) &&
-                    sDisplay::handleBootTouch(x, y)
-                ) {
+                if (sDisplay::readTouch(x, y) && sDisplay::handleBootTouch(x, y)) {
                     sDisplay::updateBootGPS(nullptr);
                     _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
                     sDisplay::updateBootGPS(&_gpsOk);
@@ -137,22 +134,16 @@ namespace {
         while (true) {
             delay(CHECK_INTERVAL_MS);
 
-            const uint8_t currentProgress =
-                gps::getAcquisitionProgress();
-
+            const uint8_t currentProgress = gps::getAcquisitionProgress();
             if (currentProgress > progress) {
                 progress       = currentProgress;
                 lastProgressAt = millis();
 
                 sDisplay::updateBootGPSProgress(progress);
-
                 if (progress >= 100U) {
-                    storage::appendLogRecord(
-                        "GPS_ACQUISITION_COMPLETE"
-                    );
+                    storage::appendLogRecord("GPS_ACQUISITION_COMPLETE");
                     return true;
                 }
-
                 continue;
             }
 
@@ -162,14 +153,7 @@ namespace {
             storage::appendErrorRecord("GPS_ACQUISITION_STALLED");
             sDisplay::updateBootGPS(nullptr);
 
-            _gpsOk = gps::restart(
-                gpsUART,
-                GPS_RX,
-                GPS_TX,
-                GPS_BAUD,
-                10
-            );
-
+            _gpsOk = gps::restart(gpsUART, GPS_RX, GPS_TX, GPS_BAUD, 10);
             if (!_gpsOk) {
                 sDisplay::updateBootGPS(&_gpsOk);
                 return false;

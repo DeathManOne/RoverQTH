@@ -36,25 +36,33 @@ namespace screens {
 
             /** @brief Loads the initial values required before drawing the screen. */
             virtual void preload() = 0;
-            /** @brief Draws the complete screen. */
+
+            /**
+             * @brief Draws the complete screen.
+             * @param tft Display instance used to draw the screen.
+             */
             virtual void draw(ST7796S::MSP4021 &tft) = 0;
 
-            /** @brief Refreshes dynamic content and supplies the next refresh delay. */
-            virtual void update(
-                ST7796S::MSP4021 &tft,
-                uint32_t &nextRefreshIn
-            ) = 0;
+            /**
+             * @brief Refreshes dynamic content and supplies the next refresh delay.
+             * @param tft Display instance used to refresh the screen.
+             * @param nextRefreshIn Receives the delay in milliseconds before the next refresh.
+             */
+            virtual void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) = 0;
 
-            /** @brief Handles a mapped touch event. */
-            virtual bool handleTouch(
-                ST7796S::MSP4021 &tft,
-                int x,
-                int y
-            ) = 0;
+            /**
+             * @brief Handles a mapped touch event.
+             * @param tft Display instance available to redraw affected controls.
+             * @param x Horizontal touch coordinate in pixels.
+             * @param y Vertical touch coordinate in pixels.
+             * @return `true` when the touch event was handled.
+             */
+            virtual bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) = 0;
 
-            /** @brief Reports whether the screen currently owns an editing overlay. */
-            virtual bool isEditing() const {
-                return false;
-            }
+            /**
+             * @brief Reports whether the screen currently owns an editing overlay.
+             * @return `true` when an editing overlay is active.
+             */
+            virtual bool isEditing() const { return false; }
     };
 }

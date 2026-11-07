@@ -64,21 +64,11 @@ namespace {
     constexpr const char* POTA_CSV_PATH   = "/RoverQTH/tmp/pota.tmp";
     constexpr const char* SOTA_CSV_PATH   = "/RoverQTH/tmp/sota.tmp";
 
-    const char* DATABASE_HEADERS[] = {
-        "ETag"
-    };
+    const char* DATABASE_HEADERS[]         = {"ETag"};
+    constexpr size_t DATABASE_HEADER_COUNT = sizeof(DATABASE_HEADERS) / sizeof(DATABASE_HEADERS[0]);
 
-    constexpr size_t DATABASE_HEADER_COUNT =
-        sizeof(DATABASE_HEADERS) /
-        sizeof(DATABASE_HEADERS[0]);
-
-    enum class OperationTarget : uint8_t {FIRMWARE, SOTA, POTA};
-    enum class DatabaseDownloadFailure : uint8_t {
-        NONE,
-        STREAM_DISCONNECTED,
-        STREAM_TIMEOUT,
-        SD_WRITE
-    };
+    enum class OperationTarget         : uint8_t {FIRMWARE, SOTA, POTA};
+    enum class DatabaseDownloadFailure : uint8_t {NONE, STREAM_DISCONNECTED, STREAM_TIMEOUT, SD_WRITE};
 
     struct SotaVersionContext {
         char* version;
@@ -171,9 +161,7 @@ namespace {
 
     void _setStatus(const OperationTarget target, const update::Status value) {
         if (!_isOperationTarget(target)) {
-            storage::appendErrorRecord(
-                "UPDATE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("UPDATE_TARGET_INVALID");
             return;
         }
 
@@ -183,10 +171,10 @@ namespace {
                 _firmwareStatus = value;
                 break;
             case OperationTarget::SOTA:
-                _sotaStatus = value;
+                _sotaStatus     = value;
                 break;
             case OperationTarget::POTA:
-                _potaStatus = value;
+                _potaStatus     = value;
                 break;
         }
         portEXIT_CRITICAL(&_lock);
@@ -194,9 +182,7 @@ namespace {
 
     void _setProgress(const OperationTarget target, uint8_t value) {
         if (!_isOperationTarget(target)) {
-            storage::appendErrorRecord(
-                "UPDATE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("UPDATE_TARGET_INVALID");
             return;
         }
         if (value > 100U) { value = 100U; }
@@ -207,24 +193,18 @@ namespace {
                 _firmwareProgress = value;
                 break;
             case OperationTarget::SOTA:
-                _sotaProgress = value;
+                _sotaProgress     = value;
                 break;
             case OperationTarget::POTA:
-                _potaProgress = value;
+                _potaProgress     = value;
                 break;
         }
         portEXIT_CRITICAL(&_lock);
     }
 
     void _setError(const OperationTarget target, const char* const value, const char* const logCode) {
-        if (
-            !_isOperationTarget(target) ||
-            value == nullptr            ||
-            value[0] == '\0'
-        ) {
-            storage::appendErrorRecord(
-                "UPDATE_ERROR_ARGUMENT_INVALID"
-            );
+        if (!_isOperationTarget(target) || value == nullptr || value[0] == '\0') {
+            storage::appendErrorRecord("UPDATE_ERROR_ARGUMENT_INVALID");
             return;
         }
         portENTER_CRITICAL(&_lock);
@@ -286,10 +266,7 @@ namespace {
         }
 
         char logCode[48] {};
-        const int written = snprintf(
-            logCode,   sizeof(logCode),
-            logFormat, httpCode
-        );
+        const int written = snprintf(logCode, sizeof(logCode), logFormat, httpCode);
 
         if (written > 0 && static_cast<size_t>(written) < sizeof(logCode))
             { storage::appendErrorRecord(logCode); }
@@ -298,52 +275,28 @@ namespace {
     }
 
     bool _openGet(HTTPClient& http, WiFiClientSecure& client, const char* const url, DatabaseSourceInfo* const sourceInfo) {
-        if (
-            url == nullptr ||
-            url[0] == '\0'
-        ) {
-            storage::appendErrorRecord(
-                sourceInfo != nullptr
-                    ? "DATABASE_GET_ARGUMENT_INVALID"
-                    : "OTA_GET_ARGUMENT_INVALID"
-            );
+        if (url == nullptr || url[0] == '\0') {
+            storage::appendErrorRecord(sourceInfo != nullptr ? "DATABASE_GET_ARGUMENT_INVALID" : "OTA_GET_ARGUMENT_INVALID");
             return false;
         }
         _configureHttp(http, client);
 
         if (!http.begin(client, url)) {
-            storage::appendErrorRecord(
-                sourceInfo != nullptr
-                    ? "DATABASE_GET_BEGIN_FAILED"
-                    : "OTA_GET_BEGIN_FAILED"
-            );
+            storage::appendErrorRecord(sourceInfo != nullptr ? "DATABASE_GET_BEGIN_FAILED" : "OTA_GET_BEGIN_FAILED");
             return false;
         }
 
-        if (sourceInfo != nullptr) {
-            http.collectHeaders(DATABASE_HEADERS, DATABASE_HEADER_COUNT);
-        }
+        if (sourceInfo != nullptr) { http.collectHeaders(DATABASE_HEADERS, DATABASE_HEADER_COUNT); }
 
         const int httpCode = http.GET();
-
-        if (!_validateHttpResponse(
-            httpCode,
-            sourceInfo != nullptr
-                ? "DATABASE_GET_HTTP_%d"
-                : "OTA_GET_HTTP_%d"
-        )) { return false; }
-
+        if (!_validateHttpResponse(httpCode, sourceInfo != nullptr ? "DATABASE_GET_HTTP_%d" : "OTA_GET_HTTP_%d"))
+            { return false; }
         return sourceInfo == nullptr || _readDatabaseSourceInfo(http, *sourceInfo);
     }
 
     bool _openHead(HTTPClient& http, WiFiClientSecure& client, const char* const url, DatabaseSourceInfo& sourceInfo) {
-        if (
-            url == nullptr ||
-            url[0] == '\0'
-        ) {
-            storage::appendErrorRecord(
-                "DATABASE_HEAD_ARGUMENT_INVALID"
-            );
+        if (url == nullptr || url[0] == '\0') {
+            storage::appendErrorRecord("DATABASE_HEAD_ARGUMENT_INVALID");
             return false;
         }
         _configureHttp(http, client);
@@ -354,16 +307,10 @@ namespace {
         }
 
         http.collectHeaders(DATABASE_HEADERS, DATABASE_HEADER_COUNT);
-
         const int httpCode = http.sendRequest("HEAD");
 
-        if (!_validateHttpResponse(
-            httpCode,
-            "DATABASE_HEAD_HTTP_%d"
-        )) {
-            return false;
-        }
-
+        if (!_validateHttpResponse(httpCode, "DATABASE_HEAD_HTTP_%d"))
+            { return false; }
         return _readDatabaseSourceInfo(http, sourceInfo);
     }
 
@@ -377,9 +324,7 @@ namespace {
 
     bool _readRemoteDatabaseSource(const OperationTarget target, const char* const url, DatabaseSourceInfo& sourceInfo) {
         if (!_isDatabaseTarget(target) || url == nullptr || url[0] == '\0') {
-            storage::appendErrorRecord(
-                "DATABASE_SOURCE_ARGUMENT_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_SOURCE_ARGUMENT_INVALID");
             return false;
         }
 
@@ -390,16 +335,8 @@ namespace {
             http.end();
             _setError(
                 target,
-                _databaseLogCode(
-                    target,
-                    "SOTA check failed",
-                    "POTA check failed"
-                ),
-                _databaseLogCode(
-                    target,
-                    "SOTA_HEAD_FAILED",
-                    "POTA_HEAD_FAILED"
-                )
+                _databaseLogCode(target, "SOTA check failed", "POTA check failed"),
+                _databaseLogCode(target, "SOTA_HEAD_FAILED",  "POTA_HEAD_FAILED")
             );
             return false;
         }
@@ -409,19 +346,10 @@ namespace {
     }
 
     bool _prepareDatabaseCheck(const OperationTarget target, const char* const path, const char* const url, DatabaseSourceInfo& sourceInfo) {
-        if (!_prepareDatabaseTemporaryFile(target, path)) {
-            return false;
-        }
+        if (!_prepareDatabaseTemporaryFile(target, path))        { return false; }
 
         _setProgress(target, 10U);
-
-        if (!_readRemoteDatabaseSource(
-            target,
-            url,
-            sourceInfo
-        )) {
-            return false;
-        }
+        if (!_readRemoteDatabaseSource(target, url, sourceInfo)) { return false; }
 
         _setProgress(target, 75U);
         return true;
@@ -429,48 +357,24 @@ namespace {
 
     void _publishDatabaseAvailability(const OperationTarget target, const bool installedAvailable, const uint32_t records, const char* const installedVersion, const bool updateAvailable) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
 
-        if (
-            !installedAvailable &&
-            !_invalidateDatabaseCache(target)
-        ) {
-            return;
-        }
-
+        if (!installedAvailable && !_invalidateDatabaseCache(target)) { return; }
         portENTER_CRITICAL(&_lock);
 
         if (target == OperationTarget::SOTA) {
-            _sotaRecords = installedAvailable
-                ? records
-                : 0U;
-
-            text::copy(
-                _sotaInstalledVersion,
-                sizeof(_sotaInstalledVersion),
-                installedAvailable &&
-                installedVersion != nullptr
-                    ? installedVersion
-                    : ""
-            );
+            _sotaRecords = installedAvailable ? records : 0U;
+            text::copy(_sotaInstalledVersion, sizeof(_sotaInstalledVersion), installedAvailable && installedVersion != nullptr ? installedVersion : "");
 
             _sotaLatestVersion[0] = '\0';
             _sotaProgress         = 100U;
-            _sotaStatus           = updateAvailable
-                ? update::Status::AVAILABLE
-                : update::Status::UP_TO_DATE;
+            _sotaStatus           = updateAvailable ? update::Status::AVAILABLE : update::Status::UP_TO_DATE;
         } else {
-            _potaRecords = installedAvailable
-                ? records
-                : 0U;
+            _potaRecords  = installedAvailable ? records : 0U;
             _potaProgress = 100U;
-            _potaStatus   = updateAvailable
-                ? update::Status::AVAILABLE
-                : update::Status::UP_TO_DATE;
+            _potaStatus   = updateAvailable ? update::Status::AVAILABLE : update::Status::UP_TO_DATE;
         }
 
         portEXIT_CRITICAL(&_lock);
@@ -478,91 +382,59 @@ namespace {
         storage::appendLogRecord(
             _databaseLogCode(
                 target,
-                updateAvailable
-                    ? "SOTA_UPDATE_AVAILABLE"
-                    : "SOTA_UP_TO_DATE",
-                updateAvailable
-                    ? "POTA_UPDATE_AVAILABLE"
-                    : "POTA_UP_TO_DATE"
+                updateAvailable ? "SOTA_UPDATE_AVAILABLE" : "SOTA_UP_TO_DATE",
+                updateAvailable ? "POTA_UPDATE_AVAILABLE" : "POTA_UP_TO_DATE"
             )
         );
     }
 
     void _beginDatabaseDownload(const OperationTarget target) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
 
-        _setStatus(
-            target,
-            update::Status::DOWNLOADING
-        );
+        _setStatus(target, update::Status::DOWNLOADING);
         _setProgress(target, 0U);
     }
 
     void _beginDatabaseInstallation(const OperationTarget target, const char* const version) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
 
         portENTER_CRITICAL(&_lock);
-
         if (target == OperationTarget::SOTA) {
-            text::copy(
-                _sotaLatestVersion,
-                sizeof(_sotaLatestVersion),
-                version != nullptr ? version : ""
-            );
+            text::copy(_sotaLatestVersion, sizeof(_sotaLatestVersion), version != nullptr ? version : "");
             _sotaProgress = 60U;
             _sotaStatus   = update::Status::INSTALLING;
         } else {
             _potaProgress = 60U;
             _potaStatus   = update::Status::INSTALLING;
         }
-
         portEXIT_CRITICAL(&_lock);
     }
 
     void _beginDatabaseVerification(const OperationTarget target) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
-
         _setProgress(target, 95U);
-        _setStatus(
-            target,
-            update::Status::VERIFYING
-        );
+        _setStatus(target, update::Status::VERIFYING);
     }
 
     void _finishDatabaseInstallation(const OperationTarget target, const uint32_t records, const char* const installedVersion) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
 
         portENTER_CRITICAL(&_lock);
-
         if (target == OperationTarget::SOTA) {
             _sotaRecords = records;
-            text::copy(
-                _sotaInstalledVersion,
-                sizeof(_sotaInstalledVersion),
-                installedVersion != nullptr
-                    ? installedVersion
-                    : ""
-            );
+            text::copy(_sotaInstalledVersion, sizeof(_sotaInstalledVersion), installedVersion != nullptr ? installedVersion : "");
             _sotaProgress = 100U;
             _sotaStatus   = update::Status::SUCCESS;
         } else {
@@ -570,55 +442,26 @@ namespace {
             _potaProgress = 100U;
             _potaStatus   = update::Status::SUCCESS;
         }
-
         portEXIT_CRITICAL(&_lock);
 
-        storage::appendLogRecord(
-            _databaseLogCode(
-                target,
-                "SOTA_UPDATE_SUCCESS",
-                "POTA_UPDATE_SUCCESS"
-            )
-        );
+        storage::appendLogRecord(_databaseLogCode(target, "SOTA_UPDATE_SUCCESS", "POTA_UPDATE_SUCCESS"));
     }
 
     void _failDatabaseInstallation(const OperationTarget target, const char* const path, const char* const error, const char* const errorLogCode, const bool invalidateCache) {
-        if (
-            !_isDatabaseTarget(target) ||
-            path == nullptr             ||
-            path[0] == '\0'             ||
-            error == nullptr            ||
-            error[0] == '\0'            ||
-            errorLogCode == nullptr     ||
+        if (!_isDatabaseTarget(target) ||
+            path            == nullptr || path[0]  == '\0' ||
+            error           == nullptr || error[0] == '\0' ||
+            errorLogCode    == nullptr ||
             errorLogCode[0] == '\0'
         ) {
-            storage::appendErrorRecord(
-                "DATABASE_FAILURE_ARGUMENT_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_FAILURE_ARGUMENT_INVALID");
             return;
         }
 
-        _deleteTemporaryFile(
-            path,
-            _databaseLogCode(
-                target,
-                "SOTA_TEMP_DELETE_FAILED",
-                "POTA_TEMP_DELETE_FAILED"
-            )
-        );
+        _deleteTemporaryFile(path, _databaseLogCode(target, "SOTA_TEMP_DELETE_FAILED", "POTA_TEMP_DELETE_FAILED"));
 
-        if (
-            invalidateCache &&
-            !_invalidateDatabaseCache(target)
-        ) {
-            return;
-        }
-
-        _setError(
-            target,
-            error,
-            errorLogCode
-        );
+        if (invalidateCache && !_invalidateDatabaseCache(target)) { return; }
+        _setError(target, error, errorLogCode);
     }
 
     bool _readDatabaseSourceInfo(HTTPClient& http, DatabaseSourceInfo& sourceInfo) {
@@ -639,11 +482,7 @@ namespace {
 
         sourceInfo.size = static_cast<uint64_t>(announcedSize);
 
-        if (!text::copy(
-            sourceInfo.etag,
-            sizeof(sourceInfo.etag),
-            etag.c_str()
-        )) {
+        if (!text::copy(sourceInfo.etag, sizeof(sourceInfo.etag), etag.c_str())) {
             sourceInfo = DatabaseSourceInfo {};
             storage::appendErrorRecord("DATABASE_ETAG_TOO_LONG");
             return false;
@@ -657,19 +496,12 @@ namespace {
     }
 
     bool _isDatabaseUpdateAvailable(const bool installedAvailable, const char* const installedEtag, const uint64_t installedSize, const DatabaseSourceInfo& remote) {
-        return
-            !installedAvailable ||
-            !_matchesDatabaseSource(installedEtag, installedSize, remote);
+        return !installedAvailable || !_matchesDatabaseSource(installedEtag, installedSize, remote);
     }
 
     bool _deleteTemporaryFile(const char* const path, const char* const failureLogCode) {
-        if (
-            path == nullptr ||
-            path[0] == '\0'
-        ) {
-            storage::appendErrorRecord(
-                "DATABASE_TEMP_ARGUMENT_INVALID"
-            );
+        if (path == nullptr || path[0] == '\0') {
+            storage::appendErrorRecord("DATABASE_TEMP_ARGUMENT_INVALID");
             return false;
         }
 
@@ -683,23 +515,12 @@ namespace {
             storage::appendErrorRecord("DATABASE_TEMP_ARGUMENT_INVALID");
             return false;
         }
-
-        if (_deleteTemporaryFile(path, nullptr)) {
-            return true;
-        }
+        if (_deleteTemporaryFile(path, nullptr)) { return true; }
 
         _setError(
             target,
-            _databaseLogCode(
-                target,
-                "SOTA temporary file unavailable",
-                "POTA temporary file unavailable"
-            ),
-            _databaseLogCode(
-                target,
-                "SOTA_TEMP_DELETE_FAILED",
-                "POTA_TEMP_DELETE_FAILED"
-            )
+            _databaseLogCode(target, "SOTA temporary file unavailable", "POTA temporary file unavailable"),
+            _databaseLogCode(target, "SOTA_TEMP_DELETE_FAILED",         "POTA_TEMP_DELETE_FAILED")
         );
         return false;
     }
@@ -730,66 +551,39 @@ namespace {
 
     bool _validateWifiPrerequisite(const OperationTarget target) {
         if (!_isOperationTarget(target)) {
-            storage::appendErrorRecord(
-                "UPDATE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("UPDATE_TARGET_INVALID");
             return false;
         }
-
-        if (wifi::isConnected()) {
-            return true;
-        }
+        if (wifi::isConnected()) { return true; }
 
         const char* logCode = nullptr;
-
         switch (target) {
             case OperationTarget::FIRMWARE:
                 logCode = "OTA_WIFI_NOT_CONNECTED";
                 break;
-
             case OperationTarget::SOTA:
             case OperationTarget::POTA:
-                logCode = _databaseLogCode(
-                    target,
-                    "SOTA_WIFI_NOT_CONNECTED",
-                    "POTA_WIFI_NOT_CONNECTED"
-                );
+                logCode = _databaseLogCode(target, "SOTA_WIFI_NOT_CONNECTED", "POTA_WIFI_NOT_CONNECTED");
                 break;
         }
 
         if (logCode == nullptr) {
-            storage::appendErrorRecord(
-                "UPDATE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("UPDATE_TARGET_INVALID");
             return false;
         }
 
-        _setError(
-            target,
-            "WiFi not connected",
-            logCode
-        );
+        _setError(target, "WiFi not connected", logCode);
         return false;
     }
 
     bool _validateDatabaseUpdatePrerequisites(const OperationTarget target) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return false;
         }
 
         if (!storage::isReady()) {
-            _setError(
-                target,
-                "SD card unavailable",
-                _databaseLogCode(
-                    target,
-                    "SOTA_SD_UNAVAILABLE",
-                    "POTA_SD_UNAVAILABLE"
-                )
-            );
+            _setError(target, "SD card unavailable", _databaseLogCode(target, "SOTA_SD_UNAVAILABLE", "POTA_SD_UNAVAILABLE"));
             return false;
         }
 
@@ -798,34 +592,20 @@ namespace {
 
     void _logDatabaseDownloadFailure(const OperationTarget target, const DatabaseDownloadFailure failure) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
         const char* logCode = nullptr;
 
         switch (failure) {
             case DatabaseDownloadFailure::STREAM_DISCONNECTED:
-                logCode = _databaseLogCode(
-                    target,
-                    "SOTA_STREAM_DISCONNECTED",
-                    "POTA_STREAM_DISCONNECTED"
-                );
+                logCode = _databaseLogCode(target, "SOTA_STREAM_DISCONNECTED", "POTA_STREAM_DISCONNECTED");
                 break;
             case DatabaseDownloadFailure::STREAM_TIMEOUT:
-                logCode = _databaseLogCode(
-                    target,
-                    "SOTA_STREAM_TIMEOUT",
-                    "POTA_STREAM_TIMEOUT"
-                );
+                logCode = _databaseLogCode(target, "SOTA_STREAM_TIMEOUT", "POTA_STREAM_TIMEOUT");
                 break;
             case DatabaseDownloadFailure::SD_WRITE:
-                logCode = _databaseLogCode(
-                    target,
-                    "SOTA_SD_WRITE_FAILED",
-                    "POTA_SD_WRITE_FAILED"
-                );
+                logCode = _databaseLogCode(target, "SOTA_SD_WRITE_FAILED", "POTA_SD_WRITE_FAILED");
                 break;
             case DatabaseDownloadFailure::NONE:
             default:
@@ -835,71 +615,41 @@ namespace {
     }
 
     bool _validateDatabaseDownload(const OperationTarget target, const char* const path, const uint64_t received, const DatabaseSourceInfo& sourceInfo) {
-        if (
-            !_isDatabaseTarget(target) ||
-            path == nullptr             ||
-            path[0] == '\0'
-        ) {
-            storage::appendErrorRecord(
-                "DATABASE_DOWNLOAD_ARGUMENT_INVALID"
-            );
+        if (!_isDatabaseTarget(target) || path == nullptr || path[0] == '\0') {
+            storage::appendErrorRecord("DATABASE_DOWNLOAD_ARGUMENT_INVALID");
             return false;
         }
 
         const char* failureLogCode = nullptr;
 
-        if (received == 0U) {
-            failureLogCode = _databaseLogCode(
-                target,
-                "SOTA_EMPTY_RESPONSE",
-                "POTA_EMPTY_RESPONSE"
-            );
-        } else if (received != sourceInfo.size) {
-            failureLogCode = _databaseLogCode(
-                target,
-                "SOTA_SIZE_MISMATCH",
-                "POTA_SIZE_MISMATCH"
-            );
-        } else if (storage::fileSize(path) != received) {
-            failureLogCode = _databaseLogCode(
-                target,
-                "SOTA_FILE_SIZE_MISMATCH",
-                "POTA_FILE_SIZE_MISMATCH"
-            );
-        } else { return true; }
+        if (received == 0U)
+            { failureLogCode = _databaseLogCode(target, "SOTA_EMPTY_RESPONSE",     "POTA_EMPTY_RESPONSE"); }
+        else if (received != sourceInfo.size)
+            { failureLogCode = _databaseLogCode(target, "SOTA_SIZE_MISMATCH",      "POTA_SIZE_MISMATCH"); }
+        else if (storage::fileSize(path) != received)
+            { failureLogCode = _databaseLogCode(target, "SOTA_FILE_SIZE_MISMATCH", "POTA_FILE_SIZE_MISMATCH"); }
+        else { return true; }
 
         storage::appendErrorRecord(failureLogCode);
-        _deleteTemporaryFile(
-            path,
-            _databaseLogCode(
-                target,
-                "SOTA_TEMP_DELETE_FAILED",
-                "POTA_TEMP_DELETE_FAILED"
-            )
-        );
+        _deleteTemporaryFile(path, _databaseLogCode(target, "SOTA_TEMP_DELETE_FAILED", "POTA_TEMP_DELETE_FAILED"));
         return false;
     }
 
     void _updateDatabaseDownloadProgress(const OperationTarget target, const uint64_t received, const int announcedSize) {
         if (!_isDatabaseTarget(target)) {
-            storage::appendErrorRecord(
-                "DATABASE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_TARGET_INVALID");
             return;
         }
         if (announcedSize <= 0) { return; }
 
-        const uint8_t progress = static_cast<uint8_t>(
-            (received * 60ULL) /
-            static_cast<uint64_t>(announcedSize)
-        );
+        const uint8_t progress = static_cast<uint8_t>((received * 60ULL) / static_cast<uint64_t>(announcedSize));
         _setProgress(target, progress);
     }
 
     bool _readResponseBody(HTTPClient& http, char* const buffer, const size_t size, void (*progressCallback)(uint8_t)) {
         if (buffer == nullptr || size < 2U) { return false; }
 
-        buffer[0] = '\0';
+        buffer[0]               = '\0';
         const int announcedSize = http.getSize();
         if (announcedSize >= 0 && static_cast<size_t>(announcedSize) >= size) { return false; }
 
@@ -909,12 +659,8 @@ namespace {
         size_t received     = 0U;
         uint32_t lastDataAt = millis();
 
-        if (progressCallback != nullptr && announcedSize > 0) {
-            progressCallback(static_cast<uint8_t>(
-                (static_cast<uint64_t>(received) * 100ULL) /
-                static_cast<size_t>(announcedSize))
-            );
-        }
+        if (progressCallback != nullptr && announcedSize > 0)
+            { progressCallback(static_cast<uint8_t>((static_cast<uint64_t>(received) * 100ULL) / static_cast<size_t>(announcedSize))); }
 
         while (true) {
             const int available = stream->available();
@@ -928,15 +674,10 @@ namespace {
                 }
 
                 if (toRead > remaining) { toRead = remaining; }
-                const int read = stream->readBytes(
-                    reinterpret_cast<uint8_t*>(buffer + received),
-                    toRead
-                );
+                const int read = stream->readBytes(reinterpret_cast<uint8_t*>(buffer + received), toRead);
 
                 if (read <= 0) {
-                    if (!http.connected() ||
-                        millis() - lastDataAt > STREAM_TIMEOUT_MS
-                    ) {
+                    if (!http.connected() || millis() - lastDataAt > STREAM_TIMEOUT_MS) {
                         buffer[0] = '\0';
                         return false;
                     }
@@ -948,16 +689,10 @@ namespace {
                 received += static_cast<size_t>(read);
                 lastDataAt = millis();
 
-                if (progressCallback != nullptr && announcedSize > 0) {
-                    progressCallback(static_cast<uint8_t>(
-                        (static_cast<uint64_t>(received) * 100ULL) /
-                        static_cast<size_t>(announcedSize)
-                    ));
-                }
-
-                if (announcedSize >= 0 &&
-                    received == static_cast<size_t>(announcedSize)
-                ) { break; }
+                if (progressCallback != nullptr && announcedSize > 0)
+                    { progressCallback(static_cast<uint8_t>((static_cast<uint64_t>(received) * 100ULL) / static_cast<size_t>(announcedSize))); }
+                if (announcedSize >= 0 && received == static_cast<size_t>(announcedSize))
+                    { break; }
                 continue;
             }
 
@@ -1013,35 +748,23 @@ namespace {
 
     bool _isUpdateAvailable(const OperationTarget target) {
         if (!_isOperationTarget(target)) {
-            storage::appendErrorRecord(
-                "UPDATE_TARGET_INVALID"
-            );
+            storage::appendErrorRecord("UPDATE_TARGET_INVALID");
             return false;
         }
+
         portENTER_CRITICAL(&_lock);
-
         bool available = false;
-
         switch (target) {
             case OperationTarget::FIRMWARE:
-                available =
-                    !_taskRunning &&
-                    _firmwareStatus == update::Status::AVAILABLE;
+                available = !_taskRunning && _firmwareStatus == update::Status::AVAILABLE;
                 break;
-
             case OperationTarget::SOTA:
-                available =
-                    !_taskRunning &&
-                    _sotaStatus == update::Status::AVAILABLE;
+                available = !_taskRunning && _sotaStatus == update::Status::AVAILABLE;
                 break;
-
             case OperationTarget::POTA:
-                available =
-                    !_taskRunning &&
-                    _potaStatus == update::Status::AVAILABLE;
+                available = !_taskRunning && _potaStatus == update::Status::AVAILABLE;
                 break;
         }
-
         portEXIT_CRITICAL(&_lock);
         return available;
     }
@@ -1068,9 +791,7 @@ namespace {
         }
 
         char manifest[MANIFEST_BUFFER_SIZE];
-        const bool manifestRead =_readResponseBody(
-            http, manifest, sizeof(manifest), _setFirmwareProgress
-        );
+        const bool manifestRead =_readResponseBody(http, manifest, sizeof(manifest), _setFirmwareProgress);
         http.end();
 
         if (!manifestRead) {
@@ -1097,11 +818,7 @@ namespace {
         const uint32_t size = static_cast<uint32_t>(manifestSize);
         version::Comparison comparison;
     
-        if (!version::compare(
-            remoteVersion,
-            PROJECT_VERSION,
-            comparison
-        )) {
+        if (!version::compare(remoteVersion, PROJECT_VERSION, comparison)) {
             _setFirmwareError("Invalid manifest", "OTA_MANIFEST_FIELDS_INVALID");
             return;
         }
@@ -1113,19 +830,16 @@ namespace {
         }
 
         const bool updateAvailable = comparison == version::Comparison::NEWER;
+
         portENTER_CRITICAL(&_lock);
-    
         text::copy(_firmwareLatestVersion,  sizeof(_firmwareLatestVersion),  remoteVersion);
         text::copy(_firmwareExpectedSha256, sizeof(_firmwareExpectedSha256), normalizedSha);
-
         _firmwareExpectedSize = size;
         _firmwareProgress     = 0;
         _firmwareError[0]     = '\0';
-        _firmwareStatus       = updateAvailable
-            ? update::Status::AVAILABLE
-            : update::Status::UP_TO_DATE;
-
+        _firmwareStatus       = updateAvailable ? update::Status::AVAILABLE : update::Status::UP_TO_DATE;
         portEXIT_CRITICAL(&_lock);
+
         storage::appendLogRecord(updateAvailable ? "OTA_UPDATE_AVAILABLE" : "OTA_UP_TO_DATE");
     }
 
@@ -1133,62 +847,28 @@ namespace {
         TaskFinalizer finalizer;
 
         DatabaseSourceInfo remote;
-        if (!_prepareDatabaseCheck(
-            OperationTarget::SOTA,
-            SOTA_CSV_PATH,
-            DL_SOTA,
-            remote
-        )) {
-            return;
-        }
+        if (!_prepareDatabaseCheck(OperationTarget::SOTA, SOTA_CSV_PATH, DL_SOTA, remote))
+            { return; }
 
         summitsDB::Info installed;
         const bool installedAvailable = summitsDB::info(installed);
-        const bool updateAvailable    = _isDatabaseUpdateAvailable(
-            installedAvailable,
-            installed.etag,
-            installed.sourceSize,
-            remote
-        );
+        const bool updateAvailable    = _isDatabaseUpdateAvailable(installedAvailable, installed.etag, installed.sourceSize, remote);
 
-        _publishDatabaseAvailability(
-            OperationTarget::SOTA,
-            installedAvailable,
-            installed.records,
-            installed.version,
-            updateAvailable
-        );
+        _publishDatabaseAvailability(OperationTarget::SOTA, installedAvailable, installed.records, installed.version, updateAvailable);
     }
 
     void _checkPotaTask(void*) {
         TaskFinalizer finalizer;
 
         DatabaseSourceInfo remote;
-        if (!_prepareDatabaseCheck(
-            OperationTarget::POTA,
-            POTA_CSV_PATH,
-            DL_POTA,
-            remote
-        )) {
-            return;
-        }
+        if (!_prepareDatabaseCheck(OperationTarget::POTA, POTA_CSV_PATH, DL_POTA, remote))
+            { return; }
 
         parksDB::Info installed;
         const bool installedAvailable = parksDB::info(installed);
-        const bool updateAvailable    = _isDatabaseUpdateAvailable(
-            installedAvailable,
-            installed.etag,
-            installed.sourceSize,
-            remote
-        );
+        const bool updateAvailable    = _isDatabaseUpdateAvailable(installedAvailable, installed.etag, installed.sourceSize, remote);
 
-        _publishDatabaseAvailability(
-            OperationTarget::POTA,
-            installedAvailable,
-            installed.records,
-            nullptr,
-            updateAvailable
-        );
+        _publishDatabaseAvailability(OperationTarget::POTA, installedAvailable, installed.records, nullptr, updateAvailable);
     }
 
     void _installFirmwareTask(void*) {
@@ -1202,14 +882,8 @@ namespace {
         text::copy(expectedSha, sizeof(expectedSha), _firmwareExpectedSha256);
         portEXIT_CRITICAL(&_lock);
 
-        if (
-            expectedSize == 0U ||
-            !hash::isSha256Text(expectedSha)
-        ) {
-            _setFirmwareError(
-                "Invalid firmware metadata",
-                "OTA_METADATA_INVALID"
-            );
+        if (expectedSize == 0U || !hash::isSha256Text(expectedSha)) {
+            _setFirmwareError("Invalid firmware metadata", "OTA_METADATA_INVALID");
             return;
         }
 
@@ -1252,8 +926,8 @@ namespace {
         }
 
         uint8_t buffer[DOWNLOAD_BUFFER_SIZE];
-        uint32_t received   = 0;
-        uint32_t lastDataAt = millis();
+        uint32_t received           = 0;
+        uint32_t lastDataAt         = millis();
         bool transferOk             = true;
         const char* transferError   = "Download interrupted";
         const char* transferLogCode = "OTA_DOWNLOAD_INCOMPLETE";
@@ -1263,14 +937,9 @@ namespace {
 
             if (available <= 0) {
                 const bool connected = http.connected();
-                if (
-                    !connected ||
-                    millis() - lastDataAt > STREAM_TIMEOUT_MS
-                ) {
-                    transferOk = false;
-                    transferLogCode = connected
-                        ? "OTA_STREAM_TIMEOUT"
-                        : "OTA_STREAM_DISCONNECTED";
+                if (!connected || millis() - lastDataAt > STREAM_TIMEOUT_MS) {
+                    transferOk      = false;
+                    transferLogCode = connected ? "OTA_STREAM_TIMEOUT" : "OTA_STREAM_DISCONNECTED";
                     break;
                 }
                 vTaskDelay(pdMS_TO_TICKS(10));
@@ -1281,19 +950,14 @@ namespace {
             if (toRead > sizeof(buffer)) { toRead = sizeof(buffer); }
 
             const uint32_t remaining = expectedSize - received;
-            if (toRead > remaining) { toRead = remaining; }
+            if (toRead > remaining)      { toRead = remaining; }
 
             const int read = stream->readBytes(buffer, toRead);
             if (read <= 0) {
                 const bool connected = http.connected();
-                if (
-                    !connected ||
-                    millis() - lastDataAt > STREAM_TIMEOUT_MS
-                ) {
-                    transferOk = false;
-                    transferLogCode = connected
-                        ? "OTA_STREAM_TIMEOUT"
-                        : "OTA_STREAM_DISCONNECTED";
+                if (!connected || millis() - lastDataAt > STREAM_TIMEOUT_MS) {
+                    transferOk      = false;
+                    transferLogCode = connected ? "OTA_STREAM_TIMEOUT" : "OTA_STREAM_DISCONNECTED";
                     break;
                 }
                 vTaskDelay(pdMS_TO_TICKS(10));
@@ -1308,12 +972,7 @@ namespace {
                 break;
             }
 
-            if (
-                ::Update.write(
-                    buffer,
-                    static_cast<size_t>(read)
-                ) != static_cast<size_t>(read)
-            ) {
+            if (::Update.write(buffer, static_cast<size_t>(read)) != static_cast<size_t>(read)) {
                 transferOk      = false;
                 transferError   = "Flash write failed";
                 transferLogCode = "OTA_WRITE_FAILED";
@@ -1365,14 +1024,7 @@ namespace {
             return;
         }
         const uint8_t boundedProgress = progress > 100U ? 100U : progress;
-        const uint8_t mapped          = static_cast<uint8_t>(
-            60U +
-            (
-                static_cast<uint16_t>(boundedProgress) *
-                35U
-            ) /
-            100U
-        );
+        const uint8_t mapped          = static_cast<uint8_t>(60U + (static_cast<uint16_t>(boundedProgress) * 35U) / 100U);
         _setProgress(target, mapped);
     }
 
@@ -1387,259 +1039,112 @@ namespace {
     void _installSotaTask(void*) {
         TaskFinalizer finalizer;
         DatabaseSourceInfo remote;
-        if (!_readRemoteDatabaseSource(
-            OperationTarget::SOTA,
-            DL_SOTA,
-            remote
-        )) {
-            return;
-        }
+        if (!_readRemoteDatabaseSource(OperationTarget::SOTA, DL_SOTA, remote)) { return; }
 
         summitsDB::Info current;
-        if (
-            summitsDB::info(current) &&
-            _matchesDatabaseSource(
-                current.etag,
-                current.sourceSize,
-                remote
-            )
-        ) {
-            _publishDatabaseAvailability(
-                OperationTarget::SOTA,
-                true,
-                current.records,
-                current.version,
-                false
-            );
+        if (summitsDB::info(current) && _matchesDatabaseSource(current.etag, current.sourceSize, remote)) {
+            _publishDatabaseAvailability(OperationTarget::SOTA, true, current.records, current.version, false);
             return;
         }
 
-        if (!_prepareDatabaseTemporaryFile(
-            OperationTarget::SOTA,
-            SOTA_CSV_PATH
-        )) {
-            return;
-        }
+        if (!_prepareDatabaseTemporaryFile(OperationTarget::SOTA, SOTA_CSV_PATH))
+            { return; }
 
         char version[update::SOTA_VERSION_SIZE] {};
         DatabaseSourceInfo downloaded;
 
-        _beginDatabaseDownload(
-            OperationTarget::SOTA
-        );
-
+        _beginDatabaseDownload(OperationTarget::SOTA);
         if (!_downloadSotaCsv(version, sizeof(version), downloaded)) {
             _setError(OperationTarget::SOTA, "SOTA download failed", nullptr);
             return;
         }
 
-        _beginDatabaseInstallation(
-            OperationTarget::SOTA,
-            version
-        );
-
-        if (!summitsDB::buildCandidate(
-            SOTA_CSV_PATH,
-            version,
-            downloaded.etag,
-            downloaded.size,
-            _sotaDatabaseProgress
-        )) {
-            _failDatabaseInstallation(
-                OperationTarget::SOTA,
-                SOTA_CSV_PATH,
-                "Invalid SOTA database",
-                "SOTA_BUILD_FAILED",
-                false
-            );
+        _beginDatabaseInstallation(OperationTarget::SOTA, version);
+        if (!summitsDB::buildCandidate(SOTA_CSV_PATH, version, downloaded.etag, downloaded.size, _sotaDatabaseProgress)) {
+            _failDatabaseInstallation(OperationTarget::SOTA, SOTA_CSV_PATH, "Invalid SOTA database", "SOTA_BUILD_FAILED", false);
             return;
         }
 
-        _beginDatabaseVerification(
-            OperationTarget::SOTA
-        );
-
+        _beginDatabaseVerification(OperationTarget::SOTA);
         if (!summitsDB::installCandidate()) {
             summitsDB::discardCandidate();
-            _failDatabaseInstallation(
-                OperationTarget::SOTA,
-                SOTA_CSV_PATH,
-                "SOTA install failed",
-                "SOTA_INSTALL_FAILED",
-                false
-            );
+            _failDatabaseInstallation(OperationTarget::SOTA, SOTA_CSV_PATH, "SOTA install failed", "SOTA_INSTALL_FAILED", false);
             return;
         }
 
-        if (!_invalidateDatabaseCache(
-            OperationTarget::SOTA
-        )) {
-            return;
-        }
+        if (!_invalidateDatabaseCache(OperationTarget::SOTA))
+            { return; }
 
         summitsDB::Info installedInfo;
-        if (!summitsDB::info(installedInfo) ||
-            !_matchesDatabaseSource(installedInfo.etag, installedInfo.sourceSize, downloaded)
-        ) {
-            _failDatabaseInstallation(
-                OperationTarget::SOTA,
-                SOTA_CSV_PATH,
-                "SOTA validation failed",
-                "SOTA_VALIDATION_FAILED",
-                true
-            );
+        if (!summitsDB::info(installedInfo) || !_matchesDatabaseSource(installedInfo.etag, installedInfo.sourceSize, downloaded)) {
+            _failDatabaseInstallation(OperationTarget::SOTA, SOTA_CSV_PATH, "SOTA validation failed", "SOTA_VALIDATION_FAILED", true);
             return;
         }
 
         _deleteTemporaryFile(SOTA_CSV_PATH, "SOTA_TEMP_DELETE_FAILED");
-
-        _finishDatabaseInstallation(
-            OperationTarget::SOTA,
-            installedInfo.records,
-            installedInfo.version
-        );
+        _finishDatabaseInstallation(OperationTarget::SOTA, installedInfo.records, installedInfo.version);
     }
 
     void _installPotaTask(void*) {
         TaskFinalizer finalizer;
         DatabaseSourceInfo remote;
-        if (!_readRemoteDatabaseSource(
-            OperationTarget::POTA,
-            DL_POTA,
-            remote
-        )) {
-            return;
-        }
+        if (!_readRemoteDatabaseSource(OperationTarget::POTA, DL_POTA, remote))
+            { return; }
 
         parksDB::Info current;
-        if (
-            parksDB::info(current) &&
-            _matchesDatabaseSource(
-                current.etag,
-                current.sourceSize,
-                remote
-            )
-        ) {
-            _publishDatabaseAvailability(
-                OperationTarget::POTA,
-                true,
-                current.records,
-                nullptr,
-                false
-            );
+        if (parksDB::info(current) && _matchesDatabaseSource(current.etag, current.sourceSize, remote)) {
+            _publishDatabaseAvailability(OperationTarget::POTA, true, current.records, nullptr, false);
             return;
         }
 
-        if (!_prepareDatabaseTemporaryFile(
-            OperationTarget::POTA,
-            POTA_CSV_PATH
-        )) {
-            return;
-        }
+        if (!_prepareDatabaseTemporaryFile(OperationTarget::POTA, POTA_CSV_PATH))
+            { return; }
 
         DatabaseSourceInfo downloaded;
-
-        _beginDatabaseDownload(
-            OperationTarget::POTA
-        );
-
-        if (!_downloadDatabaseCsv(
-            OperationTarget::POTA,
-            DL_POTA,
-            POTA_CSV_PATH,
-            downloaded
-        )) {
+        _beginDatabaseDownload(OperationTarget::POTA);
+        if (!_downloadDatabaseCsv(OperationTarget::POTA, DL_POTA, POTA_CSV_PATH, downloaded)) {
             _setError(OperationTarget::POTA, "POTA download failed", nullptr);
             return;
         }
 
-        _beginDatabaseInstallation(
-            OperationTarget::POTA,
-            nullptr
-        );
-
-        if (!parksDB::buildCandidate(
-            POTA_CSV_PATH,
-            downloaded.etag,
-            downloaded.size,
-            _potaDatabaseProgress
-        )) {
-            _failDatabaseInstallation(
-                OperationTarget::POTA,
-                POTA_CSV_PATH,
-                "Invalid POTA database",
-                "POTA_BUILD_FAILED",
-                false
-            );
+        _beginDatabaseInstallation(OperationTarget::POTA, nullptr);
+        if (!parksDB::buildCandidate(POTA_CSV_PATH, downloaded.etag, downloaded.size, _potaDatabaseProgress)) {
+            _failDatabaseInstallation(OperationTarget::POTA, POTA_CSV_PATH, "Invalid POTA database", "POTA_BUILD_FAILED", false);
             return;
         }
 
-        _beginDatabaseVerification(
-            OperationTarget::POTA
-        );
-
+        _beginDatabaseVerification(OperationTarget::POTA);
         if (!parksDB::installCandidate()) {
             parksDB::discardCandidate();
-            _failDatabaseInstallation(
-                OperationTarget::POTA,
-                POTA_CSV_PATH,
-                "POTA install failed",
-                "POTA_INSTALL_FAILED",
-                false
-            );
+            _failDatabaseInstallation(OperationTarget::POTA, POTA_CSV_PATH, "POTA install failed", "POTA_INSTALL_FAILED", false);
             return;
         }
 
-        if (!_invalidateDatabaseCache(
-            OperationTarget::POTA
-        )) {
-            return;
-        }
+        if (!_invalidateDatabaseCache(OperationTarget::POTA))
+            { return; }
 
         parksDB::Info installedInfo;
-        if (!parksDB::info(installedInfo) ||
-            !_matchesDatabaseSource(installedInfo.etag, installedInfo.sourceSize, downloaded)
-        ) {
-            _failDatabaseInstallation(
-                OperationTarget::POTA,
-                POTA_CSV_PATH,
-                "POTA validation failed",
-                "POTA_VALIDATION_FAILED",
-                true
-            );
+        if (!parksDB::info(installedInfo) || !_matchesDatabaseSource(installedInfo.etag, installedInfo.sourceSize, downloaded)) {
+            _failDatabaseInstallation(OperationTarget::POTA, POTA_CSV_PATH, "POTA validation failed", "POTA_VALIDATION_FAILED", true);
             return;
         }
 
         _deleteTemporaryFile(POTA_CSV_PATH, "POTA_TEMP_DELETE_FAILED");
-
-        _finishDatabaseInstallation(
-            OperationTarget::POTA,
-            installedInfo.records,
-            nullptr
-        );
+        _finishDatabaseInstallation(OperationTarget::POTA, installedInfo.records, nullptr);
     }
 
     bool _startTask(const TaskFunction_t function, const char* const name, const uint32_t stackSize, const OperationTarget target, const update::Status initialStatus) {
-        if (
-            function == nullptr ||
-            name == nullptr     ||
-            name[0] == '\0'     ||
-            stackSize == 0U     ||
+        if (function  == nullptr        ||
+            name      == nullptr        ||
+            name[0]   == '\0'           ||
+            stackSize == 0U             ||
             !_isOperationTarget(target) ||
-            (
-                initialStatus != update::Status::CHECKING &&
-                initialStatus != update::Status::DOWNLOADING
-            )
+            (initialStatus != update::Status::CHECKING && initialStatus != update::Status::DOWNLOADING)
         ) {
-            storage::appendErrorRecord(
-                "UPDATE_TASK_ARGUMENT_INVALID"
-            );
+            storage::appendErrorRecord("UPDATE_TASK_ARGUMENT_INVALID");
             return false;
         }
-
-        if (!_acquireTaskSlot()) {
-            return false;
-        }
+        if (!_acquireTaskSlot()) { return false; }
 
         portENTER_CRITICAL(&_lock);
         if (target == OperationTarget::FIRMWARE) {
@@ -1672,66 +1177,29 @@ namespace {
         const char* const failureLogCode =
             target == OperationTarget::FIRMWARE
                 ? "OTA_TASK_CREATE_FAILED"
-                : _databaseLogCode(
-                    target,
-                    "SOTA_TASK_CREATE_FAILED",
-                    "POTA_TASK_CREATE_FAILED"
-                );
-
-        _setError(
-            target,
-            "Task creation failed",
-            failureLogCode
-        );
-
+                : _databaseLogCode(target, "SOTA_TASK_CREATE_FAILED", "POTA_TASK_CREATE_FAILED");
+        _setError(target, "Task creation failed", failureLogCode);
         return false;
     }
 
     bool _checkDatabaseUpdate(const OperationTarget target, const TaskFunction_t function, const char* const taskName) {
-        if (_isUpdateOperationBusy()) {
-            return false;
-        }
-
-        if (!_validateDatabaseUpdatePrerequisites(target)) {
-            return false;
-        }
-
-        return _startTask(
-            function,
-            taskName,
-            12288U,
-            target,
-            update::Status::CHECKING
-        );
+        if (_isUpdateOperationBusy())                      { return false; }
+        if (!_validateDatabaseUpdatePrerequisites(target)) { return false; }
+        return _startTask(function, taskName, 12288U, target, update::Status::CHECKING);
     }
 
     bool _startDatabaseUpdate(const OperationTarget target, const TaskFunction_t function, const char* const taskName) {
-        if (_isUpdateOperationBusy()) {
-            return false;
-        }
-
-        if (!_isUpdateAvailable(target)) {
-            return false;
-        }
-
-        if (!_validateDatabaseUpdatePrerequisites(target)) {
-            return false;
-        }
-
-        return _startTask(
-            function,
-            taskName,
-            12288U,
-            target,
-            update::Status::DOWNLOADING
-        );
+        if (_isUpdateOperationBusy())                      { return false; }
+        if (!_isUpdateAvailable(target))                   { return false; }
+        if (!_validateDatabaseUpdatePrerequisites(target)) { return false; }
+        return _startTask(function, taskName, 12288U, target, update::Status::DOWNLOADING);
     }
 
     bool _readSotaVersionChunk(const uint8_t* const data, const size_t length, void* const userData) {
         if (data == nullptr || userData == nullptr) { return false; }
 
         SotaVersionContext* const context = static_cast<SotaVersionContext*>(userData);
-        if (!context->valid || context->parsed) { return false; }
+        if (!context->valid || context->parsed)     { return false; }
 
         for (size_t byteIndex = 0U; byteIndex < length; ++byteIndex) {
             const char character = static_cast<char>(data[byteIndex]);
@@ -1739,8 +1207,8 @@ namespace {
             if (character == '\r') { continue; }
             if (character == '\n') {
                 context->line[context->length] = '\0';
-                context->parsed = summits::parseListVersion(context->line, context->version, context->size);
-                context->valid  = context->parsed;
+                context->parsed                = summits::parseListVersion(context->line, context->version, context->size);
+                context->valid                 = context->parsed;
                 return false;
             }
             if (context->length + 1U >= sizeof(context->line)) {
@@ -1754,26 +1222,17 @@ namespace {
 
     bool _readSotaVersion(char* const version, const size_t size) {
         if (version == nullptr || size < summitsDB::VERSION_SIZE) { return false; }
-
         version[0] = '\0';
         SotaVersionContext context {version, size, {}, 0U, false, true};
-
-        return
-            storage::readFileChunks(SOTA_CSV_PATH, _readSotaVersionChunk, &context) &&
-            context.valid && context.parsed;
+        return storage::readFileChunks(SOTA_CSV_PATH, _readSotaVersionChunk, &context) && context.valid && context.parsed;
     }
 
     bool _downloadDatabaseCsv(const OperationTarget target, const char* const url, const char* const path, DatabaseSourceInfo& sourceInfo) {
-        if (
-            !_isDatabaseTarget(target) ||
-            url == nullptr              ||
-            url[0] == '\0'              ||
-            path == nullptr             ||
-            path[0] == '\0'
+        if (!_isDatabaseTarget(target) ||
+            url  == nullptr            || url[0]  == '\0' ||
+            path == nullptr            || path[0] == '\0'
         ) {
-            storage::appendErrorRecord(
-                "DATABASE_DOWNLOAD_ARGUMENT_INVALID"
-            );
+            storage::appendErrorRecord("DATABASE_DOWNLOAD_ARGUMENT_INVALID");
             return false;
         }
 
@@ -1784,13 +1243,7 @@ namespace {
 
         if (!_openGet(http, client, url, &sourceInfo)) {
             http.end();
-            storage::appendErrorRecord(
-                _databaseLogCode(
-                    target,
-                    "SOTA_HTTP_FAILED",
-                    "POTA_HTTP_FAILED"
-                )
-            );
+            storage::appendErrorRecord(_databaseLogCode(target, "SOTA_HTTP_FAILED", "POTA_HTTP_FAILED"));
             return false;
         }
 
@@ -1799,37 +1252,22 @@ namespace {
 
         if (stream == nullptr) {
             http.end();
-            storage::appendErrorRecord(
-                _databaseLogCode(
-                    target,
-                    "SOTA_STREAM_UNAVAILABLE",
-                    "POTA_STREAM_UNAVAILABLE"
-                )
-            );
+            storage::appendErrorRecord(_databaseLogCode(target, "SOTA_STREAM_UNAVAILABLE", "POTA_STREAM_UNAVAILABLE"));
             return false;
         }
 
         if (!storage::beginFileWrite(path)) {
             http.end();
-            storage::appendErrorRecord(
-                _databaseLogCode(
-                    target,
-                    "SOTA_SD_OPEN_FAILED",
-                    "POTA_SD_OPEN_FAILED"
-                )
-            );
+            storage::appendErrorRecord(_databaseLogCode(target, "SOTA_SD_OPEN_FAILED", "POTA_SD_OPEN_FAILED"));
             return false;
         }
 
         uint8_t buffer[DOWNLOAD_BUFFER_SIZE];
-        size_t received                  = 0U;
-        uint32_t lastDataAt              = millis();
+        size_t received                 = 0U;
+        uint32_t lastDataAt             = millis();
         DatabaseDownloadFailure failure = DatabaseDownloadFailure::NONE;
 
-        while (
-            failure == DatabaseDownloadFailure::NONE &&
-            received < static_cast<size_t>(announcedSize)
-        ) {
+        while (failure == DatabaseDownloadFailure::NONE && received < static_cast<size_t>(announcedSize)) {
             const int available = stream->available();
 
             if (available <= 0) {
@@ -1838,32 +1276,22 @@ namespace {
                     break;
                 }
 
-                if (millis() - lastDataAt > STREAM_TIMEOUT_MS) {
-                    failure = DatabaseDownloadFailure::STREAM_TIMEOUT;
-                } else {
-                    vTaskDelay(pdMS_TO_TICKS(10));
-                }
-
+                if (millis() - lastDataAt > STREAM_TIMEOUT_MS) { failure = DatabaseDownloadFailure::STREAM_TIMEOUT; }
+                else                                           { vTaskDelay(pdMS_TO_TICKS(10)); }
                 continue;
             }
 
             size_t length = static_cast<size_t>(available);
-            if (length > sizeof(buffer)) {
-                length = sizeof(buffer);
-            }
+            if (length > sizeof(buffer)) { length = sizeof(buffer); }
 
             const size_t remaining = static_cast<size_t>(announcedSize) - received;
-            if (length > remaining) { length = remaining; }
+            if (length > remaining)      { length = remaining; }
 
             const int read = stream->readBytes(buffer, length);
             if (read <= 0) {
-                if (!http.connected()) {
-                    failure = DatabaseDownloadFailure::STREAM_DISCONNECTED;
-                } else if (millis() - lastDataAt > STREAM_TIMEOUT_MS) {
-                    failure = DatabaseDownloadFailure::STREAM_TIMEOUT;
-                } else {
-                    vTaskDelay(pdMS_TO_TICKS(10));
-                }
+                if (!http.connected())                              { failure = DatabaseDownloadFailure::STREAM_DISCONNECTED; }
+                else if (millis() - lastDataAt > STREAM_TIMEOUT_MS) { failure = DatabaseDownloadFailure::STREAM_TIMEOUT; }
+                else                                                { vTaskDelay(pdMS_TO_TICKS(10)); }
                 continue;
             }
 
@@ -1875,12 +1303,7 @@ namespace {
 
             received  += readLength;
             lastDataAt = millis();
-
-            _updateDatabaseDownloadProgress(
-                target,
-                received,
-                announcedSize
-            );
+            _updateDatabaseDownloadProgress(target, received, announcedSize);
         }
 
         storage::endFileWrite();
@@ -1888,54 +1311,29 @@ namespace {
 
         if (failure != DatabaseDownloadFailure::NONE) {
             _logDatabaseDownloadFailure(target, failure);
-            _deleteTemporaryFile(
-                path,
-                _databaseLogCode(
-                    target,
-                    "SOTA_TEMP_DELETE_FAILED",
-                    "POTA_TEMP_DELETE_FAILED"
-                )
-            );
+            _deleteTemporaryFile(path, _databaseLogCode(target, "SOTA_TEMP_DELETE_FAILED", "POTA_TEMP_DELETE_FAILED"));
             return false;
         }
 
-        if (!_validateDatabaseDownload(
-            target,
-            path,
-            received,
-            sourceInfo
-        )) { return false; }
+        if (!_validateDatabaseDownload(target, path, received, sourceInfo))
+            { return false; }
         return true;
     }
 
     bool _downloadSotaCsv(char* const version, const size_t versionSize, DatabaseSourceInfo& sourceInfo) {
-        if (
-            version == nullptr ||
-            versionSize < summitsDB::VERSION_SIZE
-        ) {
-            storage::appendErrorRecord(
-                "SOTA_DOWNLOAD_ARGUMENT_INVALID"
-            );
+        if (version == nullptr || versionSize < summitsDB::VERSION_SIZE) {
+            storage::appendErrorRecord("SOTA_DOWNLOAD_ARGUMENT_INVALID");
             return false;
         }
 
         version[0] = '\0';
 
-        if (!_downloadDatabaseCsv(
-            OperationTarget::SOTA,
-            DL_SOTA,
-            SOTA_CSV_PATH,
-            sourceInfo
-        )) {
-            return false;
-        }
+        if (!_downloadDatabaseCsv(OperationTarget::SOTA, DL_SOTA, SOTA_CSV_PATH, sourceInfo))
+            { return false; }
 
         if (!_readSotaVersion(version, versionSize)) {
             storage::appendErrorRecord("SOTA_VERSION_INVALID");
-            _deleteTemporaryFile(
-                SOTA_CSV_PATH,
-                "SOTA_TEMP_DELETE_FAILED"
-            );
+            _deleteTemporaryFile(SOTA_CSV_PATH, "SOTA_TEMP_DELETE_FAILED");
             return false;
         }
 
@@ -1966,24 +1364,21 @@ void update::begin() {
             static_cast<unsigned long long>(sotaInfo.sourceSize)
         );
 
-        if (databaseWritten > 0 &&
-            static_cast<size_t>(databaseWritten) < sizeof(databaseRecord)
-        ) { storage::appendLogRecord(databaseRecord); }
+        if (databaseWritten > 0 && static_cast<size_t>(databaseWritten) < sizeof(databaseRecord))
+            { storage::appendLogRecord(databaseRecord); }
     } else { storage::appendLogRecord("SOTA_DATABASE status=not_installed"); }
 
     if (potaInstalled) {
         char databaseRecord[128];
         const int databaseWritten = snprintf(
-            databaseRecord,
-            sizeof(databaseRecord),
+            databaseRecord, sizeof(databaseRecord),
             "POTA_DATABASE status=ready records=%lu source_size=%llu",
             static_cast<unsigned long>(potaInfo.records),
             static_cast<unsigned long long>(potaInfo.sourceSize)
         );
 
-        if (databaseWritten > 0 &&
-            static_cast<size_t>(databaseWritten) < sizeof(databaseRecord)
-        ) { storage::appendLogRecord(databaseRecord); }
+        if (databaseWritten > 0 && static_cast<size_t>(databaseWritten) < sizeof(databaseRecord))
+            { storage::appendLogRecord(databaseRecord); }
     } else { storage::appendLogRecord("POTA_DATABASE status=not_installed"); }
 
     portENTER_CRITICAL(&_lock);

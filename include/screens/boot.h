@@ -31,30 +31,61 @@ namespace screens {
     /** @brief Draws and updates the application boot-status screen. */
     class Boot final {
         public:
-            /** @brief Clears the boot-screen area. */
-            void clear   (ST7796S::MSP4021 &tft);
-            /** @brief Draws the complete boot screen. */
-            void draw    (ST7796S::MSP4021 &tft);
-            /** @brief Draws the application logo on the boot screen. */
+            /**
+             * @brief Clears the boot-screen area.
+             * @param tft Display instance whose screen is cleared.
+             */
+            void clear(ST7796S::MSP4021 &tft);
+
+            /**
+             * @brief Draws the complete boot screen.
+             * @param tft Display instance used to draw the screen.
+             */
+            void draw(ST7796S::MSP4021 &tft);
+
+            /**
+             * @brief Draws the application logo on the boot screen.
+             * @param tft Display instance used to draw the logo.
+             */
             void drawLogo(ST7796S::MSP4021 &tft);
 
-            /** @brief Updates the Wi-Fi initialization state. */
+            /**
+             * @brief Updates the Wi-Fi initialization state.
+             * @param tft Display instance used to redraw the Wi-Fi state.
+             * @param value State to display: `nullptr` while loading, `true` when loaded, or `false` on failure.
+             */
             void updateWifi(ST7796S::MSP4021 &tft, const bool* value);
-            /** @brief Updates the SD-card initialization state. */
-            void updateSD  (ST7796S::MSP4021 &tft, const bool* value);
-            /** @brief Updates the GNSS initialization state. */
-            void updateGPS (ST7796S::MSP4021 &tft, const bool* value);
-            /** @brief Updates the GNSS acquisition percentage. */
-            void updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress);
-            /** @brief Handles the GNSS-search action on the boot screen. */
-            bool handleTouch(int x, int y) const;
 
+            /**
+             * @brief Updates the SD-card initialization state.
+             * @param tft Display instance used to redraw the SD-card state.
+             * @param value State to display: `nullptr` while loading, `true` when loaded, or `false` on failure.
+             */
+            void updateSD(ST7796S::MSP4021 &tft, const bool* value);
+
+            /**
+             * @brief Updates the GNSS initialization state.
+             * @param tft Display instance used to redraw the GNSS state.
+             * @param value State to display: `nullptr` while loading, `true` when loaded, or `false` on failure.
+             */
+            void updateGPS(ST7796S::MSP4021 &tft, const bool* value);
+
+            /**
+             * @brief Updates the GNSS acquisition percentage.
+             * @param tft Display instance used to redraw the progress indicator.
+             * @param progress Acquisition percentage, clamped to the range 0–100.
+             */
+            void updateGPSProgress(ST7796S::MSP4021 &tft, uint8_t progress);
+
+            /**
+             * @brief Handles the GNSS-search action on the boot screen.
+             * @param x Horizontal touch coordinate in pixels.
+             * @param y Vertical touch coordinate in pixels.
+             * @return `true` when the GNSS-search button contains the touch coordinate.
+             */
+            bool handleTouch(int x, int y) const;
         private:
-            enum class ModuleState : uint8_t {
-                LOADING,
-                LOADED,
-                FAILED
-            };
+            enum class ModuleState : uint8_t {LOADING, LOADED, FAILED};
 
             struct Field {
                 int outerX = 0;
@@ -70,11 +101,11 @@ namespace screens {
                 const char* label = nullptr;
                 ModuleState state = ModuleState::LOADING;
 
-                Field(int rowIndex, const char* name)
-                : row(rowIndex), label(name) {}
+                Field(int rowIndex, const char* name) : row(rowIndex), label(name) {}
             };
 
             uint8_t _gpsProgress = 0;
+
             Field _wifi{0, "WiFi"};
             Field _sd  {1, "SD"};
             Field _gps {2, "GPS"};

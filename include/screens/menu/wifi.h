@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -34,9 +34,11 @@ namespace screens::menu {
     class Wifi final : public Page {
         public:
             /** @copydoc Page::draw() */
-            void draw       (ST7796S::MSP4021 &tft) override;
+            void draw(ST7796S::MSP4021 &tft) override;
+
             /** @copydoc Page::update() */
-            void update     (ST7796S::MSP4021 &tft) override;
+            void update(ST7796S::MSP4021 &tft) override;
+
             /** @copydoc Page::handleTouch() */
             bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
         private:
@@ -65,9 +67,10 @@ namespace screens::menu {
             static const char* _bootModeToText(services::settings::WifiBootMode mode);
             void _prepareConnectionFields();
             void _updateConnectionFields(ST7796S::MSP4021 &tft);
-            void _actionSSID            (ST7796S::MSP4021 &tft);
-            void _actionPassword        (ST7796S::MSP4021 &tft);
-            void _actionBootMode        (ST7796S::MSP4021 &tft);
-            void _actionLogin           (ST7796S::MSP4021 &tft);
+
+            void _actionSSID(ST7796S::MSP4021 &tft);
+            void _actionPassword(ST7796S::MSP4021 &tft);
+            void _actionBootMode(ST7796S::MSP4021 &tft);
+            void _actionLogin(ST7796S::MSP4021 &tft);
     };
 }

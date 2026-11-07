@@ -23,18 +23,23 @@
 
 #pragma once
 
-#include <HardwareSerial.h>
 #include <cstdint>
+
+#include <HardwareSerial.h>
 
 namespace services::gps {
     /** @brief Requested GNSS navigation solution rate in hertz. */
-    constexpr uint8_t NAVIGATION_RATE_HZ   = 5U;
+    constexpr uint8_t NAVIGATION_RATE_HZ = 5U;
+
     /** @brief Upper HDOP threshold for a good-quality position. */
-    constexpr double HDOP_GOOD             = 2.0;
+    constexpr double HDOP_GOOD = 2.0;
+
     /** @brief Upper HDOP threshold for a fair-quality position. */
-    constexpr double HDOP_FAIR             = 5.0;
+    constexpr double HDOP_FAIR = 5.0;
+
     /** @brief Minimum satellite count expected for a position fix. */
-    constexpr uint8_t SAT_MIN_FIX          = 4U;
+    constexpr uint8_t SAT_MIN_FIX = 4U;
+
     /** @brief Minimum speed used before accepting course as heading. */
     constexpr double MIN_HEADING_SPEED_KMH = 2.0;
 
@@ -70,7 +75,7 @@ namespace services::gps {
      * @param finalBaud Target baud rate.
      * @param timeout Initialization timeout in seconds.
      */
-    void begin(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
+    void begin(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout = 10);
 
     /**
      * Restarts the GPS receiver.
@@ -79,26 +84,29 @@ namespace services::gps {
      * @param tx        UART TX pin.
      * @param finalBaud Target baud rate.
      * @param timeout Restart timeout in seconds.
-     * @return true if the GPS was successfully restarted, false otherwise.
+     * @return `true` when the GPS was successfully restarted, otherwise `false`.
      */
-    bool restart(HardwareSerial& uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
+    bool restart(HardwareSerial &uart, uint8_t rx, uint8_t tx, uint32_t finalBaud, uint32_t timeout);
 
-    /** @brief Reports whether the GNSS receiver was initialized successfully. */
+    /**
+     * @brief Reports whether the GNSS receiver was initialized successfully.
+     * @return `true` when the receiver is initialized, otherwise `false`.
+     */
     bool isInitialized();
 
     /**
      * @brief Reads and processes new GPS data.
      * @param timeoutMs Maximum receiver polling time in milliseconds.
-     * @return true if a snapshot with a valid GNSS fix was processed, false otherwise.
+     * @return `true` when a snapshot with a valid GNSS fix was processed, otherwise `false`.
      */
     bool update(uint32_t timeoutMs = 10);
 
     /**
      * Retrieves the latest GPS data snapshot.
      * @param snapshot Receives the current GPS data.
-     * @return true if receiver data has been cached, false otherwise.
+     * @return `true` when receiver data has been cached, otherwise `false`.
      */
-    bool getSnapshot(Snapshot& snapshot);
+    bool getSnapshot(Snapshot &snapshot);
 
     /**
      * Returns the current GPS acquisition progress.

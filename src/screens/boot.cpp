@@ -81,13 +81,8 @@ void screens::Boot::_drawModuleStatus(ST7796S::MSP4021 &tft, const Field &field)
 }
 
 void screens::Boot::_updateField(ST7796S::MSP4021 &tft, Field &field, const bool* state) {
-    if (state == nullptr) {
-        field.state = ModuleState::LOADING;
-    } else {
-        field.state = *state
-            ? ModuleState::LOADED
-            : ModuleState::FAILED;
-    }
+    if (state == nullptr) { field.state = ModuleState::LOADING; }
+    else { field.state = *state ? ModuleState::LOADED : ModuleState::FAILED; }
 
     _drawModuleStatus(tft, field);
 }
@@ -97,32 +92,16 @@ void screens::Boot::_drawGPSSearch(ST7796S::MSP4021 &tft) {
 
     tft.setFont(ST7796S::DejaVuSans_Bold_18);
     tft.setTextColor(theme::WHITE);
-    tft.rectFill(
-        btn.x,      btn.y,
-        btn.width,  btn.height,
-        theme::GREY
-    );
-    tft.rect(
-        btn.x,      btn.y,
-        btn.width,  btn.height,
-        theme::WHITE
-    );
-    tft.textCenter(
-        btn.x,      btn.y,
-        btn.width,  btn.height,
-        "Search GPS"
-    );
+    tft.rectFill(  btn.x, btn.y, btn.width, btn.height, theme::GREY);
+    tft.rect(      btn.x, btn.y, btn.width, btn.height, theme::WHITE);
+    tft.textCenter(btn.x, btn.y, btn.width, btn.height, "Search GPS");
 }
 
 void screens::Boot::_drawGPSProgress(ST7796S::MSP4021 &tft, const uint8_t value) {
     const buttons::ButtonArea &bar = buttons::bootSearchGPS;
-    constexpr size_t TEXT_SIZE = 8;
+    constexpr size_t TEXT_SIZE     = 8;
 
-    tft.progressBar(
-        bar.x,      bar.y,
-        bar.width,  bar.height,
-        value,      theme::CYAN
-    );
+    tft.progressBar(bar.x, bar.y, bar.width, bar.height, value, theme::CYAN);
 
     char text[TEXT_SIZE] = {};
     if (!format::percentage(value, text, sizeof(text)))
@@ -130,20 +109,12 @@ void screens::Boot::_drawGPSProgress(ST7796S::MSP4021 &tft, const uint8_t value)
 
     tft.setFont(ST7796S::DejaVuSans_Bold_18);
     tft.setTextColor(theme::WHITE);
-    tft.textCenter(
-        bar.x,      bar.y,
-        bar.width,  bar.height,
-        text
-    );
+    tft.textCenter(bar.x, bar.y, bar.width, bar.height, text);
 }
 
 void screens::Boot::_drawGPSAction(ST7796S::MSP4021 &tft) {
     const buttons::ButtonArea &area = buttons::bootSearchGPS;
-    tft.rectFill(
-        area.x,     area.y,
-        area.width, area.height,
-        theme::BLACK
-    );
+    tft.rectFill(area.x, area.y, area.width, area.height, theme::BLACK);
 
     switch (_gps.state) {
         case ModuleState::LOADED:
@@ -157,8 +128,6 @@ void screens::Boot::_drawGPSAction(ST7796S::MSP4021 &tft) {
             return;
     }
 }
-
-void screens::Boot::clear(ST7796S::MSP4021 &tft) { tft.fillScreen(theme::BLACK); }
 
 void screens::Boot::draw(ST7796S::MSP4021 &tft) {
     _wifi.state  = ModuleState::LOADING;
@@ -180,9 +149,9 @@ void screens::Boot::draw(ST7796S::MSP4021 &tft) {
     Field* fields[] = {&_wifi, &_sd, &_gps};
     constexpr int FIELD_COUNT = sizeof(fields) / sizeof(fields[0]);
 
-    const int screenY   = 0;
-    const int screenH   = btnY - gap - screenY;
-    const int rowH      = screenH / FIELD_COUNT;
+    const int screenY = 0;
+    const int screenH = btnY - gap - screenY;
+    const int rowH    = screenH / FIELD_COUNT;
 
     for (auto field : fields) {
         field->outerX = outerX;
@@ -200,6 +169,7 @@ void screens::Boot::draw(ST7796S::MSP4021 &tft) {
     _drawGPSAction(tft);
 }
 
+void screens::Boot::clear(ST7796S::MSP4021 &tft) { tft.fillScreen(theme::BLACK); }
 void screens::Boot::drawLogo(ST7796S::MSP4021 &tft) { tft.image(0, 10, ST7796S::logo); }
 
 void screens::Boot::updateWifi(ST7796S::MSP4021 &tft, const bool* value) { _updateField(tft, _wifi, value); }

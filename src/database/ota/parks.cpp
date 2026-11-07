@@ -162,19 +162,9 @@ namespace {
     }
 
     bool _readHeader(const char* const path, Header& header) {
-        if (
-            !ota::readHeader(path, &header, sizeof(header)) ||
-            !_validHeader(header)
-        ) {
-            return false;
-        }
-
-        return ota::hasExpectedSize(
-            path,
-            sizeof(Header),
-            sizeof(Record),
-            header.recordCount
-        );
+        if (!ota::readHeader(path, &header, sizeof(header)) || !_validHeader(header))
+            { return false; }
+        return ota::hasExpectedSize(path, sizeof(Header), sizeof(Record), header.recordCount);
     }
 
     bool _validateDatabase(const char* const path) {
@@ -196,6 +186,7 @@ namespace {
 
         parks::Park park;
         bool active = false;
+
         context->valid = uParks::parseCsvRecord(line, park, active);
         if (context->valid && active) { ++context->records; }
 
@@ -203,11 +194,7 @@ namespace {
     }
 
     bool _flushRecords(WriteCsvContext& context) {
-        return ota::flushRecords(
-            context.buffer,
-            sizeof(Record),
-            context.buffered
-        );
+        return ota::flushRecords(context.buffer, sizeof(Record), context.buffered);
     }
 
     bool _writeCsvLine(const char* const line, void* const userData) {
@@ -226,6 +213,7 @@ namespace {
 
         parks::Park park;
         bool active = false;
+
         if (!uParks::parseCsvRecord(line, park, active)) {
             context->valid = false;
             return false;
@@ -247,18 +235,12 @@ namespace {
         ++context->records;
 
         if (context->buffered == RECORD_BUFFER_COUNT && !_flushRecords(*context)) {
-            context->valid = false;
+            context->valid       = false;
             context->writeFailed = true;
             return false;
         }
 
-        ota::reportProgress(
-            context->callback,
-            context->userData,
-            context->records,
-            context->totalRecords
-        );
-
+        ota::reportProgress(context->callback, context->userData, context->records, context->totalRecords);
         return true;
     }
 
@@ -277,40 +259,25 @@ namespace {
     bool _searchCodeChunk(const uint8_t* data, size_t length, void* const userData) {
         if (data == nullptr || userData == nullptr) { return false; }
 
-        CodeSearchContext* const context =
-            static_cast<CodeSearchContext*>(userData);
-
+        CodeSearchContext* const context = static_cast<CodeSearchContext*>(userData);
         if (!context->valid || context->found) { return false; }
 
-        if (!ota::skipPrefix(
-            data,
-            length,
-            sizeof(Header),
-            context->skipped
-        )) {
+        if (!ota::skipPrefix(data, length, sizeof(Header), context->skipped)) {
             context->valid = false;
             return false;
         }
 
         while (length > 0U) {
-            if (!ota::readRecordChunk(
-                data,
-                length,
-                &context->record,
-                sizeof(Record),
-                context->received
-            )) {
+            if (!ota::readRecordChunk(data, length, &context->record, sizeof(Record), context->received)) {
                 context->valid = false;
                 return false;
             }
 
             if (context->received != sizeof(Record)) { continue; }
             if (!ota::hasValidIdentity(
-                context->record.code,
-                sizeof(context->record.code),
-                context->record.area,
-                sizeof(context->record.area)
-            )) {
+                context->record.code, sizeof(context->record.code),
+                context->record.area, sizeof(context->record.area))
+            ) {
                 context->valid = false;
                 return false;
             }
@@ -334,49 +301,32 @@ namespace {
         SearchContext* const context = static_cast<SearchContext*>(userData);
         if (!context->valid) { return false; }
 
-        if (context->cancelCallback != nullptr &&
-            context->cancelCallback(context->cancelUserData)
-        ) {
+        if (context->cancelCallback != nullptr && context->cancelCallback(context->cancelUserData)) {
             context->cancelled = true;
             return false;
         }
 
-        if (!ota::skipPrefix(
-            data,
-            length,
-            sizeof(Header),
-            context->skipped
-        )) {
+        if (!ota::skipPrefix(data, length, sizeof(Header), context->skipped)) {
             context->valid = false;
             return false;
         }
 
         while (length > 0U) {
-            if (context->cancelCallback != nullptr &&
-                context->cancelCallback(context->cancelUserData)
-            ) {
+            if (context->cancelCallback != nullptr && context->cancelCallback(context->cancelUserData)) {
                 context->cancelled = true;
                 return false;
             }
 
-            if (!ota::readRecordChunk(
-                data,
-                length,
-                &context->record,
-                sizeof(Record),
-                context->received
-            )) {
+            if (!ota::readRecordChunk(data, length, &context->record, sizeof(Record), context->received)) {
                 context->valid = false;
                 return false;
             }
 
             if (context->received != sizeof(Record)) { continue; }
             if (!ota::hasValidIdentity(
-                context->record.code,
-                sizeof(context->record.code),
-                context->record.area,
-                sizeof(context->record.area)
-            )) {
+                context->record.code, sizeof(context->record.code),
+                context->record.area, sizeof(context->record.area))
+            ) {
                 context->valid = false;
                 return false;
             }
@@ -385,68 +335,44 @@ namespace {
 
             if (context->nearbyResults == nullptr) {
                 context->valid = uParks::selectNearest(
-                    context->latitude,
-                    context->longitude,
-                    candidate,
-                    context->found,
-                    context->nearest,
-                    context->distanceKm
+                    context->latitude, context->longitude, candidate,
+                    context->found,    context->nearest,   context->distanceKm
                 );
             } else {
-                bool candidateValid = false;
                 parks::Park validatedCandidate {};
                 double candidateDistanceKm = 0.0;
+                bool candidateValid        = false;
 
                 context->valid = uParks::selectNearest(
-                    context->latitude,
-                    context->longitude,
-                    candidate,
-                    candidateValid,
-                    validatedCandidate,
-                    candidateDistanceKm
+                    context->latitude, context->longitude, candidate,
+                    candidateValid,    validatedCandidate, candidateDistanceKm
                 );
 
                 if (context->valid) {
                     context->found = true;
 
-                    const bool withinRadius =
-                        context->radiusKm == 0.0 ||
-                        candidateDistanceKm <= context->radiusKm;
-
-                    bool prefixMatches = true;
+                    const bool withinRadius = context->radiusKm == 0.0 || candidateDistanceKm <= context->radiusKm;
+                    bool prefixMatches      = true;
 
                     if (context->normalizedPrefix != nullptr) {
                         char normalizedCode[ota::CODE_SIZE] {};
 
-                        if (!uOta::normalizeCodePrefix(
-                            candidate.code,
-                            normalizedCode,
-                            sizeof(normalizedCode)
-                        )) {
+                        if (!uOta::normalizeCodePrefix(candidate.code, normalizedCode, sizeof(normalizedCode))) {
                             context->valid = false;
                             return false;
                         }
 
-                        prefixMatches = text::startsWith(
-                            normalizedCode,
-                            context->normalizedPrefix
-                        );
+                        prefixMatches = text::startsWith(normalizedCode, context->normalizedPrefix);
                     }
 
-                    if (withinRadius && prefixMatches) {
-                        context->valid = ota::retainNearest(
-                            *context->nearbyResults,
-                            candidate.code,
-                            candidateDistanceKm,
-                            0U,
-                            0U
-                        );
-                    }
+                    if (withinRadius && prefixMatches)
+                        { context->valid = ota::retainNearest(*context->nearbyResults, candidate.code, candidateDistanceKm, 0U, 0U); }
                 }
             }
 
             context->received = 0U;
             ++context->records;
+
             if (!context->valid || context->records > context->expectedRecords) {
                 context->valid = false;
                 return false;
@@ -456,58 +382,27 @@ namespace {
         return true;
     }
 
-    ota::SearchStatus _findResults(double latitude, double longitude, double radiusKm,
-        const char* normalizedPrefix,
-        ota::SearchResults &results,
-        ota::CancelCallback cancelCallback,
-        void* cancelUserData
-    ) {
+    ota::SearchStatus _findResults(double latitude, double longitude, double radiusKm, const char* normalizedPrefix, ota::SearchResults &results, ota::CancelCallback cancelCallback, void* cancelUserData) {
         ota::clear(results);
         if (!uOta::isValidSearchArea(latitude, longitude, radiusKm))
             { return ota::SearchStatus::ERROR; }
 
-        if (
-            normalizedPrefix != nullptr &&
-            !uOta::isNormalizedCodePrefix(
-                normalizedPrefix,
-                ota::CODE_SIZE
-            )
-        ) {
-            return ota::SearchStatus::ERROR;
-        }
+        if (normalizedPrefix != nullptr && !uOta::isNormalizedCodePrefix(normalizedPrefix, ota::CODE_SIZE))
+            { return ota::SearchStatus::ERROR; }
 
         Header header {};
-
-        if (!_readHeader(DATABASE_PATH, header)) {
-            return ota::SearchStatus::ERROR;
-        }
+        if (!_readHeader(DATABASE_PATH, header))
+            { return ota::SearchStatus::ERROR; }
 
         SearchContext context {
-            0U,
-            0U,
-            header.recordCount,
-            {},
-            0U,
-            latitude,
-            longitude,
-            {},
-            0.0,
-            false,
-            true,
-            &results,
-            normalizedPrefix,
-            radiusKm,
-            cancelCallback,
-            cancelUserData,
-            false
+            0U, 0U,   header.recordCount, {}, 0U,
+            latitude, longitude,
+            {}, 0.0,  false, true,
+            &results, normalizedPrefix, radiusKm,
+            cancelCallback, cancelUserData, false
         };
 
-        const bool readComplete =
-            storage::readFileChunks(
-                DATABASE_PATH,
-                _searchChunk,
-                &context
-            );
+        const bool readComplete = storage::readFileChunks(DATABASE_PATH, _searchChunk, &context);
 
         if (context.cancelled) {
             ota::clear(results);
@@ -515,12 +410,8 @@ namespace {
         }
 
         if (!ota::isCompleteSearchRead(
-            readComplete,
-            context.valid,
-            context.received,
-            context.records,
-            header.recordCount,
-            context.found
+            readComplete,    context.valid,      context.received,
+            context.records, header.recordCount, context.found
         )) {
             ota::clear(results);
             return ota::SearchStatus::ERROR;
@@ -532,23 +423,13 @@ namespace {
 
 bool parks::info(Info& value) {
     value = Info {};
-
     Header header {};
 
     if (!_readHeader(DATABASE_PATH, header)) {
         Header backup {};
 
-        if (
-            !_readHeader(BACKUP_PATH, backup) ||
-            !ota::recoverBackup(
-                DATABASE_PATH,
-                BACKUP_PATH,
-                "POTA_BACKUP_RECOVERED"
-            )
-        ) {
-            return false;
-        }
-
+        if (!_readHeader(BACKUP_PATH, backup) || !ota::recoverBackup(DATABASE_PATH, BACKUP_PATH, "POTA_BACKUP_RECOVERED"))
+            { return false; }
         header = backup;
     }
 
@@ -558,13 +439,11 @@ bool parks::info(Info& value) {
     return text::copy(value.etag, sizeof(value.etag), header.etag);
 }
 
-bool parks::buildCandidate(const char* const csvPath, const char* const etag,
-    const uint64_t sourceSize, const ProgressCallback callback, void* const userData
-) {
+bool parks::buildCandidate(const char* const csvPath, const char* const etag, const uint64_t sourceSize, const ProgressCallback callback, void* const userData) {
     discardCandidate();
 
     if (csvPath == nullptr || csvPath[0] == '\0' ||
-        etag == nullptr    || etag[0] == '\0'    ||
+        etag    == nullptr || etag[0]    == '\0' ||
         sourceSize == 0U
     ) {
         storage::appendErrorRecord("POTA_CANDIDATE_INPUT_INVALID");
@@ -577,8 +456,7 @@ bool parks::buildCandidate(const char* const csvPath, const char* const etag,
     }
 
     ValidateCsvContext validation {0U, 0U, true};
-    const bool validationRead =
-        storage::readFileLines(csvPath, _validateCsvLine, &validation);
+    const bool validationRead = storage::readFileLines(csvPath, _validateCsvLine, &validation);
 
     if (!validationRead) {
         storage::appendErrorRecord("POTA_SOURCE_READ_FAILED");
@@ -612,26 +490,14 @@ bool parks::buildCandidate(const char* const csvPath, const char* const etag,
     }
 
     if (!storage::beginFileWrite(CANDIDATE_PATH)) {
-        _logCandidateFailure(
-            "POTA_CANDIDATE_OPEN_FAILED",
-            0U,
-            validation.records,
-            0U
-        );
+        _logCandidateFailure("POTA_CANDIDATE_OPEN_FAILED", 0U, validation.records, 0U);
         return false;
     }
 
-    const bool headerWritten = storage::writeFileChunk(
-        reinterpret_cast<const uint8_t*>(&header), sizeof(header)
-    );
+    const bool headerWritten = storage::writeFileChunk(reinterpret_cast<const uint8_t*>(&header), sizeof(header));
     if (!headerWritten) {
         storage::endFileWrite();
-        _logCandidateFailure(
-            "POTA_CANDIDATE_WRITE_FAILED",
-            0U,
-            validation.records,
-            0U
-        );
+        _logCandidateFailure("POTA_CANDIDATE_WRITE_FAILED", 0U, validation.records, 0U);
         discardCandidate();
         return false;
     }
@@ -641,53 +507,24 @@ bool parks::buildCandidate(const char* const csvPath, const char* const etag,
 
     bool flushed = false;
     if (read && writer.valid && writer.records == validation.records) {
-        flushed = _flushRecords(writer);
+        flushed            = _flushRecords(writer);
         writer.writeFailed = !flushed;
     }
 
     storage::endFileWrite();
     if (!read || !writer.valid || writer.records != validation.records || !flushed) {
-        if (writer.writeFailed) {
-            _logCandidateFailure(
-                "POTA_CANDIDATE_WRITE_FAILED",
-                writer.records,
-                validation.records,
-                writer.buffered
-            );
-        } else if (!writer.valid) {
-            _logCandidateFailure(
-                "POTA_CANDIDATE_PARSE_FAILED",
-                writer.records,
-                validation.records,
-                writer.buffered
-            );
-        } else if (writer.records != validation.records) {
-            _logCandidateFailure(
-                "POTA_CANDIDATE_COUNT_MISMATCH",
-                writer.records,
-                validation.records,
-                writer.buffered
-            );
-        } else {
-            _logCandidateFailure(
-                "POTA_CANDIDATE_READ_FAILED",
-                writer.records,
-                validation.records,
-                writer.buffered
-            );
-        }
+        if (writer.writeFailed) { _logCandidateFailure("POTA_CANDIDATE_WRITE_FAILED", writer.records, validation.records, writer.buffered); }
+        else if (!writer.valid) { _logCandidateFailure("POTA_CANDIDATE_PARSE_FAILED", writer.records, validation.records, writer.buffered); }
+        else if (writer.records != validation.records) { _logCandidateFailure("POTA_CANDIDATE_COUNT_MISMATCH", writer.records, validation.records, writer.buffered); }
+        else { _logCandidateFailure("POTA_CANDIDATE_READ_FAILED", writer.records, validation.records, writer.buffered); }
+
         discardCandidate();
         return false;
     }
 
     Header candidate {};
     if (!_readHeader(CANDIDATE_PATH, candidate)) {
-        _logCandidateFailure(
-            "POTA_CANDIDATE_HEADER_INVALID",
-            validation.records,
-            validation.records,
-            0U
-        );
+        _logCandidateFailure("POTA_CANDIDATE_HEADER_INVALID", validation.records, validation.records, 0U);
         discardCandidate();
         return false;
     }
@@ -705,12 +542,7 @@ bool parks::buildCandidate(const char* const csvPath, const char* const etag,
         verification.records != candidate.recordCount ||
         !verification.found
     ) {
-        _logCandidateFailure(
-            "POTA_CANDIDATE_CONTENT_INVALID",
-            verification.records,
-            candidate.recordCount,
-            0U
-        );
+        _logCandidateFailure("POTA_CANDIDATE_CONTENT_INVALID", verification.records, candidate.recordCount, 0U);
         discardCandidate();
         return false;
     }
@@ -727,47 +559,23 @@ void parks::discardCandidate() {
     ota::discardCandidate(CANDIDATE_PATH);
 }
 
-bool parks::findByCode(
-    const char* const code,
-    parks::Park& park
-) {
+bool parks::findByCode(const char* const code, parks::Park& park) {
     park = parks::Park {};
-
-    if (!ota::isValidCode(code)) {
-        return false;
-    }
+    if (!ota::isValidCode(code)) { return false; }
 
     Header header {};
     if (!_readHeader(DATABASE_PATH, header)) { return false; }
 
-    CodeSearchContext context {
-        0U,
-        {},
-        0U,
-        code,
-        {},
-        false,
-        true
-    };
+    CodeSearchContext context {0U, {}, 0U, code, {}, false, true};
 
-    const bool readComplete =
-        storage::readFileChunks(DATABASE_PATH, _searchCodeChunk, &context);
-
-    if (
-        !readComplete ||
-        !context.valid ||
-        !context.found
-    ) {
-        return false;
-    }
+    const bool readComplete = storage::readFileChunks(DATABASE_PATH, _searchCodeChunk, &context);
+    if (!readComplete || !context.valid || !context.found) {  return false; }
 
     park = context.park;
     return true;
 }
 
-bool parks::findNearest(const double latitude, const double longitude,
-    parks::Park& park, double& distanceKm, double& bearing
-) {
+bool parks::findNearest(const double latitude, const double longitude, parks::Park& park, double& distanceKm, double& bearing) {
     park       = parks::Park {};
     distanceKm = 0.0;
     bearing    = 0.0;
@@ -782,71 +590,26 @@ bool parks::findNearest(const double latitude, const double longitude,
         nullptr, nullptr, 0.0, nullptr, nullptr, false
     };
 
-    const bool readComplete =
-        storage::readFileChunks(
-            DATABASE_PATH,
-            _searchChunk,
-            &context
-        );
+    const bool readComplete = storage::readFileChunks(DATABASE_PATH, _searchChunk, &context);
 
-    if (!ota::isCompleteSearchRead(
-        readComplete,
-        context.valid,
-        context.received,
-        context.records,
-        header.recordCount,
-        context.found
-    )) {
-        return false;
-    }
+    if (!ota::isCompleteSearchRead(readComplete, context.valid, context.received, context.records, header.recordCount, context.found))
+        { return false; }
 
     park       = context.nearest;
     distanceKm = context.distanceKm;
-    bearing    = distance::bearingDegrees(
-        latitude,      longitude,
-        park.latitude, park.longitude
-    );
+    bearing    = distance::bearingDegrees(latitude, longitude, park.latitude, park.longitude);
 
     return true;
 }
 
-ota::SearchStatus parks::findByPrefix(const double latitude, const double longitude,
-    const char* const normalizedPrefix,
-    ota::SearchResults &results,
-    const ota::CancelCallback cancelCallback,
-    void* const cancelUserData
-) {
-    if (
-        normalizedPrefix == nullptr ||
-        normalizedPrefix[0] == '\0'
-    ) {
+ota::SearchStatus parks::findByPrefix(const double latitude, const double longitude, const char* const normalizedPrefix, ota::SearchResults &results, const ota::CancelCallback cancelCallback, void* const cancelUserData) {
+    if (normalizedPrefix == nullptr || normalizedPrefix[0] == '\0') {
         ota::clear(results);
         return ota::SearchStatus::ERROR;
     }
-
-    return _findResults(
-        latitude,
-        longitude,
-        0.0,
-        normalizedPrefix,
-        results,
-        cancelCallback,
-        cancelUserData
-    );
+    return _findResults(latitude, longitude, 0.0, normalizedPrefix, results, cancelCallback, cancelUserData);
 }
 
-ota::SearchStatus parks::findNearby(const double latitude, const double longitude, const double radiusKm,
-    ota::SearchResults &results,
-    const ota::CancelCallback cancelCallback,
-    void* const cancelUserData
-) {
-    return _findResults(
-        latitude,
-        longitude,
-        radiusKm,
-        nullptr,
-        results,
-        cancelCallback,
-        cancelUserData
-    );
+ota::SearchStatus parks::findNearby(const double latitude, const double longitude, const double radiusKm, ota::SearchResults &results, const ota::CancelCallback cancelCallback, void* const cancelUserData) {
+    return _findResults(latitude, longitude, radiusKm, nullptr, results, cancelCallback, cancelUserData);
 }

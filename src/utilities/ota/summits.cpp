@@ -51,10 +51,8 @@ namespace {
         char* end         = nullptr;
         const long parsed = std::strtol(value, &end, 10);
 
-        if (errno == ERANGE  ||
-            end == value     || *end != '\0' ||
-            parsed < minimum || parsed > maximum
-        ) { return false; }
+        if (errno == ERANGE || end == value || *end != '\0' || parsed < minimum || parsed > maximum)
+            { return false; }
 
         result = parsed;
         return true;
@@ -67,11 +65,8 @@ namespace {
         char* end           = nullptr;
         const double parsed = std::strtod(value, &end);
 
-        if (errno == ERANGE  ||
-            end == value     || *end != '\0' ||
-            !std::isfinite(parsed)           ||
-            parsed < minimum || parsed > maximum
-        ) { return false; }
+        if (errno == ERANGE || end == value || *end != '\0' || !std::isfinite(parsed) || parsed < minimum || parsed > maximum)
+            { return false; }
 
         result = parsed;
         return true;
@@ -103,7 +98,7 @@ namespace {
 }
 
 bool summits::parseListVersion(const char* const line, char* const version, const size_t size) {
-    if (version == nullptr || size == 0U)       { return false; }
+    if (version == nullptr || size == 0U)                  { return false; }
     version[0] = '\0';
     if (line == nullptr || size < summitsDB::VERSION_SIZE) { return false; }
 
@@ -169,15 +164,15 @@ bool summits::parseCsvRecord(const char* const line, summitsDB::Summit& summit) 
         if (fieldIndex == 11U){ destination = bonus;       destinationSize = sizeof(bonus); }
 
         bool delimiter = false;
-        if (!csv::readField(cursor, destination, destinationSize, delimiter) ||
-            delimiter != (fieldIndex + 1U < CSV_FIELD_COUNT)
-        ) { return false; }
+        if (!csv::readField(cursor, destination, destinationSize, delimiter) || delimiter != (fieldIndex + 1U < CSV_FIELD_COUNT))
+            { return false; }
     }
     if (*cursor != '\0') { return false; }
 
     long parsedAltitude = 0;
     long parsedPoints   = 0;
     long parsedBonus    = 0;
+
     if (code[0] == '\0' || area[0] == '\0' ||
         !_parseLong(altitude, std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max(), parsedAltitude) ||
         !_parseLong(points, 0L, std::numeric_limits<uint8_t>::max(), parsedPoints) ||
@@ -186,19 +181,13 @@ bool summits::parseCsvRecord(const char* const line, summitsDB::Summit& summit) 
         !_parseDouble(longitude, -180.0, 180.0, summit.longitude)
     ) { return false; }
 
-    if (!csv::copyField(
-        code,        std::strlen(code),
-        summit.code, sizeof(summit.code)
-    )) { return false; }
+    if (!csv::copyField(code, std::strlen(code), summit.code, sizeof(summit.code)))
+        { return false; }
 
-    const size_t areaLength = std::strlen(area) < sizeof(summit.area) - 1U
-        ? std::strlen(area)
-        : sizeof(summit.area) - 1U;
+    const size_t areaLength = std::strlen(area) < sizeof(summit.area) - 1U ? std::strlen(area) : sizeof(summit.area) - 1U;
 
-    if (!csv::copyField(
-        area,        areaLength,
-        summit.area, sizeof(summit.area)
-    )) { return false; }
+    if (!csv::copyField(area, areaLength, summit.area, sizeof(summit.area)))
+        { return false; }
 
     summit.altitude = static_cast<int16_t>(parsedAltitude);
     summit.points   = static_cast<uint8_t>(parsedPoints);
@@ -211,22 +200,14 @@ bool summits::isVersionValid(const char* const version) {
     return _isDate(version);
 }
 
-bool summits::selectNearest(const double latitude, const double longitude,
-    const summitsDB::Summit& candidate, bool& found,
-    summitsDB::Summit& nearest,         double& distanceKm
-) {
+bool summits::selectNearest(const double latitude, const double longitude, const summitsDB::Summit& candidate, bool& found, summitsDB::Summit& nearest, double& distanceKm) {
     bool selected = false;
 
-    if (!ota::selectNearestDistance(
-        latitude,           longitude,
-        candidate.latitude, candidate.longitude,
-        found, distanceKm, selected
-    )) { return false; }
-
+    if (!ota::selectNearestDistance(latitude, longitude, candidate.latitude, candidate.longitude, found, distanceKm, selected))
+        { return false; }
     if (selected) {
         nearest = candidate;
         found   = true;
     }
-
     return true;
 }

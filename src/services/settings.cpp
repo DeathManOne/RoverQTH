@@ -39,13 +39,8 @@ namespace {
     bool _fits(const char* const value, const size_t capacity) {
         if (value == nullptr || capacity == 0U) { return false; }
 
-        for (
-            size_t characterIndex = 0U;
-            characterIndex < capacity;
-            ++characterIndex
-        ) {
-            if (value[characterIndex] == '\0')
-                { return true; }
+        for (size_t characterIndex = 0U; characterIndex < capacity; ++characterIndex) {
+            if (value[characterIndex] == '\0') { return true; }
         }
         return false;
     }
@@ -61,20 +56,16 @@ namespace {
             case settings::CallsignSuffix::P:
             case settings::CallsignSuffix::M:
             case settings::CallsignSuffix::MM:
-            case settings::CallsignSuffix::AM:
-                return true;
-            default:
-                return false;
+            case settings::CallsignSuffix::AM:   return true;
+            default:                             return false;
         }
     }
 
     bool _isValid(const settings::Units units) {
         switch (units) {
             case settings::Units::METRIC:
-            case settings::Units::IMPERIAL:
-                return true;
-            default:
-                return false;
+            case settings::Units::IMPERIAL: return true;
+            default:                        return false;
         }
     }
 
@@ -82,20 +73,16 @@ namespace {
         switch (format) {
             case settings::CoordinateFormat::DD:
             case settings::CoordinateFormat::DDM:
-            case settings::CoordinateFormat::DMS:
-                return true;
-            default:
-                return false;
+            case settings::CoordinateFormat::DMS: return true;
+            default:                              return false;
         }
     }
 
     bool _isValid(const settings::TFTRotation rotation) {
         switch (rotation) {
             case settings::TFTRotation::NORMAL:
-            case settings::TFTRotation::REVERSED:
-                return true;
-            default:
-                return false;
+            case settings::TFTRotation::REVERSED: return true;
+            default:                              return false;
         }
     }
 
@@ -103,21 +90,17 @@ namespace {
         switch (mode) {
             case settings::WifiBootMode::NEVER:
             case settings::WifiBootMode::ALWAYS:
-            case settings::WifiBootMode::LAST_STATE:
-                return true;
-            default:
-                return false;
+            case settings::WifiBootMode::LAST_STATE: return true;
+            default:                                 return false;
         }
     }
 
     bool _isValid(const settings::OtaType type) {
         switch (type) {
             case settings::OtaType::SOTA:
-            case settings::OtaType::POTA:
-                return true;
+            case settings::OtaType::POTA: return true;
             case settings::OtaType::NONE:
-            default:
-                return false;
+            default:                      return false;
         }
     }
 
@@ -173,20 +156,9 @@ bool settings::getTouchCalibration(Calibration &calibration) {
     if (!guard) { return false; }
 
     switch (getTFTRotation()) {
-        case TFTRotation::NORMAL:
-            return nvs::getTouchCalibrationNormal(
-                calibration.swapXY,     calibration.invertX, calibration.invertY,
-                calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
-                calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
-            );
-        case TFTRotation::REVERSED:
-            return nvs::getTouchCalibrationReversed(
-                calibration.swapXY,     calibration.invertX, calibration.invertY,
-                calibration.coeffXA,    calibration.coeffXB, calibration.coeffXC,
-                calibration.coeffYA,    calibration.coeffYB, calibration.coeffYC
-            );
-        default:
-            return false;
+        case TFTRotation::NORMAL:   return nvs::getTouchCalibrationNormal(  calibration.swapXY, calibration.invertX, calibration.invertY, calibration.coeffXA, calibration.coeffXB, calibration.coeffXC, calibration.coeffYA, calibration.coeffYB, calibration.coeffYC);
+        case TFTRotation::REVERSED: return nvs::getTouchCalibrationReversed(calibration.swapXY, calibration.invertX, calibration.invertY, calibration.coeffXA, calibration.coeffXB, calibration.coeffXC, calibration.coeffYA, calibration.coeffYB, calibration.coeffYC);
+        default:                    return false;
     }
 }
 
@@ -195,16 +167,8 @@ bool settings::setTouchCalibration(const Calibration &normal, const Calibration 
     if (!guard) { return false; }
 
     bool ok = true;
-    ok = nvs::setTouchCalibrationNormal(
-        normal.swapXY,     normal.invertX, normal.invertY,
-        normal.coeffXA,    normal.coeffXB, normal.coeffXC,
-        normal.coeffYA,    normal.coeffYB, normal.coeffYC
-    ) && ok;
-    ok = nvs::setTouchCalibrationReversed(
-        reversed.swapXY,    reversed.invertX, reversed.invertY,
-        reversed.coeffXA,   reversed.coeffXB, reversed.coeffXC,
-        reversed.coeffYA,   reversed.coeffYB, reversed.coeffYC
-    ) && ok;
+    ok = nvs::setTouchCalibrationNormal(  normal.swapXY,   normal.invertX,   normal.invertY,   normal.coeffXA,   normal.coeffXB,   normal.coeffXC,   normal.coeffYA,   normal.coeffYB,   normal.coeffYC)   && ok;
+    ok = nvs::setTouchCalibrationReversed(reversed.swapXY, reversed.invertX, reversed.invertY, reversed.coeffXA, reversed.coeffXB, reversed.coeffXC, reversed.coeffYA, reversed.coeffYB, reversed.coeffYC) && ok;
     return _checkWrite(ok, "TOUCH_CALIBRATION_SAVE_FAILED");
 }
 
@@ -349,10 +313,8 @@ settings::TFTRotation settings::getTFTRotation() {
     uint8_t value = nvs::getTFTRotation();
     switch (static_cast<TFTRotation>(value)) {
         case TFTRotation::NORMAL:
-        case TFTRotation::REVERSED:
-            return static_cast<TFTRotation>(value);
-        default:
-            return TFTRotation::NORMAL;
+        case TFTRotation::REVERSED: return static_cast<TFTRotation>(value);
+        default:                    return TFTRotation::NORMAL;
     }
 }
 
@@ -427,10 +389,8 @@ bool settings::getOtaSelection(OtaSelection &selection) {
     if (!guard) { return false; }
 
     char type[5] {};
-    if (!nvs::getOtaSelection(
-        type,           sizeof(type),
-        selection.code, sizeof(selection.code)
-    )) { return false; }
+    if (!nvs::getOtaSelection(type, sizeof(type), selection.code, sizeof(selection.code)))
+        { return false; }
 
     if (text::equals(type, "SOTA")) {
         selection.type = OtaType::SOTA;
@@ -458,21 +418,15 @@ bool settings::setOtaSelection(const OtaType type, const char* const code) {
         { return false; }
 
     char logRecord[64];
-    const int written = std::snprintf(
-        logRecord, sizeof(logRecord),
-        "OTA_SELECTION_SAVED type=%s code=%s",
-        typeText, code
-    );
+    const int written = std::snprintf(logRecord, sizeof(logRecord), "OTA_SELECTION_SAVED type=%s code=%s", typeText, code);
 
-    storage::appendLogRecord(written > 0 &&
-        static_cast<size_t>(written) < sizeof(logRecord) ? logRecord : "OTA_SELECTION_SAVED"
-    );
-
+    storage::appendLogRecord(written > 0 && static_cast<size_t>(written) < sizeof(logRecord) ? logRecord : "OTA_SELECTION_SAVED");
     return true;
 }
 
 bool settings::resetOtaSelection() {
     SettingsGuard guard;
-    if (!guard) { return false; }
+    if (!guard)
+        { return false; }
     return _checkWrite(nvs::resetOtaSelection(), "OTA_SELECTION_RESET_FAILED");
 }

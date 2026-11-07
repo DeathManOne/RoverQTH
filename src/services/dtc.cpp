@@ -103,8 +103,8 @@ bool dtc::getTime(char* const buffer, const size_t size, const bool withSecond) 
 
 void dtc::reset() {
     portENTER_CRITICAL(&_lock);
-    _synced      = false;
-    _syncMillis  = 0;
-    _syncEpoch   = 0;
+    _synced     = false;
+    _syncMillis = 0;
+    _syncEpoch  = 0;
     portEXIT_CRITICAL(&_lock);
 }

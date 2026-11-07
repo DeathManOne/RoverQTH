@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -44,44 +44,42 @@ namespace screens {
         private:
             menu::Item _currentItem = menu::Item::GENERAL;
 
-            menu::General _general;
+            menu::General   _general;
             menu::Displayer _displayer;
-            menu::Wifi _wifi;
-            menu::Updates _updates;
-            menu::Storage _storage;
-            menu::Battery _battery;
-            menu::About _about;
+            menu::Wifi      _wifi;
+            menu::Updates   _updates;
+            menu::Storage   _storage;
+            menu::Battery   _battery;
+            menu::About     _about;
 
-            menu::Page& _pageFromItem(menu::Item item);
-            menu::Page& _currentPage();
-            const menu::Page& _currentPage() const;
+            menu::Page &_pageFromItem(menu::Item item);
+            menu::Page &_currentPage();
+
+            const menu::Page &_currentPage() const;
             void select(menu::Item item);
-
         public:
             /** @brief Restores the menu and its current page to their initial state. */
             void reset();
 
             /** @copydoc Screen::preload() */
             void preload() override;
+
             /** @copydoc Screen::draw() */
             void draw(ST7796S::MSP4021 &tft) override;
 
             /** @copydoc Screen::update() */
-            void update(
-                ST7796S::MSP4021 &tft,
-                uint32_t &nextRefreshIn
-            ) override;
+            void update(ST7796S::MSP4021 &tft, uint32_t &nextRefreshIn) override;
 
             /** @copydoc Screen::handleTouch() */
-            bool handleTouch(
-                ST7796S::MSP4021 &tft,
-                int x,
-                int y
-            ) override;
+            bool handleTouch(ST7796S::MSP4021 &tft, int x, int y) override;
 
             /** @copydoc Screen::isEditing() */
             bool isEditing() const override;
-            /** @brief Consumes the pending display reconfiguration request. */
+
+            /**
+             * @brief Consumes the pending display reconfiguration request.
+             * @return Pending request before it is cleared, or `Request::NONE`.
+             */
             menu::Displayer::Request takeDisplayRequest();
     };
 }

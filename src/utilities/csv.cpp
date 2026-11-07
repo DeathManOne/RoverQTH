@@ -28,11 +28,8 @@
 namespace csv = utilities::csv;
 
 bool csv::copyField(const char* const source, const size_t length, char* const destination, const size_t destinationSize) {
-    if (source          == nullptr ||
-        destination     == nullptr ||
-        destinationSize == 0U      ||
-        length >= destinationSize
-    ) { return false; }
+    if (source == nullptr || destination == nullptr || destinationSize == 0U || length >= destinationSize)
+        { return false; }
 
     std::memcpy(destination, source, length);
     destination[length] = '\0';
@@ -43,10 +40,8 @@ bool csv::copyField(const char* const source, const size_t length, char* const d
 bool csv::readField(const char*& cursor, char* const destination, const size_t destinationSize, bool& delimiter) {
     delimiter = false;
 
-    if (cursor          == nullptr ||
-        destination     == nullptr ||
-        destinationSize == 0U
-    ) { return false; }
+    if (cursor == nullptr || destination == nullptr || destinationSize == 0U)
+        { return false; }
 
     size_t length = 0U;
     bool quoted   = false;
@@ -60,10 +55,8 @@ bool csv::readField(const char*& cursor, char* const destination, const size_t d
         if (quoted) {
             if (*cursor == '"') {
                 if (cursor[1] == '"') {
-                    if (length + 1U >= destinationSize) {
-                        return false;
-                    }
-
+                    if (length + 1U >= destinationSize)
+                        { return false; }
                     destination[length++] = '"';
                     cursor += 2;
                     continue;
@@ -72,37 +65,24 @@ bool csv::readField(const char*& cursor, char* const destination, const size_t d
                 ++cursor;
                 quoted = false;
 
-                while (*cursor == ' ' || *cursor == '\t') {
-                    ++cursor;
-                }
-
-                if (*cursor != ',' && *cursor != '\0') {
-                    return false;
-                }
-
+                while (*cursor == ' ' || *cursor == '\t')
+                    { ++cursor; }
+                if (*cursor != ',' && *cursor != '\0')
+                    { return false; }
                 break;
             }
         } else {
-            if (*cursor == ',') {
-                break;
-            }
-
-            if (*cursor == '"') {
-                return false;
-            }
+            if (*cursor == ',') { break; }
+            if (*cursor == '"') { return false; }
         }
 
-        if (length + 1U >= destinationSize) {
-            return false;
-        }
-
+        if (length + 1U >= destinationSize)
+            {  return false; }
         destination[length++] = *cursor++;
     }
 
-    if (quoted) {
-        return false;
-    }
-
+    if (quoted)
+        { return false; }
     destination[length] = '\0';
 
     if (*cursor == ',') {

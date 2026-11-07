@@ -29,9 +29,7 @@ namespace coordinates = utilities::coordinates;
 
 namespace {
     bool _isValidAxis(const coordinates::Axis axis) {
-        return
-            axis == coordinates::Axis::LATITUDE  ||
-            axis == coordinates::Axis::LONGITUDE;
+        return axis == coordinates::Axis::LATITUDE || axis == coordinates::Axis::LONGITUDE;
     }
 
     char _getHemisphere(const double value, const coordinates::Axis axis) {
@@ -45,10 +43,10 @@ namespace {
         if (buffer == nullptr || size == 0U) { return false; }
         buffer[0] = '\0';
 
-        if (!_isValidAxis(axis))   { return false; }
-        if (!std::isfinite(value)) { return false; }
-        const double limit = axis == coordinates::Axis::LATITUDE ? 90.0 : 180.0;
+        if (!_isValidAxis(axis))    { return false; }
+        if (!std::isfinite(value))  { return false; }
 
+        const double limit = axis == coordinates::Axis::LATITUDE ? 90.0 : 180.0;
         return value >= -limit && value <= limit;
     }
 

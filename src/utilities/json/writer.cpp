@@ -29,7 +29,7 @@
 using utilities::json::Writer;
 
 bool Writer::_beforeValue(const char* const key) {
-    if (!_valid) { return false; }
+    if (!_valid)      { return false; }
     if (_depth == 0U) {
         if ( _hasRoot || key != nullptr) {
             _invalidate();
@@ -41,7 +41,8 @@ bool Writer::_beforeValue(const char* const key) {
 
     Context& context = _contexts[_depth - 1U];
     if (!context.first) {
-        if (!_append(',')) { return false; }
+        if (!_append(','))
+            { return false; }
     }
 
     context.first = false;
@@ -49,7 +50,6 @@ bool Writer::_beforeValue(const char* const key) {
         _invalidate();
         return false;
     }
-
     return _appendQuoted(key) && _append(':');
 }
 
@@ -173,12 +173,12 @@ Writer::Writer(char* const buffer, const size_t size) :
 { if (_valid) { _buffer[0] = '\0'; } }
 
 bool Writer::beginObject(const char* const key) {
-    if (!_valid)
-        { return false; }
+    if (!_valid)             { return false; }
     if (_depth >= MAX_DEPTH) {
         _invalidate();
         return false;
     }
+
     if (!_beforeValue(key) || !_append('{'))
         { return false; }
     return _push();
@@ -196,8 +196,7 @@ bool Writer::endObject() {
 }
 
 bool Writer::string(const char* const key, const char* const value) {
-    if (!_valid)
-        { return false; }
+    if (!_valid)          { return false; }
     if (value == nullptr) {
         _invalidate();
         return false;
@@ -208,12 +207,14 @@ bool Writer::string(const char* const key, const char* const value) {
 }
 
 bool Writer::boolean(const char* const key, const bool value) {
-    if (!_beforeValue(key)) { return false; }
+    if (!_beforeValue(key))
+        { return false; }
     return _append(value ? "true" : "false");
 }
 
 bool Writer::unsignedInteger(const char* const key, const uint64_t value) {
-    if (!_beforeValue(key)) { return false; }
+    if (!_beforeValue(key))
+        { return false; }
     return _appendFormatted("%llu", static_cast<unsigned long long>(value));
 }
 

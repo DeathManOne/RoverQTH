@@ -48,7 +48,7 @@ namespace {
         int innerY = 0;
         int innerW = 0;
         int innerH = 0;
-        int row = 0;
+        int row    = 0;
         uint16_t color;
 
         char label[VALUE_SIZE]  = {};
@@ -75,28 +75,17 @@ namespace {
     Field _update   (5, "UPDATE", theme::NAV);
 
     void _clearRow(ST7796S::MSP4021 &tft, const Field &field) {
-        tft.rectFill(
-            field.innerX, field.innerY,
-            field.innerW, field.innerH,
-            theme::BLACK
-        );
+        tft.rectFill(field.innerX, field.innerY, field.innerW, field.innerH, theme::BLACK);
     }
 
     void _drawRow(ST7796S::MSP4021 &tft, const Field &field) {
         tft.setFont(ST7796S::RobotoMono_Regular_14);
         tft.setTextColor(theme::WHITE);
-        tft.textTopLeft(
-            field.innerX, field.innerY,
-            field.innerW, field.innerH,
-            field.label
-        );
+        tft.textTopLeft(field.innerX, field.innerY, field.innerW, field.innerH, field.label);
+
         tft.setFont(ST7796S::RobotoMono_Medium_18);
         tft.setTextColor(field.color);
-        tft.textBottomRight(
-            field.innerX, field.innerY,
-            field.innerW, field.innerH,
-            field.value
-        );
+        tft.textBottomRight(field.innerX, field.innerY, field.innerW, field.innerH, field.value);
     }
 
     void _setField(Field& field, const char* const value) {
@@ -146,10 +135,7 @@ void datas::draw(ST7796S::MSP4021 &tft) {
         field->innerH = field->outerH - (gap);
 
         if (field->row > 0) {
-            tft.lineH(
-                field->innerX, field->outerY,
-                field->innerW, theme::BORDER
-            );
+            tft.lineH(field->innerX, field->outerY, field->innerW, theme::BORDER);
         }
         _drawRow(tft, *field);
     }

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #include <cstdint>
 
 namespace services::qth {
@@ -38,19 +39,19 @@ namespace services::qth {
 
     /**
      * Indicates whether the current record is long enough to be saved.
-     * @return true if the current record is long enough, false otherwise.
+     * @return `true` when the current record is long enough, otherwise `false`.
      */
     bool isCurrentRecordLongEnough();
 
     /**
      * Saves the current record as a temporary record.
-     * @return true if the temporary record was successfully saved, false otherwise.
+     * @return `true` when the temporary record was successfully saved, otherwise `false`.
      */
     bool saveTemporaryRecord();
 
     /**
      * Discards the current temporary record.
-     * @return true if the temporary record was successfully discarded, false otherwise.
+     * @return `true` when the temporary record was successfully discarded, otherwise `false`.
      */
     bool discardTemporaryRecord();
 
@@ -62,7 +63,7 @@ namespace services::qth {
 
     /**
      * Discards the current temporary trace.
-     * @return true if the temporary trace was successfully discarded, false otherwise.
+     * @return `true` when the temporary trace was successfully discarded, otherwise `false`.
      */
     bool discardTemporaryTrace();
 
@@ -70,28 +71,28 @@ namespace services::qth {
      * @brief Processes a point for the active trace.
      * A valid point is written only if it passes the timestamp, distance, and position-change filters.
      * @param point Trace point to process.
-     * @return true if the point was accepted, whether written or filtered out;
-     *         false if the point is invalid or the write failed.
+     * @return `true` when the point was accepted, whether written or filtered out;
+     *         `false` when the point is invalid or the write failed.
      */
-    bool appendTracePoint(const TracePoint& point);
+    bool appendTracePoint(const TracePoint &point);
 
     /**
      * Appends the final trace point to the current trace.
      * @param point Final trace point to append.
-     * @return true if the final point was accepted, written, or already present;
-     *         false if it is invalid, older than the last point, or cannot be written.
+     * @return `true` when the final point was accepted, written, or already present;
+     *         `false` when it is invalid, older than the last point, or cannot be written.
      */
-    bool appendFinalTracePoint(const TracePoint& point);
+    bool appendFinalTracePoint(const TracePoint &point);
 
     /**
      * Clears the current trace.
-     * @return true if the trace was successfully cleared, false otherwise.
+     * @return `true` when the trace was successfully cleared, otherwise `false`.
      */
     bool resetTrace();
 
     /**
      * Saves the current QTH record.
-     * @return true if the record was successfully saved, false otherwise.
+     * @return `true` when the record was successfully saved, otherwise `false`.
      */
     bool saveCurrentRecord();
 }

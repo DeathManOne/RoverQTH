@@ -110,12 +110,7 @@ namespace {
             if (!uDtc::formatISO8601(dtc::now(), timestamp, sizeof(timestamp)))
                 { return false; }
             written = std::snprintf(buffer, size, "%s | %s\n", timestamp, data);
-        } else {
-            written = std::snprintf(buffer, size,
-                "BOOT+%010lums | %s\n",
-                static_cast<unsigned long>(millis()), data
-            );
-        }
+        } else { written = std::snprintf(buffer, size, "BOOT+%010lums | %s\n", static_cast<unsigned long>(millis()), data); }
         return (written > 0 && static_cast<size_t>(written) < size);
     }
 
@@ -153,11 +148,8 @@ namespace {
             const size_t remaining = _waitingLogsCount - writtenCount;
             for (size_t shiftIndex = 0U; shiftIndex < remaining; ++shiftIndex)
                 { _waitingLogs[shiftIndex] = _waitingLogs[writtenCount + shiftIndex]; }
-            for (
-                size_t clearIndex = remaining;
-                clearIndex < _waitingLogsCount;
-                ++clearIndex
-            ) {
+
+            for (size_t clearIndex = remaining; clearIndex < _waitingLogsCount; ++clearIndex) {
                 _waitingLogs[clearIndex].path    = nullptr;
                 _waitingLogs[clearIndex].data[0] = '\0';
             }
@@ -184,13 +176,7 @@ namespace {
             path == nullptr   || size == 0U
         ) { return false; }
 
-        const int written = std::snprintf(
-            path,
-            size,
-            "%s.%u.log",
-            prefix,
-            static_cast<unsigned int>(archive)
-        );
+        const int written = std::snprintf(path, size, "%s.%u.log", prefix, static_cast<unsigned int>(archive));
         return written > 0 && static_cast<size_t>(written) < size;
     }
 
@@ -206,40 +192,21 @@ namespace {
         char sourcePath[LOG_PATH_SIZE];
         char destinationPath[LOG_PATH_SIZE];
 
-        if (!_buildLogArchivePath(
-            archivePrefix,
-            LOG_ARCHIVE_COUNT,
-            destinationPath,
-            sizeof(destinationPath)
-        ) || !_sd->fileDelete(destinationPath)) { return false; }
+        if (!_buildLogArchivePath(archivePrefix, LOG_ARCHIVE_COUNT, destinationPath, sizeof(destinationPath)) ||
+            !_sd->fileDelete(destinationPath))
+            { return false; }
 
         for (uint8_t archive = LOG_ARCHIVE_COUNT; archive > 1U; --archive) {
-            if (!_buildLogArchivePath(
-                    archivePrefix,
-                    static_cast<uint8_t>(archive - 1U),
-                    sourcePath,
-                    sizeof(sourcePath)
-                ) ||
-                !_buildLogArchivePath(
-                    archivePrefix,
-                    archive,
-                    destinationPath,
-                    sizeof(destinationPath)
-                )
+            if (!_buildLogArchivePath(archivePrefix, static_cast<uint8_t>(archive - 1U), sourcePath,      sizeof(sourcePath))      ||
+                !_buildLogArchivePath(archivePrefix, archive,                            destinationPath, sizeof(destinationPath))
             ) { return false; }
 
-            if (_sd->fileExists(sourcePath) &&
-                !_sd->fileRename(sourcePath, destinationPath)
-            ) { return false; }
+            if (_sd->fileExists(sourcePath) && !_sd->fileRename(sourcePath, destinationPath))
+                { return false; }
         }
 
-        if (!_buildLogArchivePath(
-            archivePrefix,
-            1U,
-            destinationPath,
-            sizeof(destinationPath)
-        )) { return false; }
-
+        if (!_buildLogArchivePath(archivePrefix, 1U, destinationPath, sizeof(destinationPath)))
+            { return false; }
         return _sd->fileRename(activePath, destinationPath);
     }
 
@@ -258,15 +225,15 @@ namespace {
         if (data == nullptr || userData == nullptr) { return false; }
 
         FileReadContext* const context = static_cast<FileReadContext*>(userData);
-        if (!context->valid || context->buffer == nullptr || context->size == 0U) { return false; }
+        if (!context->valid || context->buffer == nullptr || context->size == 0U)
+            { return false; }
         if (context->length + length >= context->size) {
             context->valid = false;
             return false;
         }
 
         for (size_t byteIndex = 0U; byteIndex < length; ++byteIndex) {
-            context->buffer[context->length + byteIndex] =
-                static_cast<char>(data[byteIndex]);
+            context->buffer[context->length + byteIndex] = static_cast<char>(data[byteIndex]);
         }
         context->length += length;
         context->buffer[context->length] = '\0';
@@ -359,7 +326,8 @@ void storage::begin(SPIClass &spi, uint32_t timeoutSec) {
 
 bool storage::isReady() {
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard)
+        { return false; }
     return _isReadyUnlocked();
 }
 
@@ -388,7 +356,8 @@ size_t storage::fileSize(const char* const path) {
 
 bool storage::readFile(const char* const path, char* const buffer, const size_t size) {
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard)
+        { return false; }
     if (!_isReadyUnlocked() || path == nullptr || path[0] == '\0' || buffer == nullptr || size == 0U)
         { return false; }
     buffer[0] = '\0';
@@ -518,13 +487,13 @@ bool storage::appendErrorRecord(const char* const data) {
 }
 
 bool storage::appendLogRecord(const char* const data) {
-    if (data == nullptr || data[0] == '\0') { return false; }
+    if (data == nullptr || data[0] == '\0')              { return false; }
 
     char line[MAX_LOGS_LENGTH];
-    if (!_formatRecord(data, line, sizeof(line))) { return false; }
+    if (!_formatRecord(data, line, sizeof(line)))        { return false; }
 
     StorageGuard guard;
-    if (!guard) { return false; }
+    if (!guard)                                          { return false; }
 
     if (!_isReadyUnlocked())                             { return _queueLogs(FILE_LOGS_SYSTEM, line); }
     if (_waitingLogsCount > 0U && !_flushWaitingLogs())  { return _queueLogs(FILE_LOGS_SYSTEM, line); }

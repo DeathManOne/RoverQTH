@@ -83,12 +83,12 @@ namespace {
 void navigation::draw(ST7796S::MSP4021 &tft, const menu::Item current) {
     right::draw(tft);
 
-    const int gap       = uiMockup::GAP;
-    const int outerX    = right::innerX();
-    const int outerY    = right::innerY();
-    const int outerW    = right::innerWidth();
-    const int outerH    = right::innerHeight();
-    const int rowH      = outerH / ROW_COUNT;
+    const int gap    = uiMockup::GAP;
+    const int outerX = right::innerX();
+    const int outerY = right::innerY();
+    const int outerW = right::innerWidth();
+    const int outerH = right::innerHeight();
+    const int rowH   = outerH / ROW_COUNT;
 
     for (size_t i = 0; i < ROW_COUNT; i++) {
         Row &row = rows[i];
@@ -105,11 +105,7 @@ void navigation::draw(ST7796S::MSP4021 &tft, const menu::Item current) {
 
         const bool selected = (row.item == current);
         if (selected) {
-            tft.rectFill(
-                row.innerX, row.innerY,
-                row.innerW, row.innerH,
-                theme::GREEN
-            );
+            tft.rectFill(row.innerX, row.innerY, row.innerW, row.innerH, theme::GREEN);
             tft.setFont(ST7796S::RobotoMono_Bold_16);
             tft.setTextColor(theme::BLACK);
         } else {
@@ -117,30 +113,20 @@ void navigation::draw(ST7796S::MSP4021 &tft, const menu::Item current) {
             tft.setTextColor(theme::WHITE);
         }
 
-        tft.textCenter(
-            row.innerX, row.innerY,
-            row.innerW, row.innerH,
-            row.label
-        );
+        tft.textCenter(row.innerX, row.innerY, row.innerW, row.innerH, row.label);
 
-        if (i > 0) {
-            tft.lineH(
-                row.innerX, row.outerY,
-                row.innerW, theme::BORDER);
-        }
+        if (i > 0)
+            { tft.lineH(row.innerX, row.outerY, row.innerW, theme::BORDER); }
     }
 }
 
 bool navigation::handleTouch(const int x, const int y, menu::Item &selected) {
     for (size_t i = 0; i < ROW_COUNT; i++) {
         const Row &row = rows[i];
-        const buttons::ButtonArea area = buttons::makeArea(
-            row.innerX, row.innerY,
-            row.innerW, row.innerH
-        );
+        const buttons::ButtonArea area = buttons::makeArea(row.innerX, row.innerY, row.innerW, row.innerH);
 
-        if (!buttons::isPressed(area, x, y)) { continue; }
-
+        if (!buttons::isPressed(area, x, y))
+            { continue; }
         selected = row.item;
         return true;
     }

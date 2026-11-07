@@ -49,8 +49,8 @@ bool buttons::isPressed(const ButtonArea& button, const int tx, const int ty) {
     const int64_t bottom = top  + button.height;
 
     return
-        static_cast<int64_t>(tx) >= left  &&
-        static_cast<int64_t>(tx) <  right &&
-        static_cast<int64_t>(ty) >= top   &&
+        static_cast<int64_t>(tx) >= left    &&
+        static_cast<int64_t>(tx) <  right   &&
+        static_cast<int64_t>(ty) >= top     &&
         static_cast<int64_t>(ty) <  bottom;
 }

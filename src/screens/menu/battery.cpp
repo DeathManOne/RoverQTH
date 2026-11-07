@@ -69,13 +69,8 @@ void Battery::_actionMinimal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     if (minimal == configuration.minimal)      { return; }
     if (!settings::setBatteryMinimal(minimal)) { return; }
 
-    if (!format::voltage(
-        minimal,
-        _minimalValue,
-        sizeof(_minimalValue)
-    )) {
-        text::copy(_minimalValue, sizeof(_minimalValue), "--");
-    }
+    if (!format::voltage(minimal, _minimalValue, sizeof(_minimalValue)))
+        { text::copy(_minimalValue, sizeof(_minimalValue), "--"); }
     field.value = _minimalValue;
     _updateField(tft, field);
 }
@@ -87,13 +82,8 @@ void Battery::_actionMaximal(ST7796S::MSP4021 &tft, Field<_Action> &field) {
     if (maximal == configuration.maximal)      { return; }
     if (!settings::setBatteryMaximal(maximal)) { return; }
 
-    if (!format::voltage(
-        maximal,
-        _maximalValue,
-        sizeof(_maximalValue)
-    )) {
-        text::copy(_maximalValue, sizeof(_maximalValue), "--");
-    }
+    if (!format::voltage(maximal, _maximalValue, sizeof(_maximalValue)))
+        { text::copy(_maximalValue, sizeof(_maximalValue), "--"); }
     field.value = _maximalValue;
     _updateField(tft, field);
 }
@@ -119,21 +109,11 @@ void Battery::_actionRatio(ST7796S::MSP4021 &tft, const Field<_Action> &field) {
     else { value = _previousRatioHigh(value); }
 
     if (!settings::setBatteryRatioHigh(value)) { return; }
-    if (!format::percentage(
-        value,
-        _ratioHighValue,
-        sizeof(_ratioHighValue)
-    )) {
-        text::copy(_ratioHighValue, sizeof(_ratioHighValue), "--");
-    }
+    if (!format::percentage(value, _ratioHighValue, sizeof(_ratioHighValue)))
+        { text::copy(_ratioHighValue, sizeof(_ratioHighValue), "--"); }
 
-    if (!format::percentage(
-        100U - value,
-        _ratioLowValue,
-        sizeof(_ratioLowValue)
-    )) {
-        text::copy(_ratioLowValue, sizeof(_ratioLowValue), "--");
-    }
+    if (!format::percentage(100U - value, _ratioLowValue, sizeof(_ratioLowValue)))
+        { text::copy(_ratioLowValue, sizeof(_ratioLowValue), "--"); }
 
     _ratioHighField.value = _ratioHighValue;
     _ratioLowField.value  = _ratioLowValue;
@@ -145,11 +125,11 @@ void Battery::_actionRatio(ST7796S::MSP4021 &tft, const Field<_Action> &field) {
 void Battery::draw(ST7796S::MSP4021 &tft) {
     grid::draw(tft);
 
-    const int gap   = uiMockup::GAP;
-    const int x     = grid::innerX()       + (gap * 2);
-    const int y     = grid::innerY()       + (gap * 2);
-    const int w     = grid::innerWidth()   - (gap * 4);
-    const int rowH  = 28;
+    const int gap  = uiMockup::GAP;
+    const int x    = grid::innerX()     + (gap * 2);
+    const int y    = grid::innerY()     + (gap * 2);
+    const int w    = grid::innerWidth() - (gap * 4);
+    const int rowH = 28;
 
     int rowY = y + rowH + (gap * 3);
     for (Field<_Action>* field : _fields) {
@@ -164,28 +144,14 @@ void Battery::draw(ST7796S::MSP4021 &tft) {
     const uint8_t ratioHigh = configuration.ratioHigh;
     const uint8_t ratioLow  = 100U - ratioHigh;
 
-    if (!format::voltage(minimal, _minimalValue, sizeof(_minimalValue))) {
-        text::copy(_minimalValue, sizeof(_minimalValue), "--");
-    }
-    if (!format::voltage(maximal, _maximalValue, sizeof(_maximalValue))) {
-        text::copy(_maximalValue, sizeof(_maximalValue), "--");
-    }
-
-    if (!format::percentage(
-        ratioHigh,
-        _ratioHighValue,
-        sizeof(_ratioHighValue)
-    )) {
-        text::copy(_ratioHighValue, sizeof(_ratioHighValue), "--");
-    }
-
-    if (!format::percentage(
-        ratioLow,
-        _ratioLowValue,
-        sizeof(_ratioLowValue)
-    )) {
-        text::copy(_ratioLowValue, sizeof(_ratioLowValue), "--");
-    }
+    if (!format::voltage(minimal,      _minimalValue,   sizeof(_minimalValue)))
+        { text::copy(_minimalValue,   sizeof(_minimalValue),   "--"); }
+    if (!format::voltage(maximal,      _maximalValue,   sizeof(_maximalValue)))
+        { text::copy(_maximalValue,   sizeof(_maximalValue),   "--"); }
+    if (!format::percentage(ratioHigh, _ratioHighValue, sizeof(_ratioHighValue)))
+        { text::copy(_ratioHighValue, sizeof(_ratioHighValue), "--"); }
+    if (!format::percentage(ratioLow, _ratioLowValue,   sizeof(_ratioLowValue)))
+        { text::copy(_ratioLowValue,  sizeof(_ratioLowValue),  "--"); }
 
     _minimalField.value   = _minimalValue;
     _maximalField.value   = _maximalValue;
@@ -199,7 +165,8 @@ void Battery::draw(ST7796S::MSP4021 &tft) {
 
 bool Battery::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     for (Field<_Action>* field : _fields) {
-        if (!_isPressed(*field, x, y)) { continue; }
+        if (!_isPressed(*field, x, y))
+            { continue; }
         switch (field->action) {
             case _Action::MINIMAL:
                 _actionMinimal(tft, *field);

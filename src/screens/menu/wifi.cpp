@@ -39,13 +39,10 @@ namespace text     = utilities::text;
 
 const char* Wifi::_bootModeToText(settings::WifiBootMode mode) {
     switch (mode) {
-        case settings::WifiBootMode::ALWAYS:
-            return "Always";
-        case settings::WifiBootMode::LAST_STATE:
-            return "Last state";
+        case settings::WifiBootMode::ALWAYS:     return "Always";
+        case settings::WifiBootMode::LAST_STATE: return "Last state";
         case settings::WifiBootMode::NEVER:
-        default:
-            return "Never";
+        default:                                 return "Never";
     }
 }
 
@@ -81,7 +78,7 @@ void Wifi::_actionPassword(ST7796S::MSP4021 &tft) {
     _editingAction = _Action::PASS;
 
     tft.KDraw("Password");
-    _mode = Mode::KEYBOARD;
+    _mode          = Mode::KEYBOARD;
 }
 
 void Wifi::_actionBootMode(ST7796S::MSP4021 &tft) {
@@ -147,11 +144,11 @@ void Wifi::_actionLogin(ST7796S::MSP4021 &tft) {
 void Wifi::draw(ST7796S::MSP4021 &tft) {
     grid::draw(tft);
 
-    const int gap   = uiMockup::GAP;
-    const int x     = grid::innerX()     + (gap * 2);
-    const int y     = grid::innerY()     + (gap * 2);
-    const int w     = grid::innerWidth() - (gap * 4);
-    const int rowH  = 28;
+    const int gap  = uiMockup::GAP;
+    const int x    = grid::innerX()     + (gap * 2);
+    const int y    = grid::innerY()     + (gap * 2);
+    const int w    = grid::innerWidth() - (gap * 4);
+    const int rowH = 28;
 
     int rowY = y + rowH + (gap * 3);
     for (Field<_Action>* field : _fields) {
@@ -178,7 +175,8 @@ void Wifi::draw(ST7796S::MSP4021 &tft) {
 }
 
 void Wifi::update(ST7796S::MSP4021 &tft) {
-    if (_mode == Mode::KEYBOARD) { return; }
+    if (_mode == Mode::KEYBOARD)
+        { return; }
     _updateConnectionFields(tft);
 }
 
@@ -186,7 +184,7 @@ bool Wifi::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     if (_mode == Mode::KEYBOARD) {
         if (tft.KUpdate(x, y)) {
             const char* const value = tft.KRead();
-            bool saved = false;
+            bool saved              = false;
 
             switch (_editingAction) {
                 case _Action::SSID:
@@ -202,10 +200,8 @@ bool Wifi::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
                     return true;
             }
 
-            if (!saved) { return true; }
-            if (_editingAction == _Action::PASS) {
-                tft.KClear();
-            }
+            if (!saved)                          { return true; }
+            if (_editingAction == _Action::PASS) { tft.KClear(); }
 
             _editingAction = _Action::NONE;
             _mode          = Mode::GRID;
@@ -216,7 +212,8 @@ bool Wifi::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     }
 
     for (Field<_Action>* field : _fields) {
-        if (!_isPressed(*field, x, y)) { continue; }
+        if (!_isPressed(*field, x, y))
+            { continue; }
         switch (field->action) {
             case _Action::SSID:
                 _actionSSID(tft);

@@ -26,6 +26,7 @@
 namespace RoverQTH {
     /** @brief Initializes the complete RoverQTH application. */
     void setup();
+
     /** @brief Executes one iteration of the RoverQTH application loop. */
     void loop();
 }

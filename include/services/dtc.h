@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -37,7 +37,7 @@ namespace services::dtc {
 
     /**
      * Indicates whether the clock has received a valid UTC synchronization.
-     * @return True when synchronized, otherwise false.
+     * @return `true` when synchronized, otherwise `false`.
      */
     bool isSynced();
 
@@ -55,7 +55,7 @@ namespace services::dtc {
      * synchronized, a placeholder string is produced.
      * @param buffer Destination buffer.
      * @param size   Total destination capacity.
-     * @return True if a complete string was produced, otherwise false.
+     * @return `true` when a complete string was produced, otherwise `false`.
      */
     bool getDate(char* buffer, size_t size);
 
@@ -66,13 +66,13 @@ namespace services::dtc {
      * @param buffer     Destination buffer.
      * @param size       Total destination capacity.
      * @param withSecond True to include seconds.
-     * @return True if a complete string was produced, otherwise false.
+     * @return `true` when a complete string was produced, otherwise `false`.
      */
     bool getTime(char* buffer, size_t size, bool withSecond = true);
 
     /**
      * Clears the current UTC synchronization.
-     * After reset(), isSynced() returns false and now() returns zero
+     * After reset(), isSynced() returns `false` and now() returns zero
      * until a new valid synchronization is received.
      */
     void reset();

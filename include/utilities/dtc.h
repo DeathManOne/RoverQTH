@@ -29,28 +29,58 @@
 namespace utilities::dtc {
     /**
      * @brief Converts UTC calendar components to a Unix timestamp.
+     * @param year Four-digit calendar year, starting from 1970.
+     * @param month Calendar month from 1 to 12.
+     * @param day Calendar day valid for the supplied month and year.
+     * @param hour Hour from 0 to 23.
+     * @param minute Minute from 0 to 59.
+     * @param second Second from 0 to 59.
      * @return Seconds elapsed since the Unix epoch, or zero for an invalid date.
      */
-    uint32_t toEpochUTC(int year, int month, int day,
-        int hour, int minute, int second
-    );
+    uint32_t toEpochUTC(int year, int month, int day, int hour, int minute, int second);
 
-    /** @brief Formats a Unix timestamp as an ISO 8601 UTC date and time. */
+    /**
+     * @brief Formats a Unix timestamp as an ISO 8601 UTC date and time.
+     * @param utcEpoch Unix timestamp expressed in UTC seconds.
+     * @param buffer Destination buffer for the null-terminated formatted value.
+     * @param size Total destination capacity, including the null terminator.
+     * @return `true` when the timestamp is valid and the complete value was written,
+     * otherwise `false`.
+     */
     bool formatISO8601(uint32_t utcEpoch, char* buffer, size_t size);
 
-    /** @brief Formats a Unix timestamp as a calendar date. */
+    /**
+     * @brief Formats a Unix timestamp as a calendar date.
+     * An invalid timestamp produces the placeholder `---- -- --`.
+     * @param utcEpoch Unix timestamp expressed in UTC seconds.
+     * @param buffer Destination buffer for the null-terminated formatted value.
+     * @param size Total destination capacity, including the null terminator.
+     * @return `true` when the complete date or placeholder was written, otherwise `false`.
+     */
     bool formatDate(uint32_t utcEpoch, char* buffer, size_t size);
 
     /**
      * @brief Formats explicit time components.
+     * Invalid components produce a placeholder using the requested format.
+     * @param hour Hour from 0 to 23.
+     * @param minute Minute from 0 to 59.
+     * @param second Second from 0 to 59.
      * @param valid Whether the supplied time is valid.
+     * @param buffer Destination buffer for the null-terminated formatted value.
+     * @param size Total destination capacity, including the null terminator.
      * @param withSecond Whether seconds must be included.
-     * @return true when the formatted value fits in the destination buffer.
+     * @return `true` when the complete time or placeholder was written, otherwise `false`.
      */
-    bool formatTime(uint8_t hour, uint8_t minute, uint8_t second,
-        bool valid, char* buffer, size_t size, bool withSecond = true
-    );
+    bool formatTime(uint8_t hour, uint8_t minute, uint8_t second, bool valid, char* buffer, size_t size, bool withSecond = true);
 
-    /** @brief Formats the time portion of a Unix timestamp. */
+    /**
+     * @brief Formats the time portion of a Unix timestamp.
+     * An invalid timestamp produces a placeholder using the requested format.
+     * @param utcEpoch Unix timestamp expressed in UTC seconds.
+     * @param buffer Destination buffer for the null-terminated formatted value.
+     * @param size Total destination capacity, including the null terminator.
+     * @param withSecond Whether seconds must be included.
+     * @return `true` when the complete time or placeholder was written, otherwise `false`.
+     */
     bool formatTime(uint32_t utcEpoch, char* buffer, size_t size, bool withSecond = true);
 }

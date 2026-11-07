@@ -77,10 +77,7 @@ namespace {
         }
 
         if (_gps->getDateValid() && _gps->getTimeValid()) {
-            const uint32_t utcEpoch = uDtc::toEpochUTC(
-                _dateYear, _dateMonth,  _dateDay,
-                next.hour, next.minute, next.second
-            );
+            const uint32_t utcEpoch = uDtc::toEpochUTC(_dateYear, _dateMonth, _dateDay, next.hour, next.minute, next.second);
             if (utcEpoch != 0U) { dtc::sync(utcEpoch); }
         }
 
@@ -109,9 +106,7 @@ namespace {
         }
 
         static constexpr uint32_t BAUD_COUNT    = 4U;
-        static const uint32_t bauds[BAUD_COUNT] = {
-            9600U, 38400U, 57600U, 115200U
-        };
+        static const uint32_t bauds[BAUD_COUNT] = {9600U, 38400U, 57600U, 115200U};
 
         for (const uint32_t baud : bauds) {
             uart.begin(baud, SERIAL_8N1, rx, tx);
@@ -148,11 +143,7 @@ void gps::begin(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const 
         return;
     }
 
-    storage::appendErrorRecord(
-        result == GPSInitResult::ALLOCATION_FAILED
-            ? "GPS_ALLOCATION_FAILED"
-            : "GPS_INIT_FAILED"
-    );
+    storage::appendErrorRecord(result == GPSInitResult::ALLOCATION_FAILED ? "GPS_ALLOCATION_FAILED" : "GPS_INIT_FAILED");
 }
 
 bool gps::restart(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, const uint32_t finalBaud, const uint32_t timeout) {
@@ -175,11 +166,7 @@ bool gps::restart(HardwareSerial &uart, const uint8_t rx, const uint8_t tx, cons
         return true;
     }
 
-    storage::appendErrorRecord(
-        result == GPSInitResult::ALLOCATION_FAILED
-            ? "GPS_RESTART_ALLOCATION_FAILED"
-            : "GPS_RESTART_FAILED"
-    );
+    storage::appendErrorRecord(result == GPSInitResult::ALLOCATION_FAILED ? "GPS_RESTART_ALLOCATION_FAILED" : "GPS_RESTART_FAILED");
     return false;
 }
 
@@ -188,8 +175,8 @@ bool gps::isInitialized() {
 }
 
 bool gps::update(uint32_t timeoutMs) {
-    if (!_gps)
-        { return false; }
+    if (!_gps) { return false; }
+
     const uint32_t start = millis();
     do {
         _gps->checkUblox();
@@ -213,15 +200,15 @@ uint8_t gps::getAcquisitionProgress() {
     update();
 
     Snapshot snapshot {};
-    if (!getSnapshot(snapshot)) { return 0; }
+    if (!getSnapshot(snapshot))    { return 0; }
 
     uint8_t progress = 0;
     if (snapshot.satellites >= 1U) { progress += 10U; }
     if (snapshot.satellites >= 4U) { progress += 15U; }
     if (snapshot.satellites >= 8U) { progress += 10U; }
 
-    if (snapshot.fixType >= 2U) { progress += 20U; }
-    if (snapshot.fixType >= 3U) { progress += 20U; }
+    if (snapshot.fixType >= 2U)    { progress += 20U; }
+    if (snapshot.fixType >= 3U)    { progress += 20U; }
 
     const bool goodHDOP      = snapshot.hdop > 0.0 && snapshot.hdop < gps::HDOP_FAIR;
     const bool excellentHDOP = snapshot.hdop > 0.0 && snapshot.hdop < gps::HDOP_GOOD;

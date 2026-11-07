@@ -170,7 +170,7 @@ bool navigation::startMark() {
     if (!dtc::isSynced()) { return false; }
 
     const uint32_t utc = dtc::now();
-    if (utc == 0U) { return false; }
+    if (utc == 0U)        { return false; }
 
     const uint32_t startedAt = millis();
 
@@ -204,14 +204,14 @@ bool navigation::startMark() {
 }
 
 bool navigation::restoreMark(const Coordinate& start, const uint32_t startUTC) {
-    if (!_isValidCoordinate(start))         { return false; }
-    if (!dtc::isSynced() || startUTC == 0U) { return false; }
+    if (!_isValidCoordinate(start))                { return false; }
+    if (!dtc::isSynced() || startUTC == 0U)        { return false; }
 
     const uint32_t currentUTC = dtc::now();
     if (currentUTC == 0U || currentUTC < startUTC) { return false; }
 
     const uint32_t elapsedSeconds = currentUTC - startUTC;
-    if (elapsedSeconds > UINT32_MAX / 1000U) { return false; }
+    if (elapsedSeconds > UINT32_MAX / 1000U)       { return false; }
 
     const uint32_t restoredStartedAt = millis() - elapsedSeconds * 1000U;
 
@@ -238,7 +238,7 @@ bool navigation::stopMark() {
     if (!dtc::isSynced()) { return false; }
 
     const uint32_t utc = dtc::now();
-    if (utc == 0U) { return false; }
+    if (utc == 0U)        { return false; }
 
     const uint32_t stoppedAt = millis();
 
@@ -302,44 +302,22 @@ bool navigation::getMarkDisplaySnapshot(MarkDisplaySnapshot& snapshot) {
     snapshot.start = data.mark.start;
 
     if (data.state == MarkState::READY_TO_SAVE && data.mark.hasEnd) {
-        snapshot.elapsedSeconds = (
-            data.mark.stoppedAtMillis - data.mark.startedAtMillis
-        ) / 1000U;
+        snapshot.elapsedSeconds = (data.mark.stoppedAtMillis - data.mark.startedAtMillis) / 1000U;
+        const double distanceKm = distance::betweenKilometers(data.mark.end.latitude, data.mark.end.longitude, data.mark.start.latitude, data.mark.start.longitude);
+        snapshot.distanceKm     = distanceKm;
 
-        const double distanceKm = distance::betweenKilometers(
-            data.mark.end.latitude,   data.mark.end.longitude,
-            data.mark.start.latitude, data.mark.start.longitude
-        );
-
-        snapshot.distanceKm = distanceKm;
-
-        if (distanceKm > 0.0) {
-            snapshot.bearingDeg = distance::bearingDegrees(
-                data.mark.end.latitude,   data.mark.end.longitude,
-                data.mark.start.latitude, data.mark.start.longitude
-            );
-        }
+        if (distanceKm > 0.0)
+            { snapshot.bearingDeg = distance::bearingDegrees(data.mark.end.latitude, data.mark.end.longitude, data.mark.start.latitude, data.mark.start.longitude); }
         return true;
     }
 
-    snapshot.elapsedSeconds = (
-        millis() - data.mark.startedAtMillis
-    ) / 1000U;
+    snapshot.elapsedSeconds = (millis() - data.mark.startedAtMillis) / 1000U;
 
     if (!data.hasCurrent || !data.currentFixValid) { return true; }
-    const double distanceKm = distance::betweenKilometers(
-        data.current.latitude,    data.current.longitude,
-        data.mark.start.latitude, data.mark.start.longitude
-    );
+    const double distanceKm = distance::betweenKilometers(data.current.latitude, data.current.longitude, data.mark.start.latitude, data.mark.start.longitude);
 
     snapshot.distanceKm = distanceKm;
-
-    if (distanceKm > 0.0) {
-        snapshot.bearingDeg = distance::bearingDegrees(
-            data.current.latitude,    data.current.longitude,
-            data.mark.start.latitude, data.mark.start.longitude
-        );
-    }
-
+    if (distanceKm > 0.0)
+        { snapshot.bearingDeg = distance::bearingDegrees(data.current.latitude,    data.current.longitude, data.mark.start.latitude, data.mark.start.longitude); }
     return true;
 }

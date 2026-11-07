@@ -1,5 +1,5 @@
 /*
- * exemples/basic/basic.ino
+ * examples/basic/basic.ino
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne

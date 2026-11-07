@@ -64,7 +64,7 @@ namespace {
     uint32_t _nextScreenRefresh  = 0;
     uint32_t _nextBatteryRefresh = 0;
 
-    constexpr uint32_t GPS_SAMPLE_PERIOD_MS = 1000U / gps::NAVIGATION_RATE_HZ;
+    constexpr uint32_t GPS_SAMPLE_PERIOD_MS  = 1000U / gps::NAVIGATION_RATE_HZ;
     constexpr uint32_t GPS_UPDATE_TIMEOUT_MS = GPS_SAMPLE_PERIOD_MS + 100;
     constexpr uint32_t SCREEN_REFRESH_MS     = 1000;
     constexpr uint32_t BATTERY_PERIOD_MS     = 5000;
@@ -72,7 +72,7 @@ namespace {
     void _gpsTask(void*) {
         while (true) {
             const uint32_t startMs = millis();
-            const bool updated = gps::update(GPS_UPDATE_TIMEOUT_MS);
+            const bool updated     = gps::update(GPS_UPDATE_TIMEOUT_MS);
 
             gps::Snapshot snapshot {};
             if (updated && gps::getSnapshot(snapshot)) {
@@ -81,11 +81,7 @@ namespace {
                     snapshot.longitude,
                     snapshot.altitude
                 };
-
-                navigation::updateGPSFix(
-                    coordinate,
-                    snapshot.fixValid && snapshot.positionValid
-                );
+                navigation::updateGPSFix(coordinate, snapshot.fixValid && snapshot.positionValid);
             } else { navigation::updateGPSFix({}, false); }
 
             const uint32_t elapsedMs = millis() - startMs;
@@ -99,28 +95,21 @@ void app::setup() {
     storage::appendLogRecord("SYSTEM_START");
 
     char versionRecord[48];
-    const int versionWritten = snprintf(
-        versionRecord, sizeof(versionRecord),
-        "FIRMWARE_VERSION version=%s",
-        PROJECT_VERSION
-    );
+    const int versionWritten = snprintf(versionRecord, sizeof(versionRecord), "FIRMWARE_VERSION version=%s", PROJECT_VERSION);
 
-    if (versionWritten > 0 &&
-        static_cast<size_t>(versionWritten) < sizeof(versionRecord)
-    ) { storage::appendLogRecord(versionRecord); }
+    if (versionWritten > 0 && static_cast<size_t>(versionWritten) < sizeof(versionRecord))
+        { storage::appendLogRecord(versionRecord); }
 
     char resetRecord[64];
     const int written = snprintf(
-        resetRecord, sizeof(resetRecord),
-        "RESET_REASON esp=%d cpu0=%d cpu1=%d",
+        resetRecord, sizeof(resetRecord), "RESET_REASON esp=%d cpu0=%d cpu1=%d",
         static_cast<int>(esp_reset_reason()),
         static_cast<int>(rtc_get_reset_reason(0)),
         static_cast<int>(rtc_get_reset_reason(1))
     );
 
-    if (written > 0 &&
-        static_cast<size_t>(written) < sizeof(resetRecord)
-    ) { storage::appendLogRecord(resetRecord); }
+    if (written > 0 && static_cast<size_t>(written) < sizeof(resetRecord))
+        { storage::appendLogRecord(resetRecord); }
 
     settings::begin();
     power::begin();
@@ -129,7 +118,6 @@ void app::setup() {
     if (battery::isCritical()) { power::shutdown(power::ShutdownReason::BATTERY_CRITICAL); }
 
     sDisplay::begin();
-
     navigation::begin();
     wifi::begin();
 
@@ -137,7 +125,8 @@ void app::setup() {
     update::begin();
 
     ota::begin();
-    if (ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE ||
+    if(
+        ota::snapshot(ota::Type::SUMMITS).status != ota::Status::UNAVAILABLE ||
         ota::snapshot(ota::Type::PARKS).status   != ota::Status::UNAVAILABLE
     ) { sDisplay::setButtonState(sDisplay::Button::OTA, sDisplay::ButtonState::READY); }
 
@@ -146,35 +135,29 @@ void app::setup() {
     _nextScreenRefresh   = millis() + SCREEN_REFRESH_MS;
     _nextBatteryRefresh  = millis() + BATTERY_PERIOD_MS;
 
-    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(
-        _gpsTask, "GNSS", 8192, nullptr, 1, nullptr, 0
-    );
+    const BaseType_t gpsTaskResult = xTaskCreatePinnedToCore(_gpsTask, "GNSS", 8192, nullptr, 1, nullptr, 0);
 
     if (gpsTaskResult != pdPASS) { storage::appendErrorRecord("GPS_TASK_CREATE_FAILED"); }
     else {
         char memoryRecord[96];
         const int memoryWritten = snprintf(
-            memoryRecord, sizeof(memoryRecord),
-            "MEMORY_READY free=%lu minimum=%lu largest=%lu",
+            memoryRecord, sizeof(memoryRecord), "MEMORY_READY free=%lu minimum=%lu largest=%lu",
             static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
             static_cast<unsigned long>(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)),
             static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))
         );
 
-        if (memoryWritten > 0 &&
-            static_cast<size_t>(memoryWritten) < sizeof(memoryRecord)
-        ) { storage::appendLogRecord(memoryRecord); }
+        if (memoryWritten > 0 && static_cast<size_t>(memoryWritten) < sizeof(memoryRecord))
+            { storage::appendLogRecord(memoryRecord); }
 
         char bootRecord[48];
         const int bootWritten = snprintf(
-            bootRecord, sizeof(bootRecord),
-            "SYSTEM_BOOT_DURATION duration_ms=%lu",
+            bootRecord, sizeof(bootRecord), "SYSTEM_BOOT_DURATION duration_ms=%lu",
             static_cast<unsigned long>(millis())
         );
 
-        if (bootWritten > 0 &&
-            static_cast<size_t>(bootWritten) < sizeof(bootRecord)
-        ) { storage::appendLogRecord(bootRecord); }
+        if (bootWritten > 0 && static_cast<size_t>(bootWritten) < sizeof(bootRecord))
+            { storage::appendLogRecord(bootRecord); }
         storage::appendLogRecord("SYSTEM_READY");
     }
 }

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -78,34 +78,34 @@ namespace services::update {
 
     /**
      * @brief Indicates whether an update operation is currently running.
-     * @return true if an operation is in progress, false otherwise.
+     * @return `true` when an operation is in progress, otherwise `false`.
      */
     bool isBusy();
 
     /**
      * @brief Starts checking for a new firmware version.
-     * @return true if the asynchronous check was started, false if Wi-Fi is
+     * @return `true` when the asynchronous check was started, `false` when Wi-Fi is
      *         unavailable, or another update/search task is active.
      */
     bool checkFirmwareUpdate();
 
     /**
      * @brief Starts checking for a SOTA database update.
-     * @return true if the asynchronous check was started, false if the SD card
+     * @return `true` when the asynchronous check was started, `false` when the SD card
      *         or Wi-Fi is unavailable, or another update/search task is active.
      */
     bool checkSotaUpdate();
 
     /**
      * @brief Starts checking for a POTA database update.
-     * @return true if the asynchronous check was started, false if the SD card
+     * @return `true` when the asynchronous check was started, `false` when the SD card
      *         or Wi-Fi is unavailable, or another update/search task is active.
      */
     bool checkPotaUpdate();
 
     /**
      * @brief Starts the firmware update.
-     * @return true if the asynchronous installation was started, false if Wi-Fi
+     * @return `true` when the asynchronous installation was started, `false` when Wi-Fi
      *         is unavailable, no update is available, or another update/search
      *         task is active.
      */
@@ -113,7 +113,7 @@ namespace services::update {
 
     /**
      * @brief Starts downloading, converting, and installing the SOTA database.
-     * @return true if the asynchronous installation was started, false if no
+     * @return `true` when the asynchronous installation was started, `false` when no
      *         update is available, a dependency is unavailable, or another
      *         update/search task is active.
      */
@@ -121,7 +121,7 @@ namespace services::update {
 
     /**
      * @brief Starts downloading, converting, and installing the POTA database.
-     * @return true if the asynchronous installation was started, false if no
+     * @return `true` when the asynchronous installation was started, `false` when no
      *         update is available, a dependency is unavailable, or another
      *         update/search task is active.
      */

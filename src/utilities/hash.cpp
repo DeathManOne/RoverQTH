@@ -51,7 +51,8 @@ bool hash::isSha256Text(const char* const value) {
 
     for (size_t characterIndex = 0; characterIndex < SHA256_TEXT_SIZE - 1; ++characterIndex) {
         const unsigned char character = static_cast<unsigned char>(value[characterIndex]);
-        if (!std::isxdigit(character)) { return false; }
+        if (!std::isxdigit(character))
+            { return false; }
     }
     return true;
 }
@@ -60,10 +61,12 @@ bool hash::normalizeSha256Text(const char* const input, char* const output, cons
     if (output == nullptr || size == 0) { return false; }
     output[0] = '\0';
 
-    if (!isSha256Text(input) || size < SHA256_TEXT_SIZE) { return false; }
-    for (size_t characterIndex = 0; characterIndex < SHA256_TEXT_SIZE - 1; ++characterIndex) {
-        output[characterIndex] = static_cast<char>(std::tolower(static_cast<unsigned char>(input[characterIndex])));
-    }
+    if (!isSha256Text(input) || size < SHA256_TEXT_SIZE)
+        { return false; }
+
+    for (size_t characterIndex = 0; characterIndex < SHA256_TEXT_SIZE - 1; ++characterIndex)
+        { output[characterIndex] = static_cast<char>(std::tolower(static_cast<unsigned char>(input[characterIndex]))); }
+
     output[SHA256_TEXT_SIZE - 1] = '\0';
     return true;
 }
@@ -83,7 +86,7 @@ bool hash::Sha256::begin() {
 
 bool hash::Sha256::update(const uint8_t* const data, const size_t size) {
     if (!_active || (data == nullptr && size > 0)) { return false; }
-    if (size == 0) { return true; }
+    if (size == 0)                                 { return true; }
 
     if (mbedtls_sha256_update_ret(&_context, data, size) != 0) {
         _active = false;
@@ -93,11 +96,12 @@ bool hash::Sha256::update(const uint8_t* const data, const size_t size) {
 }
 
 bool hash::Sha256::finish(char* const output, const size_t size) {
-    if (output == nullptr || size == 0) { return false; }
+    if (output == nullptr || size == 0)      { return false; }
     output[0] = '\0';
 
     if (!_active || size < SHA256_TEXT_SIZE) { return false; }
     uint8_t digest[SHA256_DIGEST_SIZE];
+
     const bool success = mbedtls_sha256_finish_ret(&_context, digest) == 0;
 
     _active = false;

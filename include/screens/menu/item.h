@@ -27,14 +27,5 @@
 
 namespace screens::menu {
     /** @brief Identifies each page available through menu navigation. */
-    enum class Item : uint8_t {
-        GENERAL,
-        DISPLAYER,
-        WIFI,
-        UPDATES,
-        STORAGE,
-        BATTERY,
-        ABOUT,
-        COUNT
-    };
+    enum class Item : uint8_t {GENERAL, DISPLAYER, WIFI, UPDATES, STORAGE, BATTERY, ABOUT, COUNT};
 }

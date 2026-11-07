@@ -7,7 +7,7 @@ Versioning follows Semantic Versioning.
 
 ---
 
-## [x.xx.xx] - xxxx-xx-xx
+## [1.11.0] - 2026-11-07
 
 ### Added
 

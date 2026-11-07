@@ -55,17 +55,14 @@ namespace {
         return true;
     }
 
-    bool _parseCoordinate(const char* const value, const double minimum,
-        const double maximum, double& coordinate
-    ) {
+    bool _parseCoordinate(const char* const value, const double minimum, const double maximum, double& coordinate) {
         if (value == nullptr || value[0] == '\0') { return false; }
 
         errno               = 0;
         char* end           = nullptr;
         const double parsed = std::strtod(value, &end);
-        if (errno == ERANGE || end == value || *end != '\0' ||
-            !std::isfinite(parsed) || parsed < minimum || parsed > maximum
-        ) { return false; }
+        if (errno == ERANGE || end == value || *end != '\0' || !std::isfinite(parsed) || parsed < minimum || parsed > maximum)
+            { return false; }
 
         coordinate = parsed;
         return true;
@@ -96,55 +93,40 @@ bool parks::parseCsvRecord(const char* const line, parksDB::Park& park, bool& ac
         if (fieldIndex == 6U) { destination = longitude;   destinationSize = sizeof(longitude); }
 
         bool delimiter = false;
-        if (!csv::readField(cursor, destination, destinationSize, delimiter) ||
-            delimiter != (fieldIndex + 1U < CSV_FIELD_COUNT)
-        ) { return false; }
+        if (!csv::readField(cursor, destination, destinationSize, delimiter) || delimiter != (fieldIndex + 1U < CSV_FIELD_COUNT))
+        { return false; }
     }
 
     if (*cursor != '\0' || !_parseActive(activeValue, active)) { return false; }
     if (!active) { return true; }
 
-    if (code[0] == '\0' || area[0] == '\0' ||
-        latitude[0] == '\0' || longitude[0] == '\0'
-    ) {
+    if (code[0] == '\0' || area[0] == '\0' || latitude[0] == '\0' || longitude[0] == '\0') {
         active = false;
         return true;
     }
 
-    if (!_parseCoordinate(latitude,  -90.0,  90.0,  park.latitude) ||
-        !_parseCoordinate(longitude, -180.0, 180.0, park.longitude)
-    ) {
+    if (!_parseCoordinate(latitude,  -90.0,  90.0,  park.latitude) || !_parseCoordinate(longitude, -180.0, 180.0, park.longitude)) {
         active = false;
         park   = parksDB::Park {};
         return true;
     }
 
-    const size_t areaLength = std::strlen(area) < sizeof(park.area) - 1U
-        ? std::strlen(area)
-        : sizeof(park.area) - 1U;
+    const size_t areaLength = std::strlen(area) < sizeof(park.area) - 1U ? std::strlen(area) : sizeof(park.area) - 1U;
 
-    if (!csv::copyField(code, std::strlen(code), park.code, sizeof(park.code)) ||
-        !csv::copyField(area, areaLength,        park.area, sizeof(park.area))
-    ) { return false; }
+    if (!csv::copyField(code, std::strlen(code), park.code, sizeof(park.code)) || !csv::copyField(area, areaLength, park.area, sizeof(park.area)))
+        { return false; }
     return true;
 }
 
-bool parks::selectNearest(const double latitude, const double longitude,
-    const parksDB::Park& candidate, bool& found,
-    parksDB::Park& nearest,         double& distanceKm
-) {
+bool parks::selectNearest(const double latitude, const double longitude, const parksDB::Park& candidate, bool& found, parksDB::Park& nearest, double& distanceKm) {
     bool selected = false;
 
-    if (!ota::selectNearestDistance(
-        latitude,           longitude,
-        candidate.latitude, candidate.longitude,
-        found, distanceKm, selected
-    )) { return false; }
+    if (!ota::selectNearestDistance(latitude, longitude, candidate.latitude, candidate.longitude, found, distanceKm, selected))
+        { return false; }
 
     if (selected) {
         nearest = candidate;
         found   = true;
     }
-
     return true;
 }

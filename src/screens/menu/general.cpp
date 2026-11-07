@@ -140,7 +140,7 @@ void General::draw(ST7796S::MSP4021 &tft) {
     }
 
     const settings::General configuration = settings::general();
-    const char* const suffixText = settings::callsignSuffixText(configuration.suffix);
+    const char* const suffixText          = settings::callsignSuffixText(configuration.suffix);
     text::copy(_callsignValue, sizeof(_callsignValue), configuration.callsign);
 
     _callsignField.value   = _callsignValue;
@@ -164,7 +164,8 @@ bool General::handleTouch(ST7796S::MSP4021 &tft, int x, int y) {
     if (_mode == Mode::KEYBOARD) {
         if (tft.KUpdate(x, y)) {
             const char* const value = tft.KRead();
-            if (!settings::setCallsign(value)) { return true; }
+            if (!settings::setCallsign(value))
+                { return true; }
             _mode = Mode::GRID;
             tft.setTextScale(1);
             return true;

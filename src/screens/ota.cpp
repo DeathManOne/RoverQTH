@@ -68,84 +68,40 @@ namespace {
     constexpr int RESULT_ROW_HEIGHT        = 34;
 
     constexpr const char* RADIUS_LABELS[] = {
-        "RADIUS 5 KM",
-        "RADIUS 10 KM",
-        "RADIUS 15 KM",
-        "RADIUS 20 KM",
-        "RADIUS 25 KM",
-        "RADIUS 50 KM",
-        "RADIUS 75 KM",
-        "RADIUS 100 KM",
-        "RADIUS 125 KM",
-        "RADIUS 150 KM",
-        "RADIUS 175 KM",
-        "RADIUS 200 KM",
-        "RADIUS 250 KM",
-        "RADIUS ALL"
+        "RADIUS 5 KM",   "RADIUS 10 KM",  "RADIUS 15 KM",
+        "RADIUS 20 KM",  "RADIUS 25 KM",  "RADIUS 50 KM",
+        "RADIUS 75 KM",  "RADIUS 100 KM", "RADIUS 125 KM",
+        "RADIUS 150 KM", "RADIUS 175 KM", "RADIUS 200 KM",
+        "RADIUS 250 KM", "RADIUS ALL"
     };
 
     constexpr double RADIUS_VALUES[] = {
-        5.0,
-        10.0,
-        15.0,
-        20.0,
-        25.0,
-        50.0,
-        75.0,
-        100.0,
-        125.0,
-        150.0,
-        175.0,
-        200.0,
-        250.0,
-        0.0
+        5.0,   10.0,  15.0,  20.0,
+        25.0,  50.0,  75.0,  100.0,
+        125.0, 150.0, 175.0, 200.0,
+        250.0, 0.0
     };
 
     constexpr size_t RADIUS_COUNT = sizeof(RADIUS_VALUES) / sizeof(RADIUS_VALUES[0]);
 
-    static_assert(
-        RADIUS_COUNT == sizeof(RADIUS_LABELS) / sizeof(RADIUS_LABELS[0]),
-        "OTA radius labels and values mismatch"
-    );
-
-    static_assert(
-        DEFAULT_RADIUS_INDEX < RADIUS_COUNT,
-        "OTA default radius index is invalid"
-    );
+    static_assert(RADIUS_COUNT == sizeof(RADIUS_LABELS) / sizeof(RADIUS_LABELS[0]), "OTA radius labels and values mismatch");
+    static_assert(DEFAULT_RADIUS_INDEX < RADIUS_COUNT,                              "OTA default radius index is invalid");
 }
 
-void Ota::_drawChoiceButton(ST7796S::MSP4021 &tft, const button::ButtonArea &area,
-    const char* const label, const bool available, const bool selected
-) {
-    tft.rectFill(
-        area.x,     area.y,
-        area.width, area.height,
-        theme::BLACK
-    );
+void Ota::_drawChoiceButton(ST7796S::MSP4021 &tft, const button::ButtonArea &area, const char* const label, const bool available, const bool selected) {
+    tft.rectFill(area.x, area.y, area.width, area.height, theme::BLACK);
 
     if (available && selected) {
-        tft.rectRoundFill(
-            area.x,           area.y,
-            area.width,       area.height,
-            uiMockup::RADIUS, theme::GREEN
-        );
+        tft.rectRoundFill(area.x, area.y, area.width, area.height, uiMockup::RADIUS, theme::GREEN);
         tft.setFont(ST7796S::RobotoMono_Bold_16);
         tft.setTextColor(theme::BLACK);
     } else {
-        tft.rectRound(
-            area.x,           area.y,
-            area.width,       area.height,
-            uiMockup::RADIUS, theme::BORDER
-        );
+        tft.rectRound(area.x, area.y, area.width, area.height, uiMockup::RADIUS, theme::BORDER);
         tft.setFont(ST7796S::RobotoMono_Regular_14);
         tft.setTextColor(available ? theme::WHITE : theme::GREY);
     }
 
-    tft.textCenter(
-        area.x,     area.y,
-        area.width, area.height,
-        label
-    );
+    tft.textCenter(area.x, area.y, area.width, area.height, label);
 }
 
 void Ota::_drawTypeSelector(ST7796S::MSP4021 &tft) {
@@ -157,20 +113,12 @@ void Ota::_drawTypeSelector(ST7796S::MSP4021 &tft) {
     const int sotaX   = right::innerX() + gap;
     const int potaX   = sotaX + buttonW + gap;
 
-    _sotaTypeButton = button::makeArea(sotaX, buttonY, buttonW, buttonH);
-    _potaTypeButton = button::makeArea(potaX, buttonY, buttonW, buttonH);
+    _sotaTypeButton   = button::makeArea(sotaX, buttonY, buttonW, buttonH);
+    _potaTypeButton   = button::makeArea(potaX, buttonY, buttonW, buttonH);
 
     const bool controlsEnabled = !_searchButtonShowingStop;
-
-    const bool sotaAvailable =
-        controlsEnabled &&
-        sOta::snapshot(sOta::Type::SUMMITS).status !=
-            sOta::Status::UNAVAILABLE;
-
-    const bool potaAvailable =
-        controlsEnabled &&
-        sOta::snapshot(sOta::Type::PARKS).status !=
-            sOta::Status::UNAVAILABLE;
+    const bool sotaAvailable   = controlsEnabled && sOta::snapshot(sOta::Type::SUMMITS).status != sOta::Status::UNAVAILABLE;
+    const bool potaAvailable   = controlsEnabled && sOta::snapshot(sOta::Type::PARKS).status != sOta::Status::UNAVAILABLE;
 
     _drawChoiceButton(tft, _sotaTypeButton, "SOTA", sotaAvailable, _searchType == SearchType::SOTA);
     _drawChoiceButton(tft, _potaTypeButton, "POTA", potaAvailable, _searchType == SearchType::POTA);
@@ -183,38 +131,14 @@ void Ota::_drawModeSelector(ST7796S::MSP4021 &tft) {
     const int buttonW = right::innerWidth() - (gap * 2);
     const int buttonH = rowH - (gap * 2);
 
-    _nearestModeButton = button::makeArea(
-        buttonX,
-        right::innerY() + rowH + gap,
-        buttonW,
-        buttonH
-    );
-
-    _codeModeButton = button::makeArea(
-        buttonX,
-        right::innerY() + (rowH * 2) + gap,
-        buttonW,
-        buttonH
-    );
-
-    _sortButton = button::makeArea(
-        buttonX,
-        right::innerY() + (rowH * 3) + gap,
-        buttonW,
-        buttonH
-    );
+    _nearestModeButton = button::makeArea(buttonX, right::innerY() + rowH + gap,       buttonW, buttonH);
+    _codeModeButton    = button::makeArea(buttonX, right::innerY() + (rowH * 2) + gap, buttonW, buttonH);
+    _sortButton        = button::makeArea(buttonX, right::innerY() + (rowH * 3) + gap, buttonW, buttonH);
 
     const bool controlsEnabled = !_searchButtonShowingStop;
 
-    _drawChoiceButton(
-        tft, _nearestModeButton, "NEAREST",
-        controlsEnabled, _searchMode == SearchMode::NEAREST
-    );
-
-    _drawChoiceButton(
-        tft, _codeModeButton, "CODE",
-        controlsEnabled, _searchMode == SearchMode::CODE
-    );
+    _drawChoiceButton(tft, _nearestModeButton, "NEAREST", controlsEnabled, _searchMode == SearchMode::NEAREST);
+    _drawChoiceButton(tft, _codeModeButton,    "CODE",    controlsEnabled, _searchMode == SearchMode::CODE);
 
     const char* sortLabel = nullptr;
     switch (_sortMode) {
@@ -230,13 +154,7 @@ void Ota::_drawModeSelector(ST7796S::MSP4021 &tft) {
             break;
     }
 
-    _drawChoiceButton(
-        tft,
-        _sortButton,
-        sortLabel,
-        controlsEnabled,
-        false
-    );
+    _drawChoiceButton(tft, _sortButton, sortLabel, controlsEnabled, false);
 }
 
 void Ota::_drawParameter(ST7796S::MSP4021 &tft) {
@@ -252,9 +170,7 @@ void Ota::_drawParameter(ST7796S::MSP4021 &tft) {
 
     switch (_searchMode) {
         case SearchMode::CODE:
-            label = _codePrefix[0] != '\0'
-                ? _codePrefix
-                : "ENTER CODE";
+            label = _codePrefix[0] != '\0' ? _codePrefix : "ENTER CODE";
             break;
         case SearchMode::NEAREST:
         default:
@@ -281,26 +197,14 @@ void Ota::_drawSearchButton(ST7796S::MSP4021 &tft, const bool searching) {
 
     _searchButton = button::makeArea(buttonX, buttonY, buttonW, buttonH);
 
-    tft.rectFill(
-        _searchButton.x,     _searchButton.y,
-        _searchButton.width, _searchButton.height,
-        theme::BLACK
-    );
+    tft.rectFill(_searchButton.x, _searchButton.y, _searchButton.width, _searchButton.height, theme::BLACK);
 
     const uint16_t color = searching ? theme::RED : theme::GREEN;
-    tft.rectRound(
-        _searchButton.x,     _searchButton.y,
-        _searchButton.width, _searchButton.height,
-        uiMockup::RADIUS, color
-    );
+    tft.rectRound(_searchButton.x, _searchButton.y, _searchButton.width, _searchButton.height, uiMockup::RADIUS, color);
 
     tft.setFont(ST7796S::RobotoMono_Bold_16);
     tft.setTextColor(color);
-    tft.textCenter(
-        _searchButton.x,     _searchButton.y,
-        _searchButton.width, _searchButton.height,
-        searching ? "STOP" : "SEARCH"
-    );
+    tft.textCenter(_searchButton.x, _searchButton.y, _searchButton.width, _searchButton.height, searching ? "STOP" : "SEARCH");
 
     _searchButtonShowingStop = searching;
 }
@@ -308,86 +212,46 @@ void Ota::_drawSearchButton(ST7796S::MSP4021 &tft, const bool searching) {
 bool Ota::_requestSearch() {
     gps::Snapshot position {};
 
-    if (
-        !gps::getSnapshot(position) ||
-        !position.positionValid
-    ) {
-        return false;
-    }
+    if (!gps::getSnapshot(position) || !position.positionValid)
+        { return false; }
 
-    const sOta::Type type = _searchType == SearchType::POTA
-        ? sOta::Type::PARKS
-        : sOta::Type::SUMMITS;
-
+    const sOta::Type type = _searchType == SearchType::POTA ? sOta::Type::PARKS : sOta::Type::SUMMITS;
     if (_searchMode == SearchMode::CODE) {
-        if (_codePrefix[0] == '\0') {
-            return false;
-        }
-
-        return sOta::requestByPrefix(
-            type,
-            _codePrefix,
-            position.latitude,
-            position.longitude
-        );
+        if (_codePrefix[0] == '\0')
+            { return false; }
+        return sOta::requestByPrefix(type, _codePrefix, position.latitude, position.longitude);
     }
 
-    const double radiusKm =
-        RADIUS_VALUES[_radiusIndex];
-
-    return sOta::requestNearby(
-        type,
-        position.latitude,
-        position.longitude,
-        radiusKm
-    );
+    const double radiusKm = RADIUS_VALUES[_radiusIndex];
+    return sOta::requestNearby(type, position.latitude, position.longitude, radiusKm);
 }
 
 Ota::ResultsView Ota::_currentResultsView() {
-    if (!_searchSubmitted) {
-        return {ResultsViewStatus::HIDDEN, 0U};
-    }
+    if (!_searchSubmitted)
+        { return {ResultsViewStatus::HIDDEN, 0U}; }
 
-    const sOta::Type type =
-        _submittedSearchType == SearchType::POTA
-            ? sOta::Type::PARKS
-            : sOta::Type::SUMMITS;
-
-    const sOta::NearbySnapshot snapshot =
-        sOta::nearbySnapshot(type);
+    const sOta::Type type               = _submittedSearchType == SearchType::POTA ? sOta::Type::PARKS : sOta::Type::SUMMITS;
+    const sOta::NearbySnapshot snapshot = sOta::nearbySnapshot(type);
 
     switch (snapshot.status) {
-        case sOta::NearbyStatus::SEARCHING:
-            return {ResultsViewStatus::SEARCHING, 0U};
-        case sOta::NearbyStatus::READY:
-            return {ResultsViewStatus::READY, snapshot.count};
-        case sOta::NearbyStatus::EMPTY:
-            return {ResultsViewStatus::EMPTY, 0U};
-        case sOta::NearbyStatus::IDLE:
-            return {ResultsViewStatus::HIDDEN, 0U};
+        case sOta::NearbyStatus::SEARCHING:   return {ResultsViewStatus::SEARCHING, 0U};
+        case sOta::NearbyStatus::READY:       return {ResultsViewStatus::READY, snapshot.count};
+        case sOta::NearbyStatus::EMPTY:       return {ResultsViewStatus::EMPTY, 0U};
+        case sOta::NearbyStatus::IDLE:        return {ResultsViewStatus::HIDDEN, 0U};
         case sOta::NearbyStatus::ERROR:
         case sOta::NearbyStatus::UNAVAILABLE:
-        default:
-            return {ResultsViewStatus::ERROR, 0U};
+        default:                              return {ResultsViewStatus::ERROR, 0U};
     }
 }
 
 bool Ota::_sourceResultAt(const size_t index, otaDB::SearchResult &result) {
-    const sOta::Type type =
-        _submittedSearchType == SearchType::POTA
-            ? sOta::Type::PARKS
-            : sOta::Type::SUMMITS;
-
+    const sOta::Type type = _submittedSearchType == SearchType::POTA ? sOta::Type::PARKS : sOta::Type::SUMMITS;
     return sOta::nearbyResult(type, index, result);
 }
 
 bool Ota::_resultAt(const size_t index, otaDB::SearchResult &result) {
-    if (_resultOrderCount == 0U) {
-        return _sourceResultAt(index, result);
-    }
-    if (index >= _resultOrderCount) {
-        return false;
-    }
+    if (_resultOrderCount == 0U)    { return _sourceResultAt(index, result); }
+    if (index >= _resultOrderCount) { return false; }
     return _sourceResultAt(_resultOrder[index], result);
 }
 
@@ -396,52 +260,29 @@ bool Ota::_resultComesBefore(const otaDB::SearchResult &left, const otaDB::Searc
 
     switch (_sortMode) {
         case SortMode::CODE:
-            if (codeOrder != 0) {
-                return codeOrder < 0;
-            }
+            if (codeOrder != 0)
+                { return codeOrder < 0; }
             return left.distanceKm < right.distanceKm;
-
         case SortMode::POINTS: {
-            const uint16_t leftPoints =
-                static_cast<uint16_t>(left.points) +
-                static_cast<uint16_t>(left.bonus);
+            const uint16_t leftPoints  = static_cast<uint16_t>(left.points)  + static_cast<uint16_t>(left.bonus);
+            const uint16_t rightPoints = static_cast<uint16_t>(right.points) + static_cast<uint16_t>(right.bonus);
 
-            const uint16_t rightPoints =
-                static_cast<uint16_t>(right.points) +
-                static_cast<uint16_t>(right.bonus);
-
-            if (leftPoints != rightPoints) {
-                return leftPoints > rightPoints;
-            }
-
-            if (left.distanceKm != right.distanceKm) {
-                return left.distanceKm < right.distanceKm;
-            }
-
+            if (leftPoints != rightPoints)           { return leftPoints > rightPoints; }
+            if (left.distanceKm != right.distanceKm) { return left.distanceKm < right.distanceKm; }
             return codeOrder < 0;
         }
-
         case SortMode::DISTANCE:
         default:
-            if (left.distanceKm != right.distanceKm) {
-                return left.distanceKm < right.distanceKm;
-            }
+            if (left.distanceKm != right.distanceKm) { return left.distanceKm < right.distanceKm; }
             return codeOrder < 0;
     }
 }
 
 void Ota::_rebuildResultOrder(const size_t resultCount) {
-    _resultOrderCount = resultCount < otaDB::RESULT_CAPACITY
-        ? resultCount
-        : otaDB::RESULT_CAPACITY;
+    _resultOrderCount = resultCount < otaDB::RESULT_CAPACITY ? resultCount : otaDB::RESULT_CAPACITY;
 
-    for (
-        size_t resultIndex = 0U;
-        resultIndex < _resultOrderCount;
-        ++resultIndex
-    ) {
-        _resultOrder[resultIndex] = resultIndex;
-    }
+    for (size_t resultIndex = 0U; resultIndex < _resultOrderCount; ++resultIndex)
+        { _resultOrder[resultIndex] = resultIndex; }
 
     for (size_t sortIndex = 1U; sortIndex < _resultOrderCount; ++sortIndex) {
         const size_t sourceIndex = _resultOrder[sortIndex];
@@ -457,21 +298,15 @@ void Ota::_rebuildResultOrder(const size_t resultCount) {
         while (insertionIndex > 0U) {
             otaDB::SearchResult previous {};
 
-            if (!_sourceResultAt(
-                _resultOrder[insertionIndex - 1U],
-                previous
-            )) {
+            if (!_sourceResultAt(_resultOrder[insertionIndex - 1U], previous)) {
                 _resultOrderCount = 0U;
                 return;
             }
 
-            if (!_resultComesBefore(current, previous)) {
-                break;
-            }
+            if (!_resultComesBefore(current, previous))
+                { break; }
 
-            _resultOrder[insertionIndex] =
-                _resultOrder[insertionIndex - 1U];
-
+            _resultOrder[insertionIndex] =  _resultOrder[insertionIndex - 1U];
             --insertionIndex;
         }
 
@@ -479,23 +314,18 @@ void Ota::_rebuildResultOrder(const size_t resultCount) {
     }
 }
 
-void Ota::_drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
-    const otaDB::SearchResult &result, const SelectionStatus selectionStatus, const bool imperial
-) {
+void Ota::_drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex, const otaDB::SearchResult &result, const SelectionStatus selectionStatus, const bool imperial) {
     constexpr int PADDING        = 6;
     constexpr int CODE_WIDTH     = 120;
     constexpr int DISTANCE_WIDTH = 88;
 
     const int rowX = grid::innerX();
-    const int rowY =
-        grid::innerY() +
-        RESULTS_NAV_HEIGHT +
-        uiMockup::GAP +
-        static_cast<int>(visibleIndex) * RESULT_ROW_HEIGHT;
+    const int rowY = grid::innerY() + RESULTS_NAV_HEIGHT + uiMockup::GAP + static_cast<int>(visibleIndex) * RESULT_ROW_HEIGHT;
     const int rowW = grid::innerWidth();
     const int rowH = RESULT_ROW_HEIGHT - uiMockup::GAP;
 
     _resultButtons[visibleIndex] = button::makeArea(rowX, rowY, rowW, rowH);
+
     if (selectionStatus != SelectionStatus::NONE) {
         uint16_t selectionColor = theme::CYAN;
 
@@ -513,88 +343,40 @@ void Ota::_drawResultRow(ST7796S::MSP4021 &tft, const size_t visibleIndex,
                 break;
         }
 
-        tft.rectRound(
-            rowX, rowY,
-            rowW, rowH,
-            uiMockup::RADIUS, selectionColor
-        );
+        tft.rectRound(rowX, rowY, rowW, rowH, uiMockup::RADIUS, selectionColor);
     }
 
     char distanceLabel[20] = "";
     char pointsLabel[20]   = "";
 
-    if (!format::distance(
-        result.distanceKm,
-        imperial,
-        distanceLabel,
-        sizeof(distanceLabel)
-    )) {
-        text::copy(distanceLabel, sizeof(distanceLabel), "--");
-    }
+    if (!format::distance(result.distanceKm, imperial, distanceLabel, sizeof(distanceLabel)))
+        { text::copy(distanceLabel, sizeof(distanceLabel), "--"); }
 
-    const int pointsWritten = std::snprintf(
-        pointsLabel,
-        sizeof(pointsLabel),
-        "%u +%u PTS",
-        static_cast<unsigned int>(result.points),
-        static_cast<unsigned int>(result.bonus)
-    );
+    const int pointsWritten = std::snprintf(pointsLabel, sizeof(pointsLabel), "%u +%u PTS", static_cast<unsigned int>(result.points), static_cast<unsigned int>(result.bonus));
 
-    if (
-        pointsWritten < 0 ||
-        pointsWritten >= static_cast<int>(sizeof(pointsLabel))
-    ) {
-        text::copy(pointsLabel, sizeof(pointsLabel), "--");
-    }
+    if (pointsWritten < 0 || pointsWritten >= static_cast<int>(sizeof(pointsLabel)))
+        { text::copy(pointsLabel, sizeof(pointsLabel), "--"); }
 
     tft.setFont(ST7796S::RobotoMono_Regular_14);
 
     tft.setTextColor(theme::WHITE);
-    tft.textCenterLeft(
-        rowX + PADDING,
-        rowY,
-        CODE_WIDTH - PADDING,
-        rowH,
-        result.code
-    );
+    tft.textCenterLeft(rowX + PADDING, rowY, CODE_WIDTH - PADDING, rowH, result.code);
 
     tft.setTextColor(theme::CYAN);
-    tft.textCenter(
-        rowX + CODE_WIDTH,
-        rowY,
-        DISTANCE_WIDTH,
-        rowH,
-        distanceLabel
-    );
+    tft.textCenter(rowX + CODE_WIDTH, rowY, DISTANCE_WIDTH, rowH, distanceLabel);
 
     if (_submittedSearchType == SearchType::SOTA) {
         tft.setTextColor(theme::GREEN);
-        tft.textCenterRight(
-            rowX + CODE_WIDTH + DISTANCE_WIDTH,
-            rowY,
-            rowW - CODE_WIDTH - DISTANCE_WIDTH - PADDING,
-            rowH,
-            pointsLabel
-        );
+        tft.textCenterRight(rowX + CODE_WIDTH + DISTANCE_WIDTH, rowY, rowW - CODE_WIDTH - DISTANCE_WIDTH - PADDING, rowH, pointsLabel);
     }
 }
 
 bool Ota::_saveSelectedResult() {
-    if (_selectedResultIndex == NO_RESULT_SELECTED) {
-        return false;
-    }
-
+    if (_selectedResultIndex == NO_RESULT_SELECTED) { return false; }
     otaDB::SearchResult result {};
+    if (!_resultAt(_selectedResultIndex, result))   { return false; }
 
-    if (!_resultAt(_selectedResultIndex, result)) {
-        return false;
-    }
-
-    const settings::OtaType type =
-        _submittedSearchType == SearchType::SOTA
-            ? settings::OtaType::SOTA
-            : settings::OtaType::POTA;
-
+    const settings::OtaType type = _submittedSearchType == SearchType::SOTA ? settings::OtaType::SOTA : settings::OtaType::POTA;
     return settings::setOtaSelection(type, result.code);
 }
 
@@ -604,59 +386,25 @@ void Ota::_drawClearSelection(ST7796S::MSP4021 &tft) {
 
     _clearSelectionButton = button::ButtonArea {};
 
-    if (_clearSelectionStatus == ClearSelectionStatus::HIDDEN) {
-        return;
-    }
-
+    if (_clearSelectionStatus == ClearSelectionStatus::HIDDEN) { return; }
     if (_clearSelectionStatus == ClearSelectionStatus::AVAILABLE) {
-        const int buttonX =
-            grid::innerX() +
-            (grid::innerWidth() - BUTTON_WIDTH) / 2;
+        const int buttonX = grid::innerX() + (grid::innerWidth()  - BUTTON_WIDTH)  / 2;
+        const int buttonY = grid::innerY() + (grid::innerHeight() - BUTTON_HEIGHT) / 2;
 
-        const int buttonY =
-            grid::innerY() +
-            (grid::innerHeight() - BUTTON_HEIGHT) / 2;
+        _clearSelectionButton = button::makeArea(buttonX, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
 
-        _clearSelectionButton = button::makeArea(
-            buttonX,
-            buttonY,
-            BUTTON_WIDTH,
-            BUTTON_HEIGHT
-        );
-
-        tft.rectRound(
-            buttonX,
-            buttonY,
-            BUTTON_WIDTH,
-            BUTTON_HEIGHT,
-            uiMockup::RADIUS,
-            theme::RED
-        );
-
+        tft.rectRound(buttonX, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT, uiMockup::RADIUS, theme::RED);
         tft.setFont(ST7796S::RobotoMono_Bold_16);
         tft.setTextColor(theme::RED);
-        tft.textCenter(
-            buttonX,
-            buttonY,
-            BUTTON_WIDTH,
-            BUTTON_HEIGHT,
-            "CLEAR SELECTION"
-        );
+        tft.textCenter(buttonX, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT, "CLEAR SELECTION");
         return;
     }
 
-    const bool cleared =
-        _clearSelectionStatus == ClearSelectionStatus::CLEARED;
+    const bool cleared = _clearSelectionStatus == ClearSelectionStatus::CLEARED;
 
     tft.setFont(ST7796S::RobotoMono_Bold_16);
     tft.setTextColor(cleared ? theme::GREEN : theme::RED);
-    tft.textCenter(
-        grid::innerX(),
-        grid::innerY(),
-        grid::innerWidth(),
-        grid::innerHeight(),
-        cleared ? "SELECTION CLEARED" : "CLEAR FAILED"
-    );
+    tft.textCenter(grid::innerX(), grid::innerY(), grid::innerWidth(), grid::innerHeight(), cleared ? "SELECTION CLEARED" : "CLEAR FAILED");
 }
 
 bool Ota::_clearSelection() {
@@ -664,84 +412,41 @@ bool Ota::_clearSelection() {
 }
 
 size_t Ota::_pageCount(const size_t resultCount) {
-    if (resultCount == 0U) {
-        return 0U;
-    }
-
-    return (resultCount + RESULTS_PER_PAGE - 1U) /
-        RESULTS_PER_PAGE;
+    if (resultCount == 0U) { return 0U; }
+    return (resultCount + RESULTS_PER_PAGE - 1U) / RESULTS_PER_PAGE;
 }
 
 void Ota::_drawPagination(ST7796S::MSP4021 &tft, const size_t resultCount) {
     constexpr int PAGE_BUTTON_WIDTH = 40;
 
     const size_t pageCount = _pageCount(resultCount);
-    if (pageCount == 0U) {
-        return;
-    }
-
-    if (_resultPage >= pageCount) {
-        _resultPage = pageCount - 1U;
-    }
+    if (pageCount == 0U)          { return; }
+    if (_resultPage >= pageCount) { _resultPage = pageCount - 1U; }
 
     const int navX = grid::innerX();
     const int navY = grid::innerY();
     const int navW = grid::innerWidth();
     const int navH = RESULTS_NAV_HEIGHT;
 
-    _previousPageButton = button::makeArea(
-        navX,
-        navY,
-        PAGE_BUTTON_WIDTH,
-        navH
-    );
-
-    _nextPageButton = button::makeArea(
-        navX + navW - PAGE_BUTTON_WIDTH,
-        navY,
-        PAGE_BUTTON_WIDTH,
-        navH
-    );
+    _previousPageButton = button::makeArea(navX, navY, PAGE_BUTTON_WIDTH, navH);
+    _nextPageButton     = button::makeArea(navX + navW - PAGE_BUTTON_WIDTH, navY, PAGE_BUTTON_WIDTH, navH);
 
     tft.rectFill(navX, navY, navW, navH, theme::BLACK);
 
-    _drawChoiceButton(
-        tft,
-        _previousPageButton,
-        "<",
-        _resultPage > 0U,
-        false
-    );
-
-    _drawChoiceButton(
-        tft,
-        _nextPageButton,
-        ">",
-        _resultPage + 1U < pageCount,
-        false
-    );
+    _drawChoiceButton(tft, _previousPageButton, "<", _resultPage > 0U,             false);
+    _drawChoiceButton(tft, _nextPageButton,     ">", _resultPage + 1U < pageCount, false);
 
     char pageLabel[16];
     const int written = std::snprintf(
-        pageLabel,
-        sizeof(pageLabel),
-        "%u/%u",
+        pageLabel, sizeof(pageLabel), "%u/%u",
         static_cast<unsigned int>(_resultPage + 1U),
         static_cast<unsigned int>(pageCount)
     );
 
-    if (written > 0 &&
-        static_cast<size_t>(written) < sizeof(pageLabel)
-    ) {
+    if (written > 0 && static_cast<size_t>(written) < sizeof(pageLabel)) {
         tft.setFont(ST7796S::RobotoMono_Bold_16);
         tft.setTextColor(theme::WHITE);
-        tft.textCenter(
-            navX + PAGE_BUTTON_WIDTH,
-            navY,
-            navW - (PAGE_BUTTON_WIDTH * 2),
-            navH,
-            pageLabel
-        );
+        tft.textCenter(navX + PAGE_BUTTON_WIDTH, navY, navW - (PAGE_BUTTON_WIDTH * 2), navH, pageLabel);
     }
 }
 
@@ -750,34 +455,19 @@ bool Ota::_drawReadyResults(ST7796S::MSP4021 &tft, const size_t resultCount) {
 
     const size_t firstResultIndex = _resultPage * RESULTS_PER_PAGE;
     const size_t remainingCount   = resultCount - firstResultIndex;
-    const size_t visibleCount     = remainingCount < RESULTS_PER_PAGE
-            ? remainingCount
-            : RESULTS_PER_PAGE;
+    const size_t visibleCount     = remainingCount < RESULTS_PER_PAGE ? remainingCount : RESULTS_PER_PAGE;
 
     const settings::General configuration = settings::general();
-    const bool imperial = configuration.units == settings::Units::IMPERIAL;
+    const bool imperial                   = configuration.units == settings::Units::IMPERIAL;
 
-    for (size_t visibleIndex = 0U;
-        visibleIndex < visibleCount;
-        ++visibleIndex
-    ) {
+    for (size_t visibleIndex = 0U; visibleIndex < visibleCount; ++visibleIndex) {
         otaDB::SearchResult result {};
-        const size_t resultIndex =
-            firstResultIndex + visibleIndex;
+        const size_t resultIndex = firstResultIndex + visibleIndex;
 
-        if (!_resultAt(resultIndex, result)) {
-            return false;
-        }
+        if (!_resultAt(resultIndex, result))
+            { return false; }
 
-        _drawResultRow(
-            tft,
-            visibleIndex,
-            result,
-            resultIndex == _selectedResultIndex
-                ? _selectionStatus
-                : SelectionStatus::NONE,
-            imperial
-        );
+        _drawResultRow(tft, visibleIndex, result, resultIndex == _selectedResultIndex ? _selectionStatus : SelectionStatus::NONE, imperial);
         _visibleResultCount = visibleIndex + 1U;
     }
 
@@ -787,23 +477,15 @@ bool Ota::_drawReadyResults(ST7796S::MSP4021 &tft, const size_t resultCount) {
 void Ota::_drawResultsStatus(ST7796S::MSP4021 &tft) {
     const ResultsView view = _currentResultsView();
 
-    if (view.status == _displayedResultStatus &&
-        view.count  == _displayedResultCount  &&
-        _resultPage == _displayedResultPage
-    ) { return; }
+    if (view.status == _displayedResultStatus && view.count  == _displayedResultCount  && _resultPage == _displayedResultPage)
+        { return; }
 
     _displayedResultStatus = view.status;
     _displayedResultCount  = view.count;
     _displayedResultPage   = _resultPage;
     _visibleResultCount    = 0U;
 
-    tft.rectFill(
-        grid::innerX(),
-        grid::innerY(),
-        grid::innerWidth(),
-        grid::innerHeight(),
-        theme::BLACK
-    );
+    tft.rectFill(grid::innerX(), grid::innerY(), grid::innerWidth(), grid::innerHeight(), theme::BLACK);
 
     if (view.status == ResultsViewStatus::HIDDEN) {
         _drawClearSelection(tft);
@@ -815,21 +497,15 @@ void Ota::_drawResultsStatus(ST7796S::MSP4021 &tft) {
 
     switch (view.status) {
         case ResultsViewStatus::SEARCHING:
-            label = _submittedSearchType == SearchType::SOTA
-                ? "SEARCHING SOTA"
-                : "SEARCHING POTA";
+            label = _submittedSearchType == SearchType::SOTA ? "SEARCHING SOTA" : "SEARCHING POTA";
             color = theme::CYAN;
             break;
         case ResultsViewStatus::READY:
-            if (_resultOrderCount != view.count) {
-                _rebuildResultOrder(view.count);
-            }
-            if (
-                _resultOrderCount == view.count &&
-                _drawReadyResults(tft, view.count)
-            ) {
-                return;
-            }
+            if (_resultOrderCount != view.count)
+                { _rebuildResultOrder(view.count); }
+            if (_resultOrderCount == view.count && _drawReadyResults(tft, view.count))
+                { return; }
+
             label = "SEARCH ERROR";
             color = theme::RED;
             break;
@@ -847,13 +523,7 @@ void Ota::_drawResultsStatus(ST7796S::MSP4021 &tft) {
 
     tft.setFont(ST7796S::RobotoMono_Bold_16);
     tft.setTextColor(color);
-    tft.textCenter(
-        grid::innerX(),
-        grid::innerY(),
-        grid::innerWidth(),
-        grid::innerHeight(),
-        label
-    );
+    tft.textCenter(grid::innerX(), grid::innerY(), grid::innerWidth(), grid::innerHeight(), label);
 }
 
 void Ota::preload() {
@@ -873,9 +543,7 @@ void Ota::preload() {
     _resultOrderCount      = 0U;
 
     settings::OtaSelection persistedSelection {};
-    _clearSelectionStatus = settings::getOtaSelection(persistedSelection)
-        ? ClearSelectionStatus::AVAILABLE
-        : ClearSelectionStatus::HIDDEN;
+    _clearSelectionStatus = settings::getOtaSelection(persistedSelection) ? ClearSelectionStatus::AVAILABLE : ClearSelectionStatus::HIDDEN;
 
     const sOta::Snapshot sotaSnapshot     = sOta::snapshot(sOta::Type::SUMMITS);
     const sOta::Snapshot potaSnapshot     = sOta::snapshot(sOta::Type::PARKS);
@@ -949,11 +617,7 @@ void Ota::update(ST7796S::MSP4021& tft, uint32_t& nextRefreshIn) {
 bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
     if (_keyboardActive) {
         if (tft.KUpdate(x, y)) {
-            ota::normalizeCodePrefix(
-                tft.KRead(),
-                _codePrefix,
-                sizeof(_codePrefix)
-            );
+            ota::normalizeCodePrefix(tft.KRead(), _codePrefix, sizeof(_codePrefix));
 
             _displayedResultStatus = ResultsViewStatus::UNKNOWN;
             _keyboardActive = false;
@@ -962,13 +626,8 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
         return true;
     }
 
-    const bool sotaAvailable =
-        sOta::snapshot(sOta::Type::SUMMITS).status !=
-            sOta::Status::UNAVAILABLE;
-
-    const bool potaAvailable =
-        sOta::snapshot(sOta::Type::PARKS).status !=
-            sOta::Status::UNAVAILABLE;
+    const bool sotaAvailable = sOta::snapshot(sOta::Type::SUMMITS).status != sOta::Status::UNAVAILABLE;
+    const bool potaAvailable = sOta::snapshot(sOta::Type::PARKS).status   != sOta::Status::UNAVAILABLE;
 
     if (_searchButtonShowingStop) {
         if (button::isPressed(_searchButton, x, y)) {
@@ -979,14 +638,8 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
     }
 
     const ResultsView resultsView = _currentResultsView();
-    if (
-        resultsView.status == ResultsViewStatus::HIDDEN &&
-        _clearSelectionStatus == ClearSelectionStatus::AVAILABLE &&
-        button::isPressed(_clearSelectionButton, x, y)
-    ) {
-        _clearSelectionStatus = _clearSelection()
-            ? ClearSelectionStatus::CLEARED
-            : ClearSelectionStatus::ERROR;
+    if (resultsView.status == ResultsViewStatus::HIDDEN && _clearSelectionStatus == ClearSelectionStatus::AVAILABLE && button::isPressed(_clearSelectionButton, x, y)) {
+        _clearSelectionStatus = _clearSelection() ? ClearSelectionStatus::CLEARED : ClearSelectionStatus::ERROR;
 
         _displayedResultStatus = ResultsViewStatus::UNKNOWN;
         _drawResultsStatus(tft);
@@ -1006,9 +659,7 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
             return true;
         }
         for (size_t visibleIndex = 0U; visibleIndex < _visibleResultCount; ++visibleIndex) {
-            if (!button::isPressed(_resultButtons[visibleIndex], x, y)) {
-                continue;
-            }
+            if (!button::isPressed(_resultButtons[visibleIndex], x, y)) { continue; }
 
             const size_t resultIndex = (_resultPage * RESULTS_PER_PAGE) + visibleIndex;
             if (_selectedResultIndex != resultIndex) {
@@ -1018,12 +669,9 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
                 _drawResultsStatus(tft);
                 return true;
             }
-            if (_selectionStatus == SelectionStatus::SAVED) {
-                return true;
-            }
-            _selectionStatus = _saveSelectedResult()
-                ? SelectionStatus::SAVED
-                : SelectionStatus::ERROR;
+            if (_selectionStatus == SelectionStatus::SAVED) { return true; }
+
+            _selectionStatus       = _saveSelectedResult() ? SelectionStatus::SAVED : SelectionStatus::ERROR;
             _displayedResultStatus = ResultsViewStatus::UNKNOWN;
             _drawResultsStatus(tft);
             return true;
@@ -1041,7 +689,7 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
 
     if (button::isPressed(_sotaTypeButton, x, y)) {
         if (sotaAvailable && _searchType != SearchType::SOTA) {
-            _searchType      = SearchType::SOTA;
+            _searchType = SearchType::SOTA;
             _drawTypeSelector(tft);
         }
         return true;
@@ -1070,18 +718,13 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
         return true;
     }
     if (button::isPressed(_sortButton, x, y)) {
-        const SearchType sortedType =
-            resultsView.status == ResultsViewStatus::READY
-                ? _submittedSearchType
-                : _searchType;
+        const SearchType sortedType = resultsView.status == ResultsViewStatus::READY ? _submittedSearchType : _searchType;
         switch (_sortMode) {
             case SortMode::DISTANCE:
                 _sortMode = SortMode::CODE;
                 break;
             case SortMode::CODE:
-                _sortMode = sortedType == SearchType::SOTA
-                    ? SortMode::POINTS
-                    : SortMode::DISTANCE;
+                _sortMode = sortedType == SearchType::SOTA ? SortMode::POINTS : SortMode::DISTANCE;
                 break;
             case SortMode::POINTS:
             default:
@@ -1109,12 +752,8 @@ bool Ota::handleTouch(ST7796S::MSP4021& tft, const int x, const int y) {
     }
     if (button::isPressed(_searchButton, x, y)) {
         if (_requestSearch()) {
-            if (
-                _searchType == SearchType::POTA &&
-                _sortMode == SortMode::POINTS
-            ) {
-                _sortMode = SortMode::DISTANCE;
-            }
+            if (_searchType == SearchType::POTA && _sortMode == SortMode::POINTS)
+                { _sortMode = SortMode::DISTANCE; }
 
             _submittedSearchType = _searchType;
             _searchSubmitted     = true;

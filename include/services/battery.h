@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #include <cstdint>
 
 namespace services::battery {
@@ -37,13 +38,13 @@ namespace services::battery {
 
     /**
      * Indicates whether a battery is currently detected.
-     * @return true if a battery is present, false otherwise.
+     * @return `true` when a battery is present, otherwise `false`.
      */
     bool isPresent();
 
     /**
      * Indicates whether the battery level is critical.
-     * @return true if the battery level is critical, false otherwise.
+     * @return `true` when the battery level is critical, otherwise `false`.
      */
     bool isCritical();
 

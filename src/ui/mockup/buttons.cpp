@@ -84,32 +84,14 @@ namespace {
                 break;
         }
 
-        if (fillColor != theme::BLACK) {
-            tft.rectRoundFill(
-                button.x,       button.y,
-                button.width,   button.height,
-                radius,         fillColor
-            );
-        } else {
-            tft.rectFill(
-                button.x,       button.y,
-                button.width,   button.height,
-                theme::BLACK
-            );
-        }
+        if (fillColor != theme::BLACK)
+            { tft.rectRoundFill(button.x, button.y, button.width, button.height, radius, fillColor); }
+        else { tft.rectFill(button.x, button.y, button.width, button.height, theme::BLACK); }
 
         tft.setFont(ST7796S::RobotoMono_Bold_16);
         tft.setTextColor(textColor);
-        tft.rectRound(
-            button.x,       button.y,
-            button.width,   button.height,
-            radius,         borderColor
-        );
-        tft.textCenter(
-            button.x,       button.y,
-            button.width,   button.height,
-            field.label
-        );
+        tft.rectRound(button.x, button.y, button.width, button.height, radius, borderColor);
+        tft.textCenter(button.x, button.y, button.width, button.height, field.label);
     }
 }
 
@@ -130,11 +112,7 @@ void buttons::setState(const Id id, const State state) {
 }
 
 void buttons::clear(ST7796S::MSP4021 &tft) {
-    tft.rectFill(
-        _area.outerX, _area.outerY,
-        _area.outerW, _area.outerH,
-        theme::BLACK
-    );
+    tft.rectFill(_area.outerX, _area.outerY, _area.outerW, _area.outerH, theme::BLACK);
 }
 
 void buttons::draw(ST7796S::MSP4021 &tft) {

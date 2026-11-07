@@ -173,33 +173,26 @@ namespace {
             !std::isfinite(position.altitude)
         ) { return false; }
         return
-            position.latitude >= -90.0   && position.latitude <= 90.0   &&
-            position.longitude >= -180.0 && position.longitude <= 180.0;
+            position.latitude  >= -90.0  &&
+            position.latitude  <= 90.0   &&
+            position.longitude >= -180.0 &&
+            position.longitude <= 180.0;
     }
 
     bool _isValidId(const char* const id) {
         if (id == nullptr) { return false; }
 
         constexpr size_t ID_LENGTH = 26U;
-        for (
-            size_t characterIndex = 0U;
-            characterIndex < ID_LENGTH;
-            ++characterIndex
-        ) {
+        for (size_t characterIndex = 0U; characterIndex < ID_LENGTH; ++characterIndex) {
             if (characterIndex == 8U || characterIndex == 15U) {
                 if (id[characterIndex] != '-')
                     { return false; }
                 continue;
             }
 
-            if (
-                id[characterIndex] < '0' ||
-                id[characterIndex] > '9'
-            ) {
-                return false;
-            }
+            if (id[characterIndex] < '0' || id[characterIndex] > '9')
+                { return false; }
         }
-
         return id[ID_LENGTH] == '\0';
     }
 
@@ -224,18 +217,14 @@ namespace {
         if (!_serialize(writer, record)) { return false; }
 
         const char* const serialized = writer.c_str();
-        if (serialized == nullptr) { return false; }
+        if (serialized == nullptr)       { return false; }
+
         return storage::writeFile( FILE_QTH_TEMPORARY, serialized);
     }
 
     bool _buildFilePath(const char* const id, char* const path, const size_t size) {
         if (!_isValidId(id) || path == nullptr || size == 0U) { return false; }
-
-        const int written = std::snprintf(
-            path, size, "%s%s%s",
-            DIR_QTH, id, FILE_EXTENSION
-        );
-
+        const int written = std::snprintf(path, size, "%s%s%s", DIR_QTH, id, FILE_EXTENSION);
         return written > 0 && static_cast<size_t>(written) < size;
     }
 
@@ -287,11 +276,7 @@ namespace {
         buffer[length - 1U] = '\0';
 
         constexpr const char* TRACE_PREFIX = ",\"trace\":[";
-        const int written = std::snprintf(
-            buffer + length - 1U,
-            sizeof(buffer) - (length - 1U),
-            "%s", TRACE_PREFIX
-        );
+        const int written = std::snprintf(buffer + length - 1U, sizeof(buffer) - (length - 1U), "%s", TRACE_PREFIX);
 
         if (written <= 0 || static_cast<size_t>(written) >= sizeof(buffer) - (length - 1U))
             { return false; }
@@ -305,16 +290,14 @@ namespace {
         const bool read = storage::readFileLines(FILE_QTH_TRACE, _mergeTraceLine, &context);
 
         if (!read || !context.valid) {
-            if (!storage::deleteFile(FILE_QTH_FINAL_TEMPORARY)) {
-                storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED");
-            }
+            if (!storage::deleteFile(FILE_QTH_FINAL_TEMPORARY))
+                { storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED"); }
             return false;
         }
 
         if (!storage::appendFile(FILE_QTH_FINAL_TEMPORARY, "]}")) {
-            if (!storage::deleteFile(FILE_QTH_FINAL_TEMPORARY)) {
-                storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED");
-            }
+            if (!storage::deleteFile(FILE_QTH_FINAL_TEMPORARY))
+                { storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED"); }
             return false;
         }
         return true;
@@ -324,15 +307,15 @@ namespace {
         if (!record.finished) { return false; }
 
         char finalPath[FILE_PATH_SIZE];
-        if (!_buildFilePath(record.id, finalPath, sizeof(finalPath))) { return false; }
+        if (!_buildFilePath(record.id, finalPath, sizeof(finalPath)))     { return false; }
 
         const bool finalExists = storage::fileExists(finalPath);
         if (finalExists && allowExistingFinal) {
             if (storage::fileExists(FILE_QTH_FINAL_TEMPORARY) && !storage::deleteFile(FILE_QTH_FINAL_TEMPORARY))
                 {storage::appendErrorRecord("QTH_FINAL_TEMP_DELETE_FAILED"); }
         } else {
-            if (finalExists) { return false; }
-            if (!_writeFinalRecord(record)) { return false; }
+            if (finalExists)                                               { return false; }
+            if (!_writeFinalRecord(record))                                { return false; }
             if (!storage::renameFile(FILE_QTH_FINAL_TEMPORARY, finalPath)) { return false; }
         }
 
@@ -362,8 +345,10 @@ namespace {
             !std::isfinite(point.altitude)
         ) { return false; }
         return
-            point.latitude >= -90.0   && point.latitude <= 90.0   &&
-            point.longitude >= -180.0 && point.longitude <= 180.0;
+            point.latitude  >= -90.0  &&
+            point.latitude  <= 90.0   &&
+            point.longitude >= -180.0 &&
+            point.longitude <= 180.0;
     }
 
     bool _shouldAppendTracePoint(const qth::TracePoint& point) {
@@ -371,22 +356,19 @@ namespace {
         if (!_hasLastTracePoint)              { return true; }
         if (point.utc <= _lastTracePoint.utc) { return false; }
 
-        const double horizontalMeters = distance::betweenKilometers(
-            _lastTracePoint.latitude, _lastTracePoint.longitude,
-            point.latitude,           point.longitude
-        ) * 1000.0;
-        const double altitudeChange = std::fabs(point.altitude - _lastTracePoint.altitude);
+        const double horizontalMeters = distance::betweenKilometers(_lastTracePoint.latitude, _lastTracePoint.longitude, point.latitude, point.longitude) * 1000.0;
+        const double altitudeChange   = std::fabs(point.altitude - _lastTracePoint.altitude);
 
         return
             horizontalMeters >= TRACE_MIN_DISTANCE_METERS ||
-            altitudeChange >= TRACE_MIN_ALTITUDE_CHANGE;
+            altitudeChange   >= TRACE_MIN_ALTITUDE_CHANGE;
     }
 
     bool _deserializeTracePoint(const char* const content, qth::TracePoint& point) {
         if (content == nullptr) { return false; }
 
         json::Reader reader(content);
-        if (!reader.valid()) { return false; }
+        if (!reader.valid())    { return false; }
 
         uint64_t utc = 0U;
         qth::TracePoint restored {};
@@ -434,7 +416,7 @@ namespace {
 
         const bool read = storage::readFileLines(FILE_QTH_TRACE, _readLastTracePoint, &context);
         if (!read || !context.valid) { return TraceRestoreStatus::ERROR; }
-        if (!context.hasPoint) { return TraceRestoreStatus::MISSING_OR_EMPTY; }
+        if (!context.hasPoint)       { return TraceRestoreStatus::MISSING_OR_EMPTY; }
 
         _lastTracePoint    = context.point;
         _hasLastTracePoint = true;
@@ -502,8 +484,8 @@ namespace {
         tm utc {};
 
         if (gmtime_r(&value, &utc) == nullptr) { return false; }
-        const int written = std::snprintf(buffer, size,
-            "%04d%02d%02d-%02d%02d%02d-%010lu",
+        const int written = std::snprintf(
+            buffer, size, "%04d%02d%02d-%02d%02d%02d-%010lu",
             utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
             utc.tm_hour,        utc.tm_min,     utc.tm_sec,
             static_cast<unsigned long>(startedAtMillis)
@@ -528,10 +510,8 @@ namespace {
 
             if (!_createId(snapshot.startUTC, snapshot.startedAtMillis, record.id, sizeof(record.id)))
                 { return false; }
-    
             if (!_formatUser(record.userId, sizeof(record.userId), record.mode, sizeof(record.mode)))
                 { return false; }
-
             if (!text::copy(record.generatorVersion, sizeof(record.generatorVersion), PROJECT_VERSION))
                 { return false; }
         }
@@ -582,11 +562,7 @@ namespace {
             !text::equals(format, QTH_FORMAT)                                ||
             !root.unsignedInteger("formatVersion", formatVersion)            ||
             formatVersion != QTH_FORMAT_VERSION                              ||
-            !root.string(
-                "generatorVersion",
-                restored.generatorVersion,
-                sizeof(restored.generatorVersion)
-            )                                                                ||
+            !root.string("generatorVersion", restored.generatorVersion, sizeof(restored.generatorVersion)) ||
             !root.string("id", restored.id, sizeof(restored.id))             ||
             !root.string("userId", restored.userId, sizeof(restored.userId)) ||
             !root.string("mode", restored.mode, sizeof(restored.mode))       ||
@@ -606,7 +582,8 @@ namespace {
         if (!_hasTemporaryRecord()) { return false; }
 
         char buffer[RECORD_JSON_SIZE];
-        if (!storage::readFile(FILE_QTH_TEMPORARY, buffer, sizeof(buffer))) { return false; }
+        if (!storage::readFile(FILE_QTH_TEMPORARY, buffer, sizeof(buffer)))
+            { return false; }
         return _deserialize(buffer, record);
     }
 
@@ -620,17 +597,17 @@ bool qth::isCurrentRecordLongEnough() {
 }
 
 qth::RecoveryStatus qth::recoverTemporaryRecord() {
-    if (!_hasTemporaryRecord()) { return RecoveryStatus::NONE; }
-    if (_hasRestoredRecord)     { return RecoveryStatus::ERROR; }
+    if (!_hasTemporaryRecord())             { return RecoveryStatus::NONE; }
+    if (_hasRestoredRecord)                 { return RecoveryStatus::ERROR; }
 
     RecordData record {};
-    if (!_loadTemporaryRecord(record)) { return RecoveryStatus::ERROR; }
+    if (!_loadTemporaryRecord(record))      { return RecoveryStatus::ERROR; }
     if (record.finished) {
         if (!_finalizeRecord(record, true)) { return RecoveryStatus::ERROR; }
         return RecoveryStatus::RECORD_FINALIZED;
     }
 
-    if (!_restoreOrCreateTrace(record)) { return RecoveryStatus::ERROR; }
+    if (!_restoreOrCreateTrace(record))     { return RecoveryStatus::ERROR; }
 
     navigation::Coordinate start {};
     start.latitude  = record.start.latitude;
@@ -639,7 +616,7 @@ qth::RecoveryStatus qth::recoverTemporaryRecord() {
 
     if (!navigation::restoreMark(start, record.start.utc))
         { return RecoveryStatus::ERROR; }
-    _restoredRecord = record;
+    _restoredRecord    = record;
     _hasRestoredRecord = true;
     return RecoveryStatus::RECORDING_RESTORED;
 }
@@ -665,7 +642,7 @@ bool qth::saveTemporaryRecord() {
     _clearRestoredRecord();
     RecordData record {};
     if (!_buildCurrentRecord(record)) { return false; }
-    if (record.finished)             { return false; }
+    if (record.finished)              { return false; }
     return _writeRecord(record);
 }
 
@@ -684,7 +661,7 @@ bool qth::discardTemporaryTrace() {
 bool qth::saveCurrentRecord() {
     RecordData record {};
     if (!_buildCurrentRecord(record)) { return false; }
-    if (!record.finished)            { return false; }
-    if (!_writeRecord(record))       { return false; }
+    if (!record.finished)             { return false; }
+    if (!_writeRecord(record))        { return false; }
     return _finalizeRecord(record, false);
 }

@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #include <cstdint>
 
 namespace ui::settings::themes::defaults {

@@ -53,19 +53,9 @@ bool format::durationCompact(uint32_t seconds, char* const buffer, const size_t 
     seconds %= 60U;
 
     int written = 0;
-    if (hours > 0U) {
-        written = std::snprintf(buffer, size,
-            "%luh %02lum",
-            static_cast<unsigned long>(hours),
-            static_cast<unsigned long>(minutes)
-        );
-    } else {
-        written = std::snprintf(buffer, size,
-            "%lum %02lus",
-            static_cast<unsigned long>(minutes),
-            static_cast<unsigned long>(seconds)
-        );
-    }
+    if (hours > 0U)
+        { written = std::snprintf(buffer, size, "%luh %02lum", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes)); }
+    else { written = std::snprintf(buffer, size, "%lum %02lus", static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds)); }
     return _isWritten(written, size);
 }
 
@@ -73,10 +63,8 @@ bool format::speed(const double kilometersPerHour, const bool imperial, char* co
     if (!_isValidBuffer(buffer, size)) { return false; }
 
     const int written = imperial
-        ? std::snprintf(buffer, size,
-            "%.1f mph",
-            units::kilometersPerHourToMilesPerHour(kilometersPerHour)
-        ) : std::snprintf(buffer, size, "%.1f km/h", kilometersPerHour);
+        ? std::snprintf(buffer, size, "%.1f mph",  units::kilometersPerHourToMilesPerHour(kilometersPerHour))
+        : std::snprintf(buffer, size, "%.1f km/h", kilometersPerHour);
     return _isWritten(written, size);
 }
 

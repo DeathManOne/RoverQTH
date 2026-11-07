@@ -61,9 +61,7 @@ namespace {
 
     bool _restoreButtonInput() {
         if (rtc_gpio_deinit(_wakeupGpio) != ESP_OK) {
-            storage::appendErrorRecord(
-                "POWER_RTC_GPIO_DEINIT_FAILED"
-            );
+            storage::appendErrorRecord("POWER_RTC_GPIO_DEINIT_FAILED");
             return false;
         }
 
@@ -79,26 +77,17 @@ namespace {
         const esp_err_t pullupResult   = rtc_gpio_pullup_en(_wakeupGpio);
         const esp_err_t pulldownResult = rtc_gpio_pulldown_dis(_wakeupGpio);
 
-        if (
-            pullupResult != ESP_OK ||
-            pulldownResult != ESP_OK
-        ) {
-            storage::appendErrorRecord(
-                "POWER_WAKEUP_PULL_CONFIGURATION_FAILED"
-            );
-
+        if (pullupResult != ESP_OK || pulldownResult != ESP_OK) {
+            storage::appendErrorRecord("POWER_WAKEUP_PULL_CONFIGURATION_FAILED");
             _shutdownPending = false;
-
             _restoreButtonInput();
             return;
         }
 
-        const esp_err_t wakeupResult =
-            esp_sleep_enable_ext0_wakeup(_wakeupGpio, 0);
+        const esp_err_t wakeupResult = esp_sleep_enable_ext0_wakeup(_wakeupGpio, 0);
         if (wakeupResult != ESP_OK) {
             storage::appendErrorRecord("POWER_WAKEUP_CONFIGURATION_FAILED");
             _shutdownPending = false;
-
             _restoreButtonInput();
             return;
         }
@@ -148,7 +137,7 @@ void power::update() {
     const uint32_t now = millis();
 
     if (pressed != _rawPressed) {
-        _rawPressed      = pressed;
+        _rawPressed       = pressed;
         _lastButtonChange = now;
     }
 

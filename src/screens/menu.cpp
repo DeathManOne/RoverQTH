@@ -140,7 +140,6 @@ bool Menu::handleTouch(ST7796S::MSP4021 &tft, const int x, const int y) {
     }
 
     menu::Item selected = _currentItem;
-
     if (navigation::handleTouch(x, y, selected)) {
         select(selected);
         draw(tft);

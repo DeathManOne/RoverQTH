@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -32,37 +32,37 @@ namespace utilities::format {
      * @param seconds Duration in seconds.
      * @param buffer  Destination buffer.
      * @param size    Size of the destination buffer in bytes.
-     * @return true if the formatted duration was successfully written, false otherwise.
+     * @return `true` when the formatted duration was successfully written, otherwise `false`.
      */
     bool durationCompact(uint32_t seconds, char* buffer, size_t size);
 
     /**
      * Formats a speed.
-     * @param kilometersPerHour Speed in kilometers per hour.
-     * @param imperial          true to use imperial units, false for metric units.
+     * @param kilometersPerHour Speed in kilometres per hour.
+     * @param imperial          `true` to use imperial units, `false` for metric units.
      * @param buffer            Destination buffer.
      * @param size              Size of the destination buffer in bytes.
-     * @return true if the formatted speed was successfully written, false otherwise.
+     * @return `true` when the formatted speed was successfully written, otherwise `false`.
      */
     bool speed(double kilometersPerHour, bool imperial, char* buffer, size_t size);
 
     /**
      * Formats an altitude.
-     * @param meters   Altitude in meters.
-     * @param imperial true to use imperial units, false for metric units.
+     * @param meters   Altitude in metres.
+     * @param imperial `true` to use imperial units, `false` for metric units.
      * @param buffer   Destination buffer.
      * @param size     Size of the destination buffer in bytes.
-     * @return true if the formatted altitude was successfully written, false otherwise.
+     * @return `true` when the formatted altitude was successfully written, otherwise `false`.
      */
     bool altitude(double meters, bool imperial, char* buffer, size_t size);
 
     /**
      * Formats a distance.
-     * @param kilometers Distance in kilometers.
-     * @param imperial   true to use imperial units, false for metric units.
+     * @param kilometers Distance in kilometres.
+     * @param imperial   `true` to use imperial units, `false` for metric units.
      * @param buffer     Destination buffer.
      * @param size       Size of the destination buffer in bytes.
-     * @return true if the formatted distance was successfully written, false otherwise.
+     * @return `true` when the formatted distance was successfully written, otherwise `false`.
      */
     bool distance(double kilometers, bool imperial, char* buffer, size_t size);
 
@@ -71,7 +71,7 @@ namespace utilities::format {
      * @param degrees Bearing in degrees.
      * @param buffer  Destination buffer.
      * @param size    Size of the destination buffer in bytes.
-     * @return true if the formatted bearing was successfully written, false otherwise.
+     * @return `true` when the formatted bearing was successfully written, otherwise `false`.
      */
     bool bearing(double degrees, char* buffer, size_t size);
 
@@ -80,7 +80,7 @@ namespace utilities::format {
      * @param degrees Heading in degrees.
      * @param buffer  Destination buffer.
      * @param size    Size of the destination buffer in bytes.
-     * @return true if the formatted heading was successfully written, false otherwise.
+     * @return `true` when the formatted heading was successfully written, otherwise `false`.
      */
     bool heading(double degrees, char* buffer, size_t size);
 
@@ -89,7 +89,7 @@ namespace utilities::format {
      * @param value  Percentage value.
      * @param buffer Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return true if the formatted percentage was successfully written, false otherwise.
+     * @return `true` when the formatted percentage was successfully written, otherwise `false`.
      */
     bool percentage(uint64_t value, char* buffer, size_t size);
 
@@ -98,7 +98,7 @@ namespace utilities::format {
      * @param volts  Voltage in volts.
      * @param buffer Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return true if the formatted voltage was successfully written, false otherwise.
+     * @return `true` when the formatted voltage was successfully written, otherwise `false`.
      */
     bool voltage(double volts, char* buffer, size_t size);
 
@@ -107,7 +107,7 @@ namespace utilities::format {
      * @param bytes  Capacity in bytes.
      * @param buffer Destination buffer.
      * @param size   Size of the destination buffer in bytes.
-     * @return true if the formatted storage capacity was successfully written, false otherwise.
+     * @return `true` when the formatted storage capacity was successfully written, otherwise `false`.
      */
     bool storageCapacity(uint64_t bytes, char* buffer, size_t size);
 }

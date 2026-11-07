@@ -102,9 +102,8 @@ void battery::begin() {
         static_cast<unsigned int>(getPercent())
     );
 
-    if (batteryWritten > 0 &&
-        static_cast<size_t>(batteryWritten) < sizeof(batteryRecord)
-    ) { storage::appendLogRecord(batteryRecord); }
+    if (batteryWritten > 0 && static_cast<size_t>(batteryWritten) < sizeof(batteryRecord))
+        { storage::appendLogRecord(batteryRecord); }
 }
 
 void battery::update() {
@@ -132,7 +131,7 @@ void battery::update() {
     const bool present          = voltage > BATTERY_PRESENT;
     const bool critical         = present && voltage <= criticalVoltage;
 
-    uint8_t percent     = 0;
+    uint8_t percent = 0;
     if      (voltage <= min || !present) { percent = 0; }
     else if (voltage >= max)             { percent = 100; }
     else { percent = static_cast<uint8_t>(((voltage - min) * 100.0f) / range); }

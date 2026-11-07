@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2026 DeathManOne
  * https://github.com/DeathManOne
- * 
+ *
  * This file is part of the RoverQTH project.
  *
  * RoverQTH is free software: you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <cstdint>
+
 #include <SPI.h>
 #include <SDCard.h>
 
@@ -33,7 +34,7 @@ namespace services::storage {
      * Callback invoked for each line read from a text file.
      * @param line     Null-terminated line.
      * @param userData User-defined context pointer.
-     * @return true to continue reading, false to stop.
+     * @return `true` to continue reading, otherwise `false` to stop.
      */
     using LineCallback = bool (*)(const char* line, void* userData);
 
@@ -42,7 +43,7 @@ namespace services::storage {
      * @param data     Pointer to the chunk data.
      * @param length   Number of bytes contained in the chunk.
      * @param userData User-defined context pointer.
-     * @return true to continue reading, false to stop.
+     * @return `true` to continue reading, otherwise `false` to stop.
      */
     using ChunkCallback = bool (*)(const uint8_t* data, size_t length, void* userData);
 
@@ -55,7 +56,7 @@ namespace services::storage {
 
     /**
      * Indicates whether the storage service is ready.
-     * @return true if the storage service is ready, false otherwise.
+     * @return `true` when the storage service is ready, otherwise `false`.
      */
     bool isReady();
 
@@ -65,7 +66,7 @@ namespace services::storage {
      * @param size  Receives the SD card capacity in bytes.
      * @param total Receives the total filesystem size in bytes.
      * @param used  Receives the used filesystem size in bytes.
-     * @return true if the information was successfully retrieved, false otherwise.
+     * @return `true` when the information was successfully retrieved, otherwise `false`.
      */
     bool readCardInfos(uint8_t &type, uint64_t &size, uint64_t &total, uint64_t &used);
 
@@ -74,7 +75,7 @@ namespace services::storage {
      * @param path      File path.
      * @param callback  Callback invoked for each line.
      * @param userData  User-defined context passed to the callback.
-     * @return true if the file was successfully processed, false otherwise.
+     * @return `true` when the file was successfully processed, otherwise `false`.
      */
     bool readFileLines(const char* path, LineCallback callback, void* userData = nullptr);
 
@@ -83,14 +84,14 @@ namespace services::storage {
      * @param path     File path.
      * @param callback Callback invoked for each chunk.
      * @param userData User-defined context passed to the callback.
-     * @return true if the file was successfully processed, false otherwise.
+     * @return `true` when the file was successfully processed, otherwise `false`.
      */
     bool readFileChunks(const char* path, ChunkCallback callback, void* userData = nullptr);
 
     /**
      * Indicates whether a file exists.
      * @param path File path.
-     * @return true if the file exists, false otherwise.
+     * @return `true` when the file exists, otherwise `false`.
      */
     bool fileExists(const char* path);
 
@@ -106,7 +107,7 @@ namespace services::storage {
      * @param path   File path.
      * @param buffer Destination buffer.
      * @param size Destination buffer size, including the null terminator.
-     * @return true if the entire file fits and was read successfully, false otherwise. The buffer is cleared on failure when possible.
+     * @return `true` when the entire file fits and was read successfully, otherwise `false`. The buffer is cleared on failure when possible.
      */
     bool readFile(const char* path, char* buffer, size_t size);
 
@@ -114,7 +115,7 @@ namespace services::storage {
      * Writes a file.
      * @param path File path.
      * @param data Null-terminated data to write.
-     * @return true if the file was successfully written, false otherwise.
+     * @return `true` when the file was successfully written, otherwise `false`.
      */
     bool writeFile(const char* path, const char* data);
 
@@ -123,7 +124,7 @@ namespace services::storage {
      * @param path   File path.
      * @param data   Pointer to the data to write.
      * @param length Number of bytes to write.
-     * @return true if the complete data buffer was successfully written, false otherwise.
+     * @return `true` when the complete data buffer was successfully written, otherwise `false`.
      */
     bool writeFile(const char* path, const uint8_t* data, size_t length);
 
@@ -131,7 +132,7 @@ namespace services::storage {
      * Appends data to a file.
      * @param path File path.
      * @param data Null-terminated data to append.
-     * @return true if the data was successfully appended, false otherwise.
+     * @return `true` when the data was successfully appended, otherwise `false`.
      */
     bool appendFile(const char* path, const char* data);
 
@@ -140,21 +141,25 @@ namespace services::storage {
      * @param path   File path.
      * @param data   Pointer to the data to append.
      * @param length Number of bytes to append.
-     * @return true if the complete data buffer was successfully appended, false otherwise.
+     * @return `true` when the complete data buffer was successfully appended, otherwise `false`.
      */
     bool appendFile(const char* path, const uint8_t* data, size_t length);
 
     /**
      * @brief Opens one file for a sequential write transaction.
      * @param path Destination file path.
-     * @return true when the transaction was opened successfully.
+     * @return `true` when the transaction was opened successfully, otherwise `false`.
      */
     bool beginFileWrite(const char* path);
+
     /**
      * @brief Writes one binary block to the active sequential transaction.
-     * @return true when the complete block was written.
+     * @param data   Pointer to the binary data to write.
+     * @param length Number of bytes to write.
+     * @return `true` when the complete block was written, otherwise `false`.
      */
     bool writeFileChunk(const uint8_t* data, size_t length);
+
     /** @brief Flushes and closes the active sequential write transaction. */
     void endFileWrite();
 
@@ -162,30 +167,30 @@ namespace services::storage {
      * Renames a file.
      * @param source      Current file path.
      * @param destination New file path.
-     * @return true if the file was successfully renamed, false otherwise.
+     * @return `true` when the file was successfully renamed, otherwise `false`.
      */
     bool renameFile(const char* source, const char* destination);
 
     /**
      * Deletes a file.
      * @param path File path.
-     * @return true if the file was successfully deleted, false otherwise.
+     * @return `true` when the file was successfully deleted, otherwise `false`.
      */
     bool deleteFile(const char* path);
 
     /**
      * Appends a record to the system log.
      * @param data Null-terminated log record.
-     * @return true if the record was written immediately or queued for later,
-     *         false if it could not be accepted.
+     * @return `true` when the record was written immediately or queued for later,
+     *         `false` when it could not be accepted.
      */
     bool appendLogRecord(const char* data);
 
     /**
      * Appends a record to the error log.
      * @param data Null-terminated error record.
-     * @return true if the record was written immediately or queued for later,
-     *         false if it could not be accepted.
+     * @return `true` when the record was written immediately or queued for later,
+     *         `false` when it could not be accepted.
      */
     bool appendErrorRecord(const char* data);
 }
